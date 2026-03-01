@@ -1,0 +1,750 @@
+#!/usr/bin/env php
+<?php
+/**
+ * CDD-PHP (Contract-Driven Development) CLI
+ * No external dependencies.
+ */
+
+declare(strict_types=1);
+
+namespace Cdd;
+
+$baseDir = dirname(__DIR__);
+
+if (file_exists("$baseDir/vendor/autoload.php")) {
+    require_once "$baseDir/vendor/autoload.php";
+}
+
+// Simple autoloader for src directory
+spl_autoload_register(function ($class) use ($baseDir) {
+    if (strpos($class, 'Cdd\\') === 0) {
+        $parts = explode('\\', substr($class, 4));
+        $file = $baseDir . '/src/' . implode('/', array_map('strtolower', $parts)) . '.php';
+        if (file_exists($file)) {
+            require $file;
+        }
+    }
+});
+
+// Require all functional scripts
+$dirs = ['functions', 'classes', 'docstrings', 'routes', 'tests', 'mocks', 'openapi', 'client', 'schemas', 'components', 'parameters', 'request_bodies', 'responses', 'operations', 'paths', 'servers', 'security', 'info', 'encoding', 'webhooks', 'controllers'];
+foreach ($dirs as $dir) {
+    $parseFile = "$baseDir/src/$dir/parse.php";
+    $emitFile = "$baseDir/src/$dir/emit.php";
+    if (file_exists($parseFile)) require_once $parseFile;
+    if (file_exists($emitFile)) require_once $emitFile;
+}
+
+if (file_exists("$baseDir/src/openapi/resolve_refs.php")) {
+    require_once "$baseDir/src/openapi/resolve_refs.php";
+}
+
+if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['PHP_SELF'])) {
+    $command = $argv[1] ?? '';
+
+    if ($command === '--version' || $command === '-v') {
+        echo "cdd-php version 1.0.0\n";
+        exit(0);
+    }
+
+    if ($command === '--help' || $command === '-h' || empty($command)) {
+        echo "Usage: cdd-php [command] [args]\n";
+        echo "Commands:\n";
+        echo "  --help                                    - Show this help\n";
+        echo "  --version                                 - Show version\n";
+        echo "  from_openapi -i spec.json                 - Parse OpenAPI spec and generate code (alias for 'emit')\n";
+        echo "  to_openapi -f path/to/code                - Parse PHP code and generate OpenAPI spec (alias for 'parse')\n";
+        echo "  sync -d directory                         - Sync PHP codebase, updating OpenAPI spec and all dependent files\n";
+        echo "  to_docs_json --no-imports --no-wrapping -i spec.json - Generate flattened docs JSON\n";
+        echo "  test                                      - Run tests\n";
+        exit(0);
+    }
+
+    if ($command === 'test') {
+        require_once "$baseDir/tests/framework/Runner.php";
+        \Cdd\Tests\Framework\Runner::run("$baseDir/tests");
+        exit(0);
+    }
+
+    if ($command === 'sync') {
+        $dir = '';
+        for ($i = 2; $i < $argc; $i++) {
+            if ($argv[$i] === '-d' && isset($argv[$i+1])) {
+                $dir = $argv[$i+1];
+                $i++;
+            } else if ($argv[$i] !== '-d' && $dir === '') {
+                $dir = $argv[$i];
+            }
+        }
+
+        if (!$dir || !is_dir($dir)) {
+            echo "Error: Directory not found.\n";
+            exit(1);
+        }
+
+        // Core syncing logic: read the whole out directory, parse components, merge, and re-emit.
+        $openapi = [
+            'openapi' => '3.2.0',
+            'info' => ['title' => 'Synced API', 'version' => '1.0.0'],
+            'paths' => [],
+            'components' => ['schemas' => []]
+        ];
+
+        // If api_metadata.php exists, merge it
+        if (file_exists("$dir/api_metadata.php")) {
+            $metadata = include "$dir/api_metadata.php";
+            if (is_array($metadata)) {
+                foreach (['info', 'jsonSchemaDialect', 'externalDocs', 'tags', 'security'] as $key) {
+                    if (isset($metadata[$key])) {
+                        $openapi[$key] = $metadata[$key];
+                    }
+                }
+            }
+        }
+        
+        // If routes.php exists, parse it
+        if (file_exists("$dir/routes.php")) {
+            $code = file_get_contents("$dir/routes.php");
+            $routes = function_exists('\Cdd\Routes\parse') ? \Cdd\Routes\parse($code) : [];
+            if (!empty($routes)) {
+                $openapi['paths'] = array_replace_recursive((array)$openapi['paths'], $routes);
+            }
+        }
+
+        // If ApiClient.php exists, parse it and merge
+        if (file_exists("$dir/ApiClient.php")) {
+            $clientPaths = \Cdd\Client\parse(file_get_contents("$dir/ApiClient.php"));
+            if (!empty($clientPaths)) {
+                $openapi['paths'] = array_replace_recursive((array)$openapi['paths'], $clientPaths);
+            }
+        }
+
+        // If ApiController.php exists, parse it and merge into paths
+        if (file_exists("$dir/ApiController.php") && function_exists('\Cdd\Controllers\parse')) {
+            $controllerOps = \Cdd\Controllers\parse(file_get_contents("$dir/ApiController.php"));
+            if (!empty($controllerOps) && isset($openapi['paths'])) {
+                foreach ($openapi['paths'] as $path => &$methods) {
+                    foreach ($methods as $method => &$operation) {
+                        $opId = $operation['operationId'] ?? '';
+                        if (isset($controllerOps[$opId])) {
+                            $operation = array_replace_recursive((array)$operation, $controllerOps[$opId]);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // If Models.php exists, parse classes
+        if (file_exists("$dir/Models.php")) {
+            $code = file_get_contents("$dir/Models.php");
+                                    $classes = function_exists('\Cdd\Classes\parse') ? \Cdd\Classes\parse($code) : [];
+            if (!empty($classes)) {
+                foreach ($classes as $c) {
+                    $schema = \Cdd\Schemas\parse($c['node']);
+                    $type = $c['componentType'] ?? 'schemas';
+                    if (!isset($openapi['components'][$type])) {
+                        $openapi['components'][$type] = [];
+                    }
+                    if ($type === 'mediaTypes') {
+                        $mediaType = ['schema' => $schema];
+                        
+                        // Parse extra docblock tags for Media Type Objects (3.2.0)
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if (isset($parsedDoc['tags']['itemSchema'])) {
+                                $mediaType['itemSchema'] = ['$ref' => '#/components/schemas/' . trim($parsedDoc['tags']['itemSchema'][0])];
+                            }
+                            // Simplified encoding representation
+                            if (isset($parsedDoc['tags']['itemEncoding'])) {
+                                $mediaType['itemEncoding'] = ['contentType' => trim($parsedDoc['tags']['itemEncoding'][0])];
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = $mediaType;
+                    } elseif ($type === 'parameters') {
+                        $paramName = $c['name'];
+                        $in = 'query';
+                        $required = false;
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if (isset($parsedDoc['tags']['in'])) {
+                                $in = trim($parsedDoc['tags']['in'][0]);
+                            }
+                            if (isset($parsedDoc['tags']['name'])) {
+                                $paramName = trim($parsedDoc['tags']['name'][0]);
+                            }
+                            if (isset($parsedDoc['tags']['required'])) {
+                                $required = true;
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'name' => $paramName,
+                            'in' => $in,
+                            'required' => $required,
+                            'schema' => $schema
+                        ];
+                    } elseif ($type === 'responses') {
+                        $desc = $c['name'];
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if ($parsedDoc['description'] !== '') {
+                                $desc = explode("\n", $parsedDoc['description'])[0];
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'description' => $desc,
+                            'content' => ['application/json' => ['schema' => $schema]]
+                        ];
+                    } elseif ($type === 'requestBodies') {
+                        $desc = '';
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if ($parsedDoc['description'] !== '') {
+                                $desc = explode("\n", $parsedDoc['description'])[0];
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'description' => $desc,
+                            'content' => ['application/json' => ['schema' => $schema]]
+                        ];
+                    } elseif ($type === 'headers') {
+                        $desc = '';
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if ($parsedDoc['description'] !== '') {
+                                $desc = explode("\n", $parsedDoc['description'])[0];
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'description' => $desc,
+                            'schema' => $schema
+                        ];
+                    } elseif ($type === 'securitySchemes') {
+                        $schemeType = 'http';
+                        $scheme = 'bearer';
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if (isset($parsedDoc['tags']['type'])) {
+                                $schemeType = trim($parsedDoc['tags']['type'][0]);
+                            }
+                            if (isset($parsedDoc['tags']['scheme'])) {
+                                $scheme = trim($parsedDoc['tags']['scheme'][0]);
+                            }
+                        }
+                        $secScheme = ['type' => $schemeType];
+                        if ($schemeType === 'http') {
+                            $secScheme['scheme'] = $scheme;
+                        } elseif ($schemeType === 'apiKey') {
+                            $secScheme['in'] = 'header';
+                            $secScheme['name'] = 'X-API-Key';
+                            if (isset($parsedDoc['tags']['in'])) {
+                                $secScheme['in'] = trim($parsedDoc['tags']['in'][0]);
+                            }
+                            if (isset($parsedDoc['tags']['name'])) {
+                                $secScheme['name'] = trim($parsedDoc['tags']['name'][0]);
+                            }
+                        } elseif ($schemeType === 'oauth2') {
+                            $secScheme['flows'] = [];
+                            if (isset($parsedDoc['tags']['flow'])) {
+                                foreach ($parsedDoc['tags']['flow'] as $flowStr) {
+                                    $parts = explode(' ', $flowStr, 2);
+                                    if (isset($parts[1])) {
+                                        $secScheme['flows'][$parts[0]] = json_decode($parts[1], true);
+                                    }
+                                }
+                            }
+                        } elseif ($schemeType === 'openIdConnect') {
+                            if (isset($parsedDoc['tags']['openIdConnectUrl'])) {
+                                $secScheme['openIdConnectUrl'] = trim($parsedDoc['tags']['openIdConnectUrl'][0]);
+                            }
+                        }
+                        if (isset($parsedDoc['tags']['bearerFormat'])) {
+                            $secScheme['bearerFormat'] = trim($parsedDoc['tags']['bearerFormat'][0]);
+                        }
+                        $openapi['components'][$type][$c['name']] = $secScheme;
+                    } elseif ($type === 'pathItems') {
+                        $desc = '';
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if ($parsedDoc['description'] !== '') {
+                                $desc = explode("\n", $parsedDoc['description'])[0];
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'description' => $desc
+                        ];
+                    } elseif ($type === 'callbacks') {
+                        $openapi['components'][$type][$c['name']] = [
+                            '{$request.query.callbackUrl}' => [
+                                'post' => [
+                                    'requestBody' => [
+                                        'content' => ['application/json' => ['schema' => $schema]]
+                                    ],
+                                    'responses' => [
+                                        '200' => ['description' => 'ok']
+                                    ]
+                                ]
+                            ]
+                        ];
+                    } elseif ($type === 'links') {
+                        $desc = '';
+                        $opId = 'linkOperation';
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if ($parsedDoc['description'] !== '') {
+                                $desc = explode("\n", $parsedDoc['description'])[0];
+                            }
+                            if (isset($parsedDoc['tags']['operationId'])) {
+                                $opId = trim($parsedDoc['tags']['operationId'][0]);
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'operationId' => $opId,
+                            'description' => $desc
+                        ];
+                    } else {
+                        $openapi['components'][$type][$c['name']] = $schema;
+                    }
+                }
+            }
+        }
+
+        // If mocks.php exists, parse it
+        if (file_exists("$dir/mocks.php")) {
+            $mocks = \Cdd\Mocks\parse(file_get_contents("$dir/mocks.php"));
+            if (!empty($mocks)) {
+                $openapi['components']['examples'] = $mocks;
+                // update schema to match mocks (if I edit a mock, update the rest to match)
+                foreach ($mocks as $name => $example) {
+                    if (isset($example['dataValue']) && is_array($example['dataValue'])) {
+                        $schemaName = ucfirst($name) . 'Model';
+                        if (!isset($openapi['components']['schemas'][$schemaName])) {
+                            $properties = [];
+                            foreach ($example['dataValue'] as $key => $val) {
+                                $type = gettype($val);
+                                if ($type === 'integer') {
+                                    $properties[$key] = ['type' => 'integer'];
+                                } elseif ($type === 'double') {
+                                    $properties[$key] = ['type' => 'number'];
+                                } elseif ($type === 'boolean') {
+                                    $properties[$key] = ['type' => 'boolean'];
+                                } elseif ($type === 'array') {
+                                    $properties[$key] = ['type' => 'array', 'items' => ['type' => 'string']];
+                                } else {
+                                    $properties[$key] = ['type' => 'string'];
+                                }
+                            }
+                            $openapi['components']['schemas'][$schemaName] = [
+                                'type' => 'object',
+                                'properties' => $properties
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        // If ApiServers.php exists, parse it
+        if (file_exists("$dir/ApiServers.php")) {
+            $parsedServers = \Cdd\Servers\parse(file_get_contents("$dir/ApiServers.php"));
+            if (!empty($parsedServers)) {
+                $openapi['servers'] = $parsedServers;
+            }
+        }
+
+        // If Webhooks.php exists, parse it
+        if (file_exists("$dir/Webhooks.php") && function_exists('\Cdd\Webhooks\parse')) {
+            $webhooks = \Cdd\Webhooks\parse(file_get_contents("$dir/Webhooks.php"));
+            if (!empty($webhooks)) {
+                $openapi['webhooks'] = $webhooks;
+            }
+        }
+        
+        // If ApiTests.php exists, parse it
+        if (file_exists("$dir/ApiTests.php")) {
+            $tests = \Cdd\Tests\parse(file_get_contents("$dir/ApiTests.php"));
+            // Tests mainly validate paths exist, or add extension tests. For now just verify.
+        }
+
+        // Emitting back to sync the project and OpenAPI json
+        $json = \Cdd\Openapi\emit($openapi, $dir);
+        file_put_contents("$dir/openapi.json", $json);
+
+        echo "Synchronized codebase in $dir successfully.\n";
+        exit(0);
+    }
+
+    if ($command === 'to_openapi' || $command === 'parse') {
+        $file = '';
+        for ($i = 2; $i < $argc; $i++) {
+            if ($argv[$i] === '-f' && isset($argv[$i+1])) {
+                $file = $argv[$i+1];
+                break;
+            } else if ($argv[$i] !== '-f' && $file === '') {
+                $file = $argv[$i];
+            }
+        }
+        
+        if (!$file || !file_exists($file)) {
+            echo "Error: File not found.\n";
+            exit(1);
+        }
+        $code = file_get_contents($file);
+        
+        $openapi = [
+            'openapi' => '3.2.0',
+            'info' => [
+                'title' => 'Parsed API',
+                'version' => '1.0.0',
+            ],
+            'paths' => [],
+            'components' => ['schemas' => []]
+        ];
+        
+        $dir = dirname($file);
+        if (file_exists("$dir/api_metadata.php")) {
+            $metadata = include "$dir/api_metadata.php";
+            if (is_array($metadata)) {
+                foreach (['info', 'jsonSchemaDialect', 'externalDocs', 'tags', 'security'] as $key) {
+                    if (isset($metadata[$key])) {
+                        $openapi[$key] = $metadata[$key];
+                    }
+                }
+            }
+        }
+        
+        if (strpos($code, 'curl_exec') !== false) {
+             $openapi['paths'] = \Cdd\Client\parse($code);
+        } else {
+             
+             $routes = function_exists('\Cdd\Routes\parse') ? \Cdd\Routes\parse($code) : [];
+             if (!empty($routes)) {
+                 $openapi['paths'] = $routes;
+             }
+             
+             if (function_exists('\Cdd\Controllers\parse') && !empty($openapi['paths'])) {
+                 $controllerOps = \Cdd\Controllers\parse($code);
+                 foreach ($openapi['paths'] as $path => &$methods) {
+                     foreach ($methods as $method => &$operation) {
+                         $opId = $operation['operationId'] ?? '';
+                         if (isset($controllerOps[$opId])) {
+                             $operation = array_replace_recursive((array)$operation, $controllerOps[$opId]);
+                         }
+                     }
+                 }
+             }
+
+             if (function_exists('\Cdd\Servers\parse')) {
+                 $servers = \Cdd\Servers\parse($code);
+                 if (!empty($servers)) {
+                     $openapi['servers'] = $servers;
+                 }
+             }
+             
+                                     $classes = function_exists('\Cdd\Classes\parse') ? \Cdd\Classes\parse($code) : [];
+            if (!empty($classes)) {
+                foreach ($classes as $c) {
+                    $schema = \Cdd\Schemas\parse($c['node']);
+                    $type = $c['componentType'] ?? 'schemas';
+                    if (!isset($openapi['components'][$type])) {
+                        $openapi['components'][$type] = [];
+                    }
+                    if ($type === 'mediaTypes') {
+                        $mediaType = ['schema' => $schema];
+                        
+                        // Parse extra docblock tags for Media Type Objects (3.2.0)
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if (isset($parsedDoc['tags']['itemSchema'])) {
+                                $mediaType['itemSchema'] = ['$ref' => '#/components/schemas/' . trim($parsedDoc['tags']['itemSchema'][0])];
+                            }
+                            // Simplified encoding representation
+                            if (isset($parsedDoc['tags']['itemEncoding'])) {
+                                $mediaType['itemEncoding'] = ['contentType' => trim($parsedDoc['tags']['itemEncoding'][0])];
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = $mediaType;
+                    } elseif ($type === 'parameters') {
+                        $paramName = $c['name'];
+                        $in = 'query';
+                        $required = false;
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if (isset($parsedDoc['tags']['in'])) {
+                                $in = trim($parsedDoc['tags']['in'][0]);
+                            }
+                            if (isset($parsedDoc['tags']['name'])) {
+                                $paramName = trim($parsedDoc['tags']['name'][0]);
+                            }
+                            if (isset($parsedDoc['tags']['required'])) {
+                                $required = true;
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'name' => $paramName,
+                            'in' => $in,
+                            'required' => $required,
+                            'schema' => $schema
+                        ];
+                    } elseif ($type === 'responses') {
+                        $desc = $c['name'];
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if ($parsedDoc['description'] !== '') {
+                                $desc = explode("\n", $parsedDoc['description'])[0];
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'description' => $desc,
+                            'content' => ['application/json' => ['schema' => $schema]]
+                        ];
+                    } elseif ($type === 'requestBodies') {
+                        $desc = '';
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if ($parsedDoc['description'] !== '') {
+                                $desc = explode("\n", $parsedDoc['description'])[0];
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'description' => $desc,
+                            'content' => ['application/json' => ['schema' => $schema]]
+                        ];
+                    } elseif ($type === 'headers') {
+                        $desc = '';
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if ($parsedDoc['description'] !== '') {
+                                $desc = explode("\n", $parsedDoc['description'])[0];
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'description' => $desc,
+                            'schema' => $schema
+                        ];
+                    } elseif ($type === 'securitySchemes') {
+                        $schemeType = 'http';
+                        $scheme = 'bearer';
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if (isset($parsedDoc['tags']['type'])) {
+                                $schemeType = trim($parsedDoc['tags']['type'][0]);
+                            }
+                            if (isset($parsedDoc['tags']['scheme'])) {
+                                $scheme = trim($parsedDoc['tags']['scheme'][0]);
+                            }
+                        }
+                        $secScheme = ['type' => $schemeType];
+                        if ($schemeType === 'http') {
+                            $secScheme['scheme'] = $scheme;
+                        } elseif ($schemeType === 'apiKey') {
+                            $secScheme['in'] = 'header';
+                            $secScheme['name'] = 'X-API-Key';
+                            if (isset($parsedDoc['tags']['in'])) {
+                                $secScheme['in'] = trim($parsedDoc['tags']['in'][0]);
+                            }
+                            if (isset($parsedDoc['tags']['name'])) {
+                                $secScheme['name'] = trim($parsedDoc['tags']['name'][0]);
+                            }
+                        } elseif ($schemeType === 'oauth2') {
+                            $secScheme['flows'] = [];
+                            if (isset($parsedDoc['tags']['flow'])) {
+                                foreach ($parsedDoc['tags']['flow'] as $flowStr) {
+                                    $parts = explode(' ', $flowStr, 2);
+                                    if (isset($parts[1])) {
+                                        $secScheme['flows'][$parts[0]] = json_decode($parts[1], true);
+                                    }
+                                }
+                            }
+                        } elseif ($schemeType === 'openIdConnect') {
+                            if (isset($parsedDoc['tags']['openIdConnectUrl'])) {
+                                $secScheme['openIdConnectUrl'] = trim($parsedDoc['tags']['openIdConnectUrl'][0]);
+                            }
+                        }
+                        if (isset($parsedDoc['tags']['bearerFormat'])) {
+                            $secScheme['bearerFormat'] = trim($parsedDoc['tags']['bearerFormat'][0]);
+                        }
+                        $openapi['components'][$type][$c['name']] = $secScheme;
+                    } elseif ($type === 'pathItems') {
+                        $desc = '';
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if ($parsedDoc['description'] !== '') {
+                                $desc = explode("\n", $parsedDoc['description'])[0];
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'description' => $desc
+                        ];
+                    } elseif ($type === 'callbacks') {
+                        $openapi['components'][$type][$c['name']] = [
+                            '{$request.query.callbackUrl}' => [
+                                'post' => [
+                                    'requestBody' => [
+                                        'content' => ['application/json' => ['schema' => $schema]]
+                                    ],
+                                    'responses' => [
+                                        '200' => ['description' => 'ok']
+                                    ]
+                                ]
+                            ]
+                        ];
+                    } elseif ($type === 'links') {
+                        $desc = '';
+                        $opId = 'linkOperation';
+                        $docComment = $c['node']->getDocComment();
+                        if ($docComment !== null) {
+                            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                            if ($parsedDoc['description'] !== '') {
+                                $desc = explode("\n", $parsedDoc['description'])[0];
+                            }
+                            if (isset($parsedDoc['tags']['operationId'])) {
+                                $opId = trim($parsedDoc['tags']['operationId'][0]);
+                            }
+                        }
+                        $openapi['components'][$type][$c['name']] = [
+                            'operationId' => $opId,
+                            'description' => $desc
+                        ];
+                    } else {
+                        $openapi['components'][$type][$c['name']] = $schema;
+                    }
+                }
+            }
+        }
+        
+        if (empty((array)$openapi['paths'])) unset($openapi['paths']);
+        if (empty((array)$openapi['components'])) unset($openapi['components']); else { if (empty((array)$openapi['components']['schemas'])) unset($openapi['components']['schemas']); }
+        
+        echo json_encode($openapi, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        exit(0);
+    }
+
+    if ($command === 'from_openapi' || $command === 'emit') {
+        $file = '';
+        $dir = 'out'; // default out dir
+        
+        for ($i = 2; $i < $argc; $i++) {
+            if ($argv[$i] === '-i' && isset($argv[$i+1])) {
+                $file = $argv[$i+1];
+                $i++;
+            } else {
+                $dir = $argv[$i];
+            }
+        }
+        
+        if (!$file || !file_exists($file)) {
+            echo "Error: Spec file not found.\n";
+            exit(1);
+        }
+        
+        $spec = \Cdd\Openapi\parse(file_get_contents($file));
+        \Cdd\Openapi\emit($spec, $dir);
+        
+        echo "Emitted code to $dir successfully.\n";
+        exit(0);
+    }
+
+                if ($command === 'to_docs_json') {
+        $file = '';
+        $noImports = false;
+        $noWrapping = false;
+        
+        for ($i = 2; $i < $argc; $i++) {
+            if ($argv[$i] === '--no-imports') {
+                $noImports = true;
+            } elseif ($argv[$i] === '--no-wrapping') {
+                $noWrapping = true;
+            } elseif ($argv[$i] === '-i' && isset($argv[$i+1])) {
+                $file = $argv[$i+1];
+                $i++;
+            }
+        }
+        
+        if (!$file || !file_exists($file)) {
+            fwrite(STDERR, "Error: Spec file not found.\n");
+            exit(1);
+        }
+        
+        $spec = json_decode(file_get_contents($file), true);
+        if (!$spec) {
+            fwrite(STDERR, "Error parsing JSON spec.\n");
+            exit(1);
+        }
+        
+        $operations = [];
+        if (isset($spec['paths'])) {
+            foreach ($spec['paths'] as $path => $methods) {
+                foreach ($methods as $method => $operation) {
+                    if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers'])) continue;
+                    
+                    $opId = $operation['operationId'] ?? strtolower($method) . preg_replace('/[^a-zA-Z0-9]/', '', $path);
+                    
+                    // Generate basic snippet
+                    $camelOpId = preg_replace_callback('/[-_](.)/', function($m) { return strtoupper($m[1]); }, $opId);
+                    
+                    $params = [];
+                    if (isset($operation['parameters'])) {
+                        foreach ($operation['parameters'] as $p) {
+                            $name = $p['name'] ?? 'param';
+                            $params[] = "'$name' => 'value'";
+                        }
+                    }
+                    if (isset($operation['requestBody'])) {
+                        $params[] = "'body' => [...]";
+                    }
+                    $paramStr = empty($params) ? '' : '[' . implode(', ', $params) . ']';
+                    
+                    $snippet = "\$response = \$client->{$camelOpId}($paramStr);\nprint_r(\$response);";
+                    
+                    $codeBlock = [
+                        'snippet' => $snippet
+                    ];
+                    
+                    if (!$noImports) {
+                        $codeBlock['imports'] = "require_once 'vendor/autoload.php';\nuse ApiClient;";
+                    }
+                    
+                    if (!$noWrapping) {
+                        $codeBlock['wrapper_start'] = "\$client = new ApiClient('https://api.example.com');";
+                        $codeBlock['wrapper_end'] = "";
+                    }
+                    
+                    $operations[] = [
+                        'method' => strtoupper($method),
+                        'path' => $path,
+                        'operationId' => $opId,
+                        'code' => $codeBlock
+                    ];
+                }
+            }
+        }
+        
+        $result = [
+            [
+                'language' => 'php',
+                'operations' => $operations
+            ]
+        ];
+        
+        echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        exit(0);
+    }
+
+    echo "Unknown command: $command\n";
+    exit(1);
+}

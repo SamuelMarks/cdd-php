@@ -1,0 +1,16 @@
+{
+    "name": "offscale/cdd-php",
+    "description": "Zero-dependency OpenAPI bidirectional compiler for PHP.",
+    "type": "library",
+    "license": "Apache-2.0",
+    "bin": ["bin/cdd-php"],
+    "autoload": {
+        "files": [
+            "src/openapi/parse.php",
+            "src/openapi/emit.php"
+        ]
+    },
+    "require": {
+        "nikic/php-parser": "^5.7"
+    }
+}

@@ -1,0 +1,73 @@
+# ==========================================
+# PHP Project / Composer
+# ==========================================
+
+# Vendor directory
+/vendor/
+
+# Compiled PHP / Executables
+*.phar
+
+# Composer specific
+# /composer.lock (uncomment if this is strictly a library)
+
+# PHPUnit
+/phpunit.xml
+/phpunit.result.cache
+.phpunit.result.cache
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==========================================
+# Code Coverage
+# ==========================================
+/coverage.xml
+*.coverage
+/coverage.html
+/coverage-report/
+/doc_cov.txt
+
+# ==========================================
+# Project Specific Output & Temp Files
+# ==========================================
+/out/
+/tmp_test/
+/test.json
+/objects.txt
+/parse_schema.patch
+/parse_next2.php
+/update_docs.php
+
+# ==========================================
+# OS Generated Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==========================================
+# IDEs and Editors
+# ==========================================
+/.idea/
+/.vscode/
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.patch
+*.diff
+.project
+.buildpath
+.settings/
+*.sublime-workspace
+*.sublime-project
