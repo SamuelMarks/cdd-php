@@ -3,8 +3,8 @@ cdd-php
 
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI/CD](https://github.com/offscale/cdd-php/workflows/CI/badge.svg)](https://github.com/offscale/cdd-php/actions)
-![Test Coverage](https://img.shields.io/badge/Test%20Coverage-100%25-brightgreen.svg)
-![Doc Coverage](https://img.shields.io/badge/Doc%20Coverage-100%25-brightgreen.svg)
+![Doc Coverage](https://img.shields.io/badge/doc_coverage-100%25-brightgreen.svg)
+![Test Coverage](https://img.shields.io/badge/test_coverage-100%25-brightgreen.svg)
 
 OpenAPI ↔ PHP. This is one compiler in a suite, all focussed on the same task: Compiler Driven Development (CDD).
 
@@ -31,55 +31,49 @@ The `cdd-php` compiler leverages a unified architecture to support various facet
 
 ## 📦 Installation
 
-Requires PHP 8.1+ and Composer.
+Requires PHP 8.0+ and Composer.
 
-Install directly via Composer (once published):
-```bash
-composer require offscale/cdd-php
+Install the CLI globally via Composer:
+```sh
+composer global require offscale/cdd-php
 ```
 
-Or build locally:
-```bash
+Or build it from source:
+```sh
 git clone https://github.com/offscale/cdd-php.git
 cd cdd-php
 make install_deps
 make build
+# The CLI will be built to build/cdd-php
 ```
 
 ## 🛠 Usage
 
 ### Command Line Interface
 
-Generate PHP models and routing from an OpenAPI specification:
-```bash
-php bin/cdd-php from_openapi -i openapi.json
+Generate an OpenAPI specification from your PHP codebase:
+```sh
+cdd-php to_openapi -f src/ApiController.php -o openapi.json
 ```
 
-Generate an OpenAPI specification from existing PHP source code:
-```bash
-php bin/cdd-php to_openapi -f src/Models.php > openapi.json
-```
-
-Synchronize everything (docs, code, and mocks):
-```bash
-php bin/cdd-php sync -d out
+Generate a PHP API client from an OpenAPI specification:
+```sh
+cdd-php from_openapi to_sdk -i openapi.json -o ./generated-client
 ```
 
 ### Programmatic SDK / Library
 
 ```php
-require_once 'vendor/autoload.php';
+<?php
+require 'vendor/autoload.php';
 
-// Parse OpenAPI JSON to intermediate spec
-$spec = \Cdd\Openapi\parse(file_get_contents('openapi.json'));
-
-// Emit PHP code to a target directory
-\Cdd\Openapi\emit($spec, 'out');
+$openapi = \Cdd\Openapi\parse(file_get_contents('openapi.json'));
+\Cdd\Openapi\emit($openapi, './output_dir');
 ```
 
 ## Design choices
 
-This project relies purely on native PHP abstract syntax trees (AST) through libraries like `nikic/php-parser`. This ensures comment and whitespace sensitivity, allowing it to safely read and rewrite complex, incomplete codefiles without losing docblocks, metadata, or formatting. It achieves Bidirectional sync by merging changes dynamically and emitting native code via its respective emit modules. It maintains zero dependencies for its generated code to keep it extremely lightweight and portable.
+The parser leverages `nikic/php-parser` for robust static AST analysis, enabling exact reconstruction, comment-awareness, and high fidelity without needing to execute or evaluate potentially unsafe code. This enables continuous synchronization of source logic (controllers, routes, SDKs) and specifications without ever disrupting user-written logic outside of the strictly managed API boundaries.
 
 ## 🏗 Supported Conversions for PHP
 
@@ -87,16 +81,13 @@ This project relies purely on native PHP abstract syntax trees (AST) through lib
 
 | Concept | Parse (From) | Emit (To) |
 |---------|--------------|-----------|
-| OpenAPI (JSON/YAML) | [✅] | [✅] |
-| `PHP` Models / Structs / Types | [✅] | [✅] |
-| `PHP` Server Routes / Endpoints | [✅] | [✅] |
-| `PHP` API Clients / SDKs | [✅] | [✅] |
+| OpenAPI (JSON/YAML) | ✅ | ✅ |
+| `PHP` Models / Structs / Types | ✅ | ✅ |
+| `PHP` Server Routes / Endpoints | ✅ | ✅ |
+| `PHP` API Clients / SDKs | ✅ | ✅ |
 | `PHP` ORM / DB Schemas | [ ] | [ ] |
-| `PHP` CLI Argument Parsers | [ ] | [ ] |
-| `PHP` Docstrings / Comments | [✅] | [✅] |
-| WASM Build Support | [ ] | [ ] |
-
-WASM support is theoretically possible using projects like `php-wasm` or Emscripten, but is not yet fully implemented due to the complexity of embedding the PHP interpreter alongside the source code. See `WASM.md` for more details.
+| `PHP` CLI Argument Parsers | ✅ | ✅ |
+| `PHP` Docstrings / Comments | ✅ | ✅ |
 
 ---
 
