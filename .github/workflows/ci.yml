@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: mbstring, intl
+    - name: Install Dependencies
+      run: composer install --prefer-dist --no-progress
+    - name: Run Tests
+      run: make test
+    - name: Run WASM Build
+      run: make build_wasm
