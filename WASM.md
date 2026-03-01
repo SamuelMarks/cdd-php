@@ -1,33 +1,16 @@
-# WASM Build
+# WASM Support
 
-This document outlines the steps to build the `cdd-php` project into a WebAssembly (WASM) binary using Emscripten.
+WASM support for a PHP CLI project is **possible**, but requires compiling the entire PHP interpreter from source using Emscripten (`emcc`). 
 
-## Why WASM?
+Because `cdd-php` is written in PHP, we cannot simply compile the PHP scripts directly to WebAssembly. Instead, we must bundle our PHP scripts with a WASM-compiled PHP runtime.
 
-A WASM build of `cdd-php` allows the tooling to be executed:
-- Within a unified CLI of all `cdd-*` projects on systems without PHP installed.
-- Inside a web browser for a unified web interface, enabling OpenAPI generation and parsing purely on the client side.
+## Integration into unified CLI / Web Interfaces
+Once the PHP interpreter is compiled to WASM, it can be executed in Node.js, Deno, or browsers, and we can pass the `cdd-php` source files to it via a virtual file system.
 
-## Prerequisites
+To build this yourself, you would:
+1. Obtain the PHP source code.
+2. Use `../emsdk` to compile PHP with `emconfigure ./configure` and `emmake make`.
+3. Package `bin/cdd-php` and `src/` into a single `cdd-php.phar`.
+4. Run the WASM PHP engine passing the phar file.
 
-- Emscripten SDK (`emsdk`). It is expected to be located at `../emsdk`.
-- Make, CMake, and standard C/C++ compilation tools.
-- PHP source code (if compiling the PHP interpreter to WASM).
-
-## Build Instructions
-
-Currently, building PHP CLI natively to WebAssembly requires compiling the PHP interpreter itself with the `cdd-php` source files embedded or packaged as a virtual filesystem, or using a project like `php-wasm`.
-
-To build, you can use the Makefile target:
-
-```sh
-source ../emsdk/emsdk_env.sh
-make build_wasm
-```
-
-### Current Status
-
-Currently, the `make build_wasm` target is a placeholder. Building PHP to WASM with full standard library support and bundling the CDD-PHP source code as a Phar or virtual filesystem is an experimental process.
-
-*Is it possible?* Yes, projects like `php-wasm` (by WordPress or others) have successfully compiled PHP to WASM.
-*Is it implemented here?* Not yet fully implemented. The build process needs to be finalized to output a `.wasm` and `.js` file for seamless integration.
+Currently, the `make build_wasm` command is a stub that validates the `emsdk` environment but does not fully build the PHP engine, as it requires downloading and patching the PHP source.

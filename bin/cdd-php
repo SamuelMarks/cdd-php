@@ -27,7 +27,7 @@ spl_autoload_register(function ($class) use ($baseDir) {
 });
 
 // Require all functional scripts
-$dirs = ['functions', 'classes', 'docstrings', 'routes', 'tests', 'mocks', 'openapi', 'client', 'schemas', 'components', 'parameters', 'request_bodies', 'responses', 'operations', 'paths', 'servers', 'security', 'info', 'encoding', 'webhooks', 'controllers'];
+$dirs = ['functions', 'classes', 'docstrings', 'routes', 'tests', 'mocks', 'openapi', 'client', 'cli', 'schemas', 'components', 'parameters', 'request_bodies', 'responses', 'operations', 'paths', 'servers', 'security', 'info', 'encoding', 'webhooks', 'controllers'];
 foreach ($dirs as $dir) {
     $parseFile = "$baseDir/src/$dir/parse.php";
     $emitFile = "$baseDir/src/$dir/emit.php";
@@ -40,23 +40,117 @@ if (file_exists("$baseDir/src/openapi/resolve_refs.php")) {
 }
 
 if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['PHP_SELF'])) {
+        foreach ($_ENV as $k => $v) {
+        if (strpos($k, "CDD_") === 0) {
+            $argName = "--" . strtolower(str_replace("_", "-", substr($k, 4)));
+            if (!in_array($argName, $argv)) {
+                $argv[] = $argName;
+                $argv[] = $v;
+                $argc += 2;
+            }
+        }
+    }
     $command = $argv[1] ?? '';
 
     if ($command === '--version' || $command === '-v') {
-        echo "cdd-php version 1.0.0\n";
+        echo "0.0.1\n";
         exit(0);
     }
 
     if ($command === '--help' || $command === '-h' || empty($command)) {
         echo "Usage: cdd-php [command] [args]\n";
         echo "Commands:\n";
-        echo "  --help                                    - Show this help\n";
-        echo "  --version                                 - Show version\n";
-        echo "  from_openapi -i spec.json                 - Parse OpenAPI spec and generate code (alias for 'emit')\n";
-        echo "  to_openapi -f path/to/code                - Parse PHP code and generate OpenAPI spec (alias for 'parse')\n";
-        echo "  sync -d directory                         - Sync PHP codebase, updating OpenAPI spec and all dependent files\n";
-        echo "  to_docs_json --no-imports --no-wrapping -i spec.json - Generate flattened docs JSON\n";
-        echo "  test                                      - Run tests\n";
+        echo "  --help\n";
+        echo "  --version\n";
+        echo "  to_openapi -f path/to/code -o spec.json\n";
+        echo "  serve_json_rpc --port 8082 --listen 0.0.0.0\n";
+        echo "  to_docs_json --no-imports --no-wrapping -i spec.json -o docs.json\n";
+        echo "  from_openapi to_sdk_cli -i spec.json -o target_directory\n";
+        echo "  from_openapi to_sdk_cli --input-dir ./specs/ -o target_directory\n";
+        echo "  from_openapi to_sdk -i spec.json -o target_directory\n";
+        echo "  from_openapi to_sdk --input-dir ./specs/ -o target_directory\n";
+        echo "  from_openapi to_server -i spec.json -o target_directory\n";
+        echo "  from_openapi to_server --input-dir ./specs/ -o target_directory\n";
+        echo "\nOptions for from_openapi:\n";
+        echo "  --no-github-actions\n";
+        echo "  --no-installable-package\n";
+        echo "\nAdditional Commands:\n";
+        echo "  sync -d directory\n";
+        echo "  test\n";
+        exit(0);
+    }
+
+        if ($command === "serve_json_rpc") {
+        $port = 8080;
+        $listen = "0.0.0.0";
+        for ($i = 2; $i < $argc; $i++) {
+            if ($argv[$i] === "--port" && isset($argv[$i+1])) {
+                $port = (int)$argv[++$i];
+            } elseif ($argv[$i] === "--listen" && isset($argv[$i+1])) {
+                $listen = $argv[++$i];
+            }
+        }
+        $serverUrl = "tcp://$listen:$port";
+        $socket = stream_socket_server($serverUrl, $errno, $errstr);
+        if (!$socket) {
+            die("Error starting server: $errstr ($errno)
+");
+        }
+        echo "JSON-RPC server listening on $serverUrl
+";
+        while ($conn = @stream_socket_accept($socket)) {
+            $request = "";
+            while ($data = fread($conn, 8192)) {
+                $request .= $data;
+                if (strpos($request, "
+
+") !== false) break;
+            }
+            $headersEnd = strpos($request, "
+
+");
+            $body = "";
+            if ($headersEnd !== false) {
+                if (preg_match("/Content-Length:\s*(\d+)/i", $request, $m)) {
+                    $len = (int)$m[1];
+                    $body = substr($request, $headersEnd + 4);
+                    while (strlen($body) < $len) {
+                        $body .= fread($conn, 8192);
+                    }
+                }
+            }
+            
+            $reqData = json_decode($body, true);
+            $res = ["jsonrpc" => "2.0", "id" => $reqData["id"] ?? null];
+            
+            if (!$reqData || !isset($reqData["method"])) {
+                $res["error"] = ["code" => -32600, "message" => "Invalid Request"];
+            } else {
+                $m = $reqData["method"];
+                $p = $reqData["params"] ?? [];
+                $cmdArgs = [];
+                if (is_array($p)) {
+                    foreach ($p as $k => $v) {
+                        if (is_int($k)) {
+                            $cmdArgs[] = escapeshellarg((string)$v);
+                        } else {
+                            $cmdArgs[] = "--" . escapeshellarg((string)$k) . " " . escapeshellarg((string)$v);
+                        }
+                    }
+                }
+                $binPath = class_exists('\Phar') && \Phar::running(false) ? \Phar::running(false) : __FILE__;
+                $cmd = "php " . escapeshellarg($binPath) . " " . escapeshellarg($m) . " " . implode(" ", $cmdArgs);
+                $res["result"] = shell_exec($cmd);
+            }
+            $resBody = json_encode($res);
+            $response = "HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: " . strlen($resBody) . "
+
+" . $resBody;
+            fwrite($conn, $response);
+            fclose($conn);
+        }
         exit(0);
     }
 
@@ -85,7 +179,7 @@ if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['PHP_S
         // Core syncing logic: read the whole out directory, parse components, merge, and re-emit.
         $openapi = [
             'openapi' => '3.2.0',
-            'info' => ['title' => 'Synced API', 'version' => '1.0.0'],
+            'info' => ['title' => 'Synced API', 'version' => '0.0.1'],
             'paths' => [],
             'components' => ['schemas' => []]
         ];
@@ -128,6 +222,21 @@ if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['PHP_S
                         $opId = $operation['operationId'] ?? '';
                         if (isset($controllerOps[$opId])) {
                             $operation = array_replace_recursive((array)$operation, $controllerOps[$opId]);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // If api_cli.php exists, parse it and merge into paths
+        if (file_exists("$dir/api_cli.php") && function_exists('\Cdd\Cli\parse')) {
+            $cliOps = \Cdd\Cli\parse(file_get_contents("$dir/api_cli.php"));
+            if (!empty($cliOps) && isset($openapi['paths'])) {
+                foreach ($openapi['paths'] as $path => &$methods) {
+                    foreach ($methods as $method => &$operation) {
+                        $opId = $operation['operationId'] ?? '';
+                        if (isset($cliOps["/cli/".$opId])) {
+                            $operation = array_replace_recursive((array)$operation, $cliOps["/cli/".$opId]);
                         }
                     }
                 }
@@ -383,11 +492,13 @@ if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['PHP_S
 
     if ($command === 'to_openapi' || $command === 'parse') {
         $file = '';
+                $outFile = '';
         for ($i = 2; $i < $argc; $i++) {
             if ($argv[$i] === '-f' && isset($argv[$i+1])) {
-                $file = $argv[$i+1];
-                break;
-            } else if ($argv[$i] !== '-f' && $file === '') {
+                $file = $argv[++$i];
+            } else if ($argv[$i] === '-o' && isset($argv[$i+1])) {
+                $outFile = $argv[++$i];
+            } else if ($argv[$i] !== '-f' && $argv[$i] !== '-o' && $file === '') {
                 $file = $argv[$i];
             }
         }
@@ -402,7 +513,7 @@ if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['PHP_S
             'openapi' => '3.2.0',
             'info' => [
                 'title' => 'Parsed API',
-                'version' => '1.0.0',
+                'version' => '0.0.1',
             ],
             'paths' => [],
             'components' => ['schemas' => []]
@@ -436,6 +547,18 @@ if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['PHP_S
                          $opId = $operation['operationId'] ?? '';
                          if (isset($controllerOps[$opId])) {
                              $operation = array_replace_recursive((array)$operation, $controllerOps[$opId]);
+                         }
+                     }
+                 }
+             }
+
+             if (function_exists('\Cdd\Cli\parse') && !empty($openapi['paths'])) {
+                 $cliOps = \Cdd\Cli\parse($code);
+                 foreach ($openapi['paths'] as $path => &$methods) {
+                     foreach ($methods as $method => &$operation) {
+                         $opId = $operation['operationId'] ?? '';
+                         if (isset($cliOps["/cli/".$opId])) {
+                             $operation = array_replace_recursive((array)$operation, $cliOps["/cli/".$opId]);
                          }
                      }
                  }
@@ -630,32 +753,136 @@ if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['PHP_S
         if (empty((array)$openapi['paths'])) unset($openapi['paths']);
         if (empty((array)$openapi['components'])) unset($openapi['components']); else { if (empty((array)$openapi['components']['schemas'])) unset($openapi['components']['schemas']); }
         
-        echo json_encode($openapi, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        
+        $outStr = json_encode($openapi, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        if ($outFile !== '') {
+            file_put_contents($outFile, $outStr);
+            echo "Emitted OpenAPI to $outFile\n";
+        } else {
+            echo $outStr;
+        }
         exit(0);
     }
 
-    if ($command === 'from_openapi' || $command === 'emit') {
+        if ($command === 'from_openapi' || $command === 'emit') {
+        $subcommand = 'to_sdk';
         $file = '';
-        $dir = 'out'; // default out dir
+        $inputDir = '';
+        $dir = getcwd(); // default out dir is current working directory
         
-        for ($i = 2; $i < $argc; $i++) {
+                $noGithubActions = false;
+        $noInstallablePackage = false;
+        
+        $newArgv = [];
+        for ($k = 0; $k < $argc; $k++) {
+            if ($argv[$k] === '--no-github-actions') {
+                $noGithubActions = true;
+            } elseif ($argv[$k] === '--no-installable-package') {
+                $noInstallablePackage = true;
+            } else {
+                $newArgv[] = $argv[$k];
+            }
+        }
+        $argv = $newArgv;
+        $argc = count($argv);
+        
+        $i = 2;
+        if (isset($argv[$i]) && in_array($argv[$i], ['to_sdk_cli', 'to_sdk', 'to_server'])) {
+            $subcommand = $argv[$i];
+            $i++;
+        }
+        
+        for (; $i < $argc; $i++) {
             if ($argv[$i] === '-i' && isset($argv[$i+1])) {
                 $file = $argv[$i+1];
+                $i++;
+            } elseif ($argv[$i] === '--input-dir' && isset($argv[$i+1])) {
+                $inputDir = $argv[$i+1];
+                $i++;
+            } elseif ($argv[$i] === '-o' && isset($argv[$i+1])) {
+                $dir = $argv[$i+1];
                 $i++;
             } else {
                 $dir = $argv[$i];
             }
         }
         
-        if (!$file || !file_exists($file)) {
-            echo "Error: Spec file not found.\n";
+        if ($file === '' && $inputDir === '') {
+            echo "Error: Spec file or input dir not provided.\n";
             exit(1);
         }
         
-        $spec = \Cdd\Openapi\parse(file_get_contents($file));
-        \Cdd\Openapi\emit($spec, $dir);
+        if ($file !== '') {
+            if (!file_exists($file)) {
+                echo "Error: Spec file not found.\n";
+                exit(1);
+            }
+                        $spec = \Cdd\Openapi\parse(file_get_contents($file));
+            \Cdd\Openapi\emit($spec, $dir);
+            if ($subcommand === 'to_sdk_cli') {
+                $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
+                file_put_contents("$dir/api_cli.php", $cliCode);
+            }
+        } elseif ($inputDir !== '') {
+            if (!is_dir($inputDir)) {
+                echo "Error: Input directory not found.\n";
+                exit(1);
+            }
+            // For now, emit a simple combination or handle first file
+            $files = glob("$inputDir/*.json");
+            if (empty($files)) {
+                echo "Error: No .json files found in input dir.\n";
+                exit(1);
+            }
+                        $spec = \Cdd\Openapi\parse(file_get_contents($files[0]));
+            \Cdd\Openapi\emit($spec, $dir);
+            if ($subcommand === 'to_sdk_cli') {
+                $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
+                file_put_contents("$dir/api_cli.php", $cliCode);
+            }
+        }
         
-        echo "Emitted code to $dir successfully.\n";
+                echo "Emitted code to $dir successfully.
+";
+        
+        if (!$noInstallablePackage) {
+            if (!file_exists("$dir/composer.json")) {
+                file_put_contents("$dir/composer.json", json_encode([
+                    "name" => "offscale/generated-api",
+                    "description" => "Generated API client/server",
+                    "require" => [
+                        "php" => ">=8.0"
+                    ],
+                    "autoload" => [
+                        "psr-4" => [
+                            "Api\\" => "src/"
+                        ]
+                    ]
+                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            }
+        }
+        
+        if (!$noGithubActions) {
+            if (!is_dir("$dir/.github/workflows")) {
+                mkdir("$dir/.github/workflows", 0777, true);
+            }
+            if (!file_exists("$dir/.github/workflows/ci.yml")) {
+                file_put_contents("$dir/.github/workflows/ci.yml", "name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+    - run: composer install
+    - run: composer test
+");
+            }
+        }
         exit(0);
     }
 
@@ -741,7 +968,19 @@ if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['PHP_S
             ]
         ];
         
-        echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        
+        $outStr = json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        $outFileDocs = '';
+        for ($i = 2; $i < $argc; $i++) {
+            if ($argv[$i] === '-o' && isset($argv[$i+1])) {
+                $outFileDocs = $argv[++$i];
+            }
+        }
+        if ($outFileDocs !== '') {
+            file_put_contents($outFileDocs, $outStr);
+        } else {
+            echo $outStr;
+        }
         exit(0);
     }
 

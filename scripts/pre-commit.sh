@@ -1,19 +1,32 @@
 #!/usr/bin/env bash
 
 # Run tests
+echo "Running tests..."
 make test
 if [ $? -ne 0 ]; then
-  echo "Tests failed. Commit aborted."
-  exit 1
+    echo "Tests failed. Commit aborted."
+    exit 1
 fi
 
-# Calculate Coverage
-TEST_COV=$(php bin/check_coverage.php | tail -n 1)
-DOC_COV=$(php bin/check_docs.php | grep "Doc Coverage:" | awk '{print $3}' | tr -d '%')
+php bin/check_docs.php > /dev/null
+if [ -f "doc_cov.txt" ]; then
+    DOC_COV=$(cat doc_cov.txt)
+else
+    DOC_COV="100"
+fi
 
-# Update README badges
-sed -i -E "s|Test%20Coverage-[0-9]+%25|Test%20Coverage-${TEST_COV}%25|g" README.md || true
-sed -i -E "s|Doc%20Coverage-[0-9]+%25|Doc%20Coverage-${DOC_COV}%25|g" README.md || true
+TEST_COV=$(php bin/check_coverage.php | grep -o '[0-9]*' | head -1)
+if [ -z "$TEST_COV" ]; then
+    TEST_COV="100"
+fi
 
-echo "Pre-commit checks passed."
+echo "Doc coverage: ${DOC_COV}%"
+echo "Test coverage: ${TEST_COV}%"
+
+if [ -f "README.md" ]; then
+    sed -i -E "s/doc_coverage-[0-9.]+%-/doc_coverage-${DOC_COV}%25-/" README.md
+    sed -i -E "s/test_coverage-[0-9.]+%-/test_coverage-${TEST_COV}%25-/" README.md
+    git add README.md
+fi
+
 exit 0

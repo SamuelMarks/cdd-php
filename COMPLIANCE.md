@@ -1,18 +1,17 @@
-# Compliance
+# OpenAPI 3.2.0 Compliance
 
-The `cdd-php` project strictly adheres to the OpenAPI Specification (OAS). We currently aim for **OpenAPI 3.2.0** compliance.
+The `cdd-php` parser and emitter strive for full compliance with the OpenAPI 3.2.0 specification. 
 
-## OpenAPI 3.2.0 Compliance
+## Supported Features
+- **Paths and Operations**: Fully supported including parameters, request bodies, and responses.
+- **Components**: Schemas, Responses, Parameters, Examples, RequestBodies, Headers, SecuritySchemes, Links, Callbacks, PathItems.
+- **Webhooks**: Supported.
+- **Servers**: Supported.
+- **Metadata**: Info, Tags, ExternalDocs, jsonSchemaDialect.
 
-`cdd-php` targets the full OpenAPI 3.2.0 spec.
+## Ongoing Work
+- Full verification of all complex `anyOf`, `oneOf`, and `allOf` combinations.
+- Comprehensive mapping of XML object serialization.
+- Callback and Link complex evaluations.
 
-Currently implemented:
-- Basic models and nested object parsing/emitting.
-- Server paths, operations, request bodies, and responses.
-- Security Schemas (HTTP, API Key, OAuth2, OpenID Connect).
-- Media Type objects, including `itemSchema` and `itemEncoding` tags.
-- Links and Callbacks placeholders.
-
-Any divergence or lack of feature support is either on the immediate roadmap or unsupported by native PHP paradigms.
-
-We maintain a suite of tests tracking OAS 3.2.0 capabilities, guaranteeing `100%` compliance locally for the implemented features.
+We iteratively parse and emit until full compliance is achieved. You can view our coverage in our test suites.

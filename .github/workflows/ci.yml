@@ -1,24 +1,64 @@
 name: CI
-
 on:
   push:
-    branches: [ master, main ]
-  pull_request:
-    branches: [ master, main ]
+    branches: [ main, master ]
+    tags:
+      - 'v*'
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Setup PHP
+    - name: Use PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.1'
-        extensions: mbstring, intl
-    - name: Install Dependencies
-      run: composer install --prefer-dist --no-progress
-    - name: Run Tests
-      run: make test
-    - name: Run WASM Build
-      run: make build_wasm
+        php-version: '8.2'
+    - run: composer install
+    - run: make test
+
+  build_wasm:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup emsdk
+      run: |
+        git clone https://github.com/emscripten-core/emsdk.git
+        cd emsdk
+        ./emsdk install latest
+        ./emsdk activate latest
+    - name: Build WASM
+      run: |
+        . emsdk/emsdk_env.sh
+        make build_wasm
+    - name: Upload WASM
+      uses: actions/upload-artifact@v3
+      with:
+        name: wasm-build
+        path: build/*.wasm
+      continue-on-error: true
+
+  release:
+    needs: [test, build_wasm]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+    - run: composer install
+    - run: make build
+    - name: Download WASM artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: wasm-build
+        path: build/
+      continue-on-error: true
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: build/cdd-php*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
