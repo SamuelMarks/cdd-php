@@ -9,7 +9,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Use PHP
       uses: shivammathur/setup-php@v2
       with:
@@ -20,7 +20,7 @@ jobs:
   build_wasm:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Setup emsdk
       run: |
         git clone https://github.com/emscripten-core/emsdk.git
@@ -43,7 +43,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Use PHP
       uses: shivammathur/setup-php@v2
       with:
@@ -51,13 +51,13 @@ jobs:
     - run: composer install
     - run: make build
     - name: Download WASM artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v8
       with:
         name: wasm-build
         path: build/
       continue-on-error: true
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: build/cdd-php*
       env:
