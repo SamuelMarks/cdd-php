@@ -23,7 +23,7 @@ jobs:
     - uses: actions/checkout@v6
     - name: Setup emsdk
       run: |
-        git clone https://github.com/emscripten-core/emsdk.git
+        git clone --depth=1 https://github.com/emscripten-core/emsdk.git
         cd emsdk
         ./emsdk install latest
         ./emsdk activate latest
@@ -32,7 +32,7 @@ jobs:
         . emsdk/emsdk_env.sh
         make build_wasm
     - name: Upload WASM
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v6
       with:
         name: wasm-build
         path: build/*.wasm
