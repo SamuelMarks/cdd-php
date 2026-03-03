@@ -39,36 +39,33 @@ function emit(string $className, array $schema): string {
         $out .= " */\n";
     }
     
-    $out .= "class $className {\n";
-    
+    $out .= "class $className extends \\Illuminate\\Database\\Eloquent\\Model {\n";
+    $out .= "    protected \$fillable = [\n";
     if (isset($schema['properties']) && is_array($schema['properties'])) {
         foreach ($schema['properties'] as $propName => $propSchema) {
-            $type = '';
+            $out .= "        '$propName',\n";
+        }
+    }
+    $out .= "    ];\n";
+    
+    $out .= "    protected \$casts = [\n";
+    if (isset($schema['properties']) && is_array($schema['properties'])) {
+        foreach ($schema['properties'] as $propName => $propSchema) {
             if (isset($propSchema['type'])) {
                 $typeMap = [
-                    'integer' => 'int',
+                    'integer' => 'integer',
                     'number' => 'float',
-                    'boolean' => 'bool',
-                    'string' => 'string',
+                    'boolean' => 'boolean',
                     'array' => 'array',
                     'object' => 'object'
                 ];
-                $type = $typeMap[$propSchema['type']] ?? 'mixed';
-            } elseif (isset($propSchema['$ref'])) {
-                $parts = explode('/', $propSchema['$ref']);
-                $type = end($parts);
+                if (isset($typeMap[$propSchema['type']])) {
+                    $out .= "        '$propName' => '{$typeMap[$propSchema['type']]}',\n";
+                }
             }
-            
-            $nullable = !empty($propSchema['nullable']) || (!empty($schema['required']) && !in_array($propName, $schema['required']));
-            
-            $typeStr = '';
-            if ($type !== '') {
-                $typeStr = ($nullable ? '?' : '') . $type . ' ';
-            }
-            
-            $out .= "    public $typeStr\$$propName;\n";
         }
     }
+    $out .= "    ];\n";
     
     $out .= "}\n";
     return $out;

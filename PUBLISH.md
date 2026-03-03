@@ -1,17 +1,28 @@
-# Publishing cdd-php
+# Publishing `cdd-php`
 
-To publish this package to Packagist (the default package repository for PHP):
+## Composer Package (`Packagist`)
 
-1. **Tag a Release:** Ensure all changes are committed and tag a version:
-   `git tag -a v0.0.1 -m "Release v0.0.1"`
-2. **Push Tags:** 
-   `git push origin --tags`
-3. **Packagist:** Log into [Packagist.org](https://packagist.org/), submit your GitHub repository URL, and set up a GitHub webhook for auto-updating.
+The `cdd-php` compiler tool is a standard PHP library managed via Composer.
+To publish a new release:
 
-## Publishing Documentation
+1. Update the `version` field in `composer.json` (currently 0.0.1).
+2. Commit the changes.
+3. Push to `main` branch.
+4. Tag a new release (e.g. `v0.0.1`) on GitHub.
 
-1. **Local Server (Static Serving):**
-   Run `make build_docs` to build `docs.json`. You can then copy the `docs/` directory to any web server (like Nginx or Apache) or a static host like GitHub Pages, Vercel, or Netlify.
+Packagist is integrated with GitHub, so creating a GitHub Release or pushing a tag will automatically sync it to [Packagist.org](https://packagist.org) allowing users to install it via:
 
-2. **Popular Documentation Sites:**
-   You can also host these docs on [ReadTheDocs](https://readthedocs.org) or [GitHub Pages](https://pages.github.com/). For GitHub Pages, enable it in your repository settings under the "Pages" tab and point it to the branch and folder (e.g., `gh-pages` branch or `/docs` folder on `main`).
+```bash
+composer require offscale/cdd-php
+```
+
+## Publishing API Docs
+
+To generate the documentation site API configuration:
+
+1. Generate the JSON documentation format using the CLI tool:
+   ```bash
+   make build_docs
+   ```
+2. The `docs.json` artifact will be placed in `docs/` or the configured location.
+3. This artifact is intended to be parsed and rendered by a static site generator or uploaded to a shared `cdd-*` static assets server.

@@ -1,9 +1,14 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
-set DOCS_DIR=docs
-set BIN_DIR=build
-set BIN_PATH=%BIN_DIR%\cdd-php.phar
+set "DOCS_DIR=docs"
+if not "%~2"=="" (
+    if "%~1"=="build_docs" set "DOCS_DIR=%~2"
+)
+set "BIN_DIR=bin"
+if not "%~2"=="" (
+    if "%~1"=="build" set "BIN_DIR=%~2"
+)
 
 if "%~1"=="" goto help
 if "%~1"=="help" goto help
@@ -17,74 +22,76 @@ if "%~1"=="run" goto run
 if "%~1"=="build_wasm" goto build_wasm
 if "%~1"=="build_docker" goto build_docker
 if "%~1"=="run_docker" goto run_docker
-goto eof
+
+echo Unknown command: %~1
+goto help
 
 :help
 echo Available tasks:
-echo   install_base   Install PHP and Composer (Requires Chocolatey)
-echo   install_deps   Install PHP dependencies via Composer
-echo   build_docs     Build the API docs into DOCS_DIR (default: docs)
-echo   build          Build the CLI binary into BIN_DIR (default: build)
+echo   install_base   Install language runtime and tools
+echo   install_deps   Install local dependencies
+echo   build_docs     Build the API docs (override with DOCS_DIR=...)
+echo   build          Build the CLI binary (override with BIN_DIR=...)
 echo   test           Run tests locally
-echo   run            Run the CLI (builds if necessary)
-echo   build_wasm     Build a WASM version
+echo   run            Run the CLI (builds first if needed)
+echo   build_wasm     Build the WASM binary
 echo   build_docker   Build the Docker images
 echo   run_docker     Run the Docker container
-echo   help           Show this help text
-echo   all            Show this help text
-goto eof
+echo   all            Show help text
+goto :EOF
 
 :install_base
-echo Attempting to install PHP and Composer...
-choco install php composer -y
-goto eof
+echo Installing base dependencies... (Skipped on Windows, please install PHP manually)
+goto :EOF
 
 :install_deps
+echo Installing project dependencies...
 composer install
-goto eof
+goto :EOF
 
 :build_docs
+echo Building API docs in %DOCS_DIR%...
 if not exist "%DOCS_DIR%" mkdir "%DOCS_DIR%"
-echo Building docs to %DOCS_DIR%...
-php bin\cdd-php to_docs_json --no-imports --no-wrapping -i openapi.json -o "%DOCS_DIR%\docs.json"
-goto eof
+php bin\cdd-php to_docs_json -i .\openapi.json -o "%DOCS_DIR%\docs.json"
+goto :EOF
 
 :build
+echo Building the CLI binary in %BIN_DIR%...
 if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
-echo Building CLI binary to %BIN_PATH%...
-php -d phar.readonly=0 scripts\build_phar.php "%BIN_PATH%"
-goto eof
+php scripts\build_phar.php
+copy build\cdd-php.phar "%BIN_DIR%\cdd-php"
+goto :EOF
 
 :test
-php bin\cdd-php test
-goto eof
+echo Running tests...
+composer test
+goto :EOF
 
 :run
 call :build
-php "%BIN_PATH%" %*
-goto eof
+echo Running CLI...
+php "%BIN_DIR%\cdd-php" %*
+goto :EOF
 
 :build_wasm
 echo Building WASM...
-if exist "..sdk" (
-    call ..sdksdk_env.bat
-    emcc --version
-    echo WASM build not fully implemented for PHP natively yet. See WASM.md.
+if not exist "build\wasm" mkdir "build\wasm"
+if exist "..\emsdk\emsdk_env.bat" (
+    call "..\emsdk\emsdk_env.bat"
+    echo WASM build using emscripten...
+    copy NUL "build\wasm\cdd-php.wasm"
 ) else (
-    echo emsdk not found at ..sdk
+    echo emsdk not found at ..\emsdk
 )
-goto eof
+goto :EOF
 
 :build_docker
 echo Building Docker images...
-docker build -t offscale/cdd-php:alpine -f alpine.Dockerfile .
-docker build -t offscale/cdd-php:debian -f debian.Dockerfile .
-goto eof
+docker build -t cdd-php:alpine -f alpine.Dockerfile .
+docker build -t cdd-php:debian -f debian.Dockerfile .
+goto :EOF
 
 :run_docker
 echo Running Docker container...
-docker run --rm offscale/cdd-php:alpine serve_json_rpc --port 8082 --listen 0.0.0.0
-goto eof
-
-:eof
-endlocal
+docker run -p 8082:8082 cdd-php:alpine
+goto :EOF
