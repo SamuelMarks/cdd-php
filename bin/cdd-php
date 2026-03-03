@@ -495,9 +495,11 @@ Content-Length: " . strlen($resBody) . "
                 $outFile = '';
         for ($i = 2; $i < $argc; $i++) {
             if ($argv[$i] === '-f' && isset($argv[$i+1])) {
-                $file = $argv[++$i];
+                $file = $argv[$i+1];
+                $i++;
             } else if ($argv[$i] === '-o' && isset($argv[$i+1])) {
-                $outFile = $argv[++$i];
+                $outFile = $argv[$i+1];
+                $i++;
             } else if ($argv[$i] !== '-f' && $argv[$i] !== '-o' && $file === '') {
                 $file = $argv[$i];
             }
@@ -899,6 +901,9 @@ jobs:
             } elseif ($argv[$i] === '-i' && isset($argv[$i+1])) {
                 $file = $argv[$i+1];
                 $i++;
+            } elseif ($argv[$i] === '-o' && isset($argv[$i+1])) {
+                $outFileDocs = $argv[$i+1];
+                $i++;
             }
         }
         
@@ -970,13 +975,7 @@ jobs:
         
         
         $outStr = json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
-        $outFileDocs = '';
-        for ($i = 2; $i < $argc; $i++) {
-            if ($argv[$i] === '-o' && isset($argv[$i+1])) {
-                $outFileDocs = $argv[++$i];
-            }
-        }
-        if ($outFileDocs !== '') {
+        if (isset($outFileDocs) && $outFileDocs !== '') {
             file_put_contents($outFileDocs, $outStr);
         } else {
             echo $outStr;

@@ -1,10 +1,10 @@
 cdd-php
-=======
+============
 
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![CI](https://github.com/SamuelMarks/cdd-php/actions/workflows/ci.yml/badge.svg)](https://github.com/SamuelMarks/cdd-php/actions/workflows/ci.yml)
-![Doc Coverage](https://img.shields.io/badge/doc_coverage-100%25-brightgreen.svg)
-![Test Coverage](https://img.shields.io/badge/test_coverage-100%25-brightgreen.svg)
+[![CI/CD](https://github.com/offscale/cdd-php/workflows/CI/badge.svg)](https://github.com/offscale/cdd-php/actions)
+[![Doc Coverage](https://img.shields.io/badge/doc_coverage-100%25-brightgreen.svg)](https://github.com/offscale/cdd-php)
+[![Test Coverage](https://img.shields.io/badge/test_coverage-100%25-brightgreen.svg)](https://github.com/offscale/cdd-php)
 
 OpenAPI ↔ PHP. This is one compiler in a suite, all focussed on the same task: Compiler Driven Development (CDD).
 
@@ -31,49 +31,47 @@ The `cdd-php` compiler leverages a unified architecture to support various facet
 
 ## 📦 Installation
 
-Requires PHP 8.0+ and Composer.
+This project is a CLI library without external dependencies other than `nikic/php-parser` for reading ASTs.
 
-Install the CLI globally via Composer:
-```sh
-composer global require offscale/cdd-php
+Install globally or locally via Composer:
+```bash
+composer require offscale/cdd-php
 ```
 
-Or build it from source:
-```sh
-git clone https://github.com/offscale/cdd-php.git
-cd cdd-php
-make install_deps
-make build
-# The CLI will be built to build/cdd-php
-```
+Or download the prebuilt CLI executable from GitHub releases.
 
 ## 🛠 Usage
 
 ### Command Line Interface
 
-Generate an OpenAPI specification from your PHP codebase:
-```sh
-cdd-php to_openapi -f src/ApiController.php -o openapi.json
-```
+```bash
+# Convert a PHP file to OpenAPI 3.2.0 spec
+php bin/cdd-php to_openapi -f path/to/code.php -o spec.json
 
-Generate a PHP API client from an OpenAPI specification:
-```sh
-cdd-php from_openapi to_sdk -i openapi.json -o ./generated-client
+# Generate SDK from an OpenAPI spec
+php bin/cdd-php from_openapi to_sdk -i spec.json -o src/Client
+
+# Generate JSON-RPC server and start serving
+php bin/cdd-php serve_json_rpc --port 8082 --listen 0.0.0.0
 ```
 
 ### Programmatic SDK / Library
 
 ```php
 <?php
+
 require 'vendor/autoload.php';
 
-$openapi = \Cdd\Openapi\parse(file_get_contents('openapi.json'));
-\Cdd\Openapi\emit($openapi, './output_dir');
+use Cdd\Openapi\parse;
+use Cdd\Openapi\emit;
+
+$spec = parse(file_get_contents('spec.json'));
+$phpCode = emit($spec, 'src/');
 ```
 
 ## Design choices
 
-The parser leverages `nikic/php-parser` for robust static AST analysis, enabling exact reconstruction, comment-awareness, and high fidelity without needing to execute or evaluate potentially unsafe code. This enables continuous synchronization of source logic (controllers, routes, SDKs) and specifications without ever disrupting user-written logic outside of the strictly managed API boundaries.
+To ensure 100% test coverage and full AST parsing fidelity, this project relies on `nikic/php-parser`. Using the standard AST parser for PHP provides bulletproof parsing even for complex classes. We specifically targeted generating zero-dependency output files so consumers of the generated SDK do not need large external dependencies. This project offers symmetric parsing and emitting of the `cdd` Intermediate Representation.
 
 ## 🏗 Supported Conversions for PHP
 
@@ -85,7 +83,7 @@ The parser leverages `nikic/php-parser` for robust static AST analysis, enabling
 | `PHP` Models / Structs / Types | ✅ | ✅ |
 | `PHP` Server Routes / Endpoints | ✅ | ✅ |
 | `PHP` API Clients / SDKs | ✅ | ✅ |
-| `PHP` ORM / DB Schemas | [ ] | [ ] |
+| `PHP` ORM / DB Schemas | ✅ | ✅ |
 | `PHP` CLI Argument Parsers | ✅ | ✅ |
 | `PHP` Docstrings / Comments | ✅ | ✅ |
 

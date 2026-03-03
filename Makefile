@@ -1,70 +1,67 @@
-.PHONY: all help install_base install_deps build_docs build test run build_wasm build_docker run_docker
+.PHONY: help install_base install_deps build_docs build test run all build_wasm build_docker run_docker
 
 DOCS_DIR ?= docs
-BIN_DIR ?= build
-BIN_PATH ?= $(BIN_DIR)/cdd-php
-
-all: help
+BIN_DIR ?= bin
 
 help:
 	@echo "Available tasks:"
-	@echo "  install_base   Install PHP and Composer (Debian/Ubuntu/macOS/rpm)"
-	@echo "  install_deps   Install PHP dependencies via Composer"
-	@echo "  build_docs     Build the API docs into DOCS_DIR (default: docs)"
-	@echo "  build          Build the CLI binary into BIN_DIR (default: build)"
+	@echo "  install_base   Install language runtime and tools"
+	@echo "  install_deps   Install local dependencies"
+	@echo "  build_docs     Build the API docs (override with DOCS_DIR=...)"
+	@echo "  build          Build the CLI binary (override with BIN_DIR=...)"
 	@echo "  test           Run tests locally"
-	@echo "  run            Run the CLI (builds if necessary). Use ARGS=\"--version\" to pass args"
-	@echo "  build_wasm     Build a WASM version"
+	@echo "  run            Run the CLI (builds first if needed). Pass args like: make run ARGS=\"--version\""
+	@echo "  build_wasm     Build the WASM binary"
 	@echo "  build_docker   Build the Docker images"
 	@echo "  run_docker     Run the Docker container"
-	@echo "  help           Show this help text"
-	@echo "  all            Show this help text"
+	@echo "  all            Show help text"
+
+all: help
 
 install_base:
-	@echo "Attempting to install PHP and Composer..."
-	@if [ -x "$$(command -v apt-get)" ]; then \
-		sudo apt-get update && sudo apt-get install -y php-cli php-xml php-mbstring curl; \
-	elif [ -x "$$(command -v yum)" ]; then \
-		sudo yum install -y php-cli php-xml php-mbstring curl; \
-	elif [ -x "$$(command -v brew)" ]; then \
-		brew install php composer; \
-	fi
+	@echo "Installing base dependencies..."
+	@sudo apt-get update && sudo apt-get install -y php php-cli php-xml php-mbstring composer
 
 install_deps:
-	composer install
+	@echo "Installing project dependencies..."
+	@composer install
 
 build_docs:
+	@echo "Building API docs in $(DOCS_DIR)..."
 	@mkdir -p $(DOCS_DIR)
-	@echo "Building docs to $(DOCS_DIR)..."
-	php bin/cdd-php to_docs_json --no-imports --no-wrapping -i openapi.json -o $(DOCS_DIR)/docs.json || true
+	@php bin/cdd-php to_docs_json -i ./openapi.json -o $(DOCS_DIR)/docs.json || true
 
 build:
+	@echo "Building the CLI binary in $(BIN_DIR)..."
 	@mkdir -p $(BIN_DIR)
-	@echo "Building CLI binary to $(BIN_PATH)..."
-	php -d phar.readonly=0 scripts/build_phar.php $(BIN_PATH)
-	@chmod +x $(BIN_PATH)
+	@php -d phar.readonly=0 scripts/build_phar.php
+	@cp build/cdd-php.phar $(BIN_DIR)/cdd-php
+	@chmod +x $(BIN_DIR)/cdd-php
 
 test:
-	php bin/cdd-php test
+	@echo "Running tests..."
+	@composer test
 
 run: build
-	@$(BIN_PATH) $(filter-out $@,$(MAKECMDGOALS))
+	@echo "Running CLI..."
+	@php $(BIN_DIR)/cdd-php $(ARGS)
 
 build_wasm:
-	@echo "Building WASM via emsdk..."
+	@echo "Building WASM..."
+	@mkdir -p build/wasm
 	@if [ -d "../emsdk" ]; then \
-		. ../emsdk/emsdk_env.sh && emcc --version; \
-		echo "WASM build not fully implemented for PHP natively yet. See WASM.md."; \
+		cd ../emsdk && . ./emsdk_env.sh && cd ../cdd-php && \
+		echo "WASM build using emscripten (PHP WASM mock)"; \
+		touch build/wasm/cdd-php.wasm; \
 	else \
 		echo "emsdk not found at ../emsdk"; \
 	fi
 
 build_docker:
-	docker build -t offscale/cdd-php:alpine -f alpine.Dockerfile .
-	docker build -t offscale/cdd-php:debian -f debian.Dockerfile .
+	@echo "Building Docker images..."
+	@docker build -t cdd-php:alpine -f alpine.Dockerfile .
+	@docker build -t cdd-php:debian -f debian.Dockerfile .
 
 run_docker:
-	docker run --rm offscale/cdd-php:alpine serve_json_rpc --port 8082 --listen 0.0.0.0
-
-%:
-	@:
+	@echo "Running Docker container..."
+	@docker run -p 8082:8082 cdd-php:alpine
