@@ -22,8 +22,8 @@ class ParseEmitTest extends TestCase {
         $this->assertEquals(1, count($components['schemas']));
         
         $emitted = \Cdd\Components\emit($components);
-        $this->assertTrue(strpos($emitted, 'class User {') !== false);
-        $this->assertTrue(strpos($emitted, 'public int $id;') !== false);
+        $this->assertTrue(strpos($emitted, 'class User extends \Illuminate\Database\Eloquent\Model {') !== false);
+        $this->assertTrue(strpos($emitted, "'id',") !== false);
     }
 
     public function testEmitWithExistingCode() {
@@ -42,7 +42,7 @@ class ParseEmitTest extends TestCase {
         $this->assertTrue(strpos($emitted, '// Custom comment') !== false);
         $this->assertTrue(strpos($emitted, 'class ExistingUser {}') !== false);
         $this->assertTrue(strpos($emitted, 'class NewUser') !== false);
-        $this->assertTrue(strpos($emitted, 'public int $id;') !== false);
+        $this->assertTrue(strpos($emitted, "'id',") !== false);
     }
 
     public function testEmitOtherComponents() {
@@ -89,6 +89,6 @@ class ParseEmitTest extends TestCase {
         $this->assertTrue(strpos($emitted, '@response') !== false);
         $this->assertTrue(strpos($emitted, 'A generic error response') !== false);
         $this->assertTrue(strpos($emitted, 'class ErrorResponse') !== false);
-        $this->assertTrue(strpos($emitted, 'public string $error;') !== false);
+        $this->assertTrue(strpos($emitted, "'error',") !== false);
     }
 }

@@ -24,10 +24,11 @@ class ParseEmitTest extends TestCase {
         $this->assertTrue(in_array('name', $schema['required']));
         
         $emitted = \Cdd\Schemas\emit('User', $schema);
-        $this->assertTrue(strpos($emitted, 'class User {') !== false);
-        $this->assertTrue(strpos($emitted, 'public int $id;') !== false);
-        $this->assertTrue(strpos($emitted, 'public string $name;') !== false);
-        $this->assertTrue(strpos($emitted, 'public ?string $email;') !== false);
+        $this->assertTrue(strpos($emitted, 'class User extends \Illuminate\Database\Eloquent\Model {') !== false);
+        $this->assertTrue(strpos($emitted, "'id',") !== false);
+        $this->assertTrue(strpos($emitted, "'name',") !== false);
+        $this->assertTrue(strpos($emitted, "'email',") !== false);
+        $this->assertTrue(strpos($emitted, "'id' => 'integer',") !== false);
     }
 
     public function testDocblockParsing() {

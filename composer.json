@@ -16,5 +16,8 @@
         "illuminate/database": "^10.0 || ^11.0",
         "illuminate/routing": "^10.0 || ^11.0",
         "illuminate/events": "^10.0 || ^11.0"
+    },
+    "scripts": {
+        "test": "php tests/test_runner.php"
     }
 }
