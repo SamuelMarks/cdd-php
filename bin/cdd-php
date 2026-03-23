@@ -490,17 +490,17 @@ Content-Length: " . strlen($resBody) . "
         exit(0);
     }
 
-    if ($command === 'to_openapi') {
+    if ($command === 'to_openapi' || $command === 'parse') {
         $file = '';
-        $outFile = '';
+                $outFile = '';
         for ($i = 2; $i < $argc; $i++) {
-            if ($argv[$i] === '-i' && isset($argv[$i+1])) {
+            if ($argv[$i] === '-f' && isset($argv[$i+1])) {
                 $file = $argv[$i+1];
                 $i++;
             } else if ($argv[$i] === '-o' && isset($argv[$i+1])) {
                 $outFile = $argv[$i+1];
                 $i++;
-            } else if ($argv[$i] !== '-i' && $argv[$i] !== '-o' && $file === '') {
+            } else if ($argv[$i] !== '-f' && $argv[$i] !== '-o' && $file === '') {
                 $file = $argv[$i];
             }
         }

@@ -72,3 +72,12 @@ Thumbs.db
 .settings/
 *.sublime-workspace
 *.sublime-project
+
+*.wasm
+node_modules/
+dist/
+build/
+__pycache__/
+*.o
+*.so
+target/
