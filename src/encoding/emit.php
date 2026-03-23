@@ -11,23 +11,38 @@ namespace Cdd\Encoding;
  * @return string The PHP string representation.
  */
 function emit(array $encoding): string {
-    $out = "/* Encoding object emitted */\n";
+    $out = "[\n";
     if (isset($encoding['contentType'])) {
-        $out .= "// Content-Type: " . $encoding['contentType'] . "\n";
+        $out .= "    'contentType' => '" . addslashes($encoding['contentType']) . "',\n";
     }
     if (isset($encoding['headers'])) {
+        $out .= "    'headers' => [\n";
         foreach ($encoding['headers'] as $name => $header) {
-            $out .= "// Header: {$name}\n";
+            $out .= "        '" . addslashes((string)$name) . "' => " . \Cdd\Encoding\emit_header($header) . ",\n";
         }
+        $out .= "    ],\n";
     }
     if (isset($encoding['style'])) {
-        $out .= "// Style: " . $encoding['style'] . "\n";
+        $out .= "    'style' => '" . addslashes($encoding['style']) . "',\n";
     }
     if (isset($encoding['explode'])) {
-        $out .= "// Explode: " . ($encoding['explode'] ? 'true' : 'false') . "\n";
+        $out .= "    'explode' => " . ($encoding['explode'] ? 'true' : 'false') . ",\n";
     }
     if (isset($encoding['allowReserved'])) {
-        $out .= "// AllowReserved: " . ($encoding['allowReserved'] ? 'true' : 'false') . "\n";
+        $out .= "    'allowReserved' => " . ($encoding['allowReserved'] ? 'true' : 'false') . ",\n";
     }
+    $out .= "]";
+    return $out;
+}
+
+function emit_header(array $header): string {
+    $out = "[\n";
+    if (isset($header['description'])) {
+        $out .= "            'description' => '" . addslashes($header['description']) . "',\n";
+    }
+    if (isset($header['schema'])) {
+        $out .= "            'schema' => ['type' => '" . addslashes($header['schema']['type'] ?? '') . "'],\n";
+    }
+    $out .= "        ]";
     return $out;
 }

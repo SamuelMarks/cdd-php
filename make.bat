@@ -74,15 +74,12 @@ php "%BIN_DIR%\cdd-php" %*
 goto :EOF
 
 :build_wasm
+call :build
 echo Building WASM...
 if not exist "build\wasm" mkdir "build\wasm"
-if exist "..\emsdk\emsdk_env.bat" (
-    call "..\emsdk\emsdk_env.bat"
-    echo WASM build using emscripten...
-    copy NUL "build\wasm\cdd-php.wasm"
-) else (
-    echo emsdk not found at ..\emsdk
-)
+echo Downloading pre-compiled PHP WebAssembly runtime...
+curl -sL "https://github.com/vmware-labs/webassembly-language-runtimes/releases/download/php/8.2.6%%2B20230714-11be424/php-cgi-8.2.6-slim.wasm" -o build\wasm\cdd-php.wasm
+echo WASM runtime downloaded.
 goto :EOF
 
 :build_docker

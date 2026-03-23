@@ -23,6 +23,8 @@ class ParseEmitTest extends TestCase {
         $this->assertTrue(isset($parsed['headers']['X-Rate-Limit-Limit']));
         
         $emitted = \Cdd\Encoding\emit($parsed);
-        $this->assertTrue(strpos($emitted, '/* Encoding object emitted */') !== false);
+        $this->assertTrue(strpos($emitted, "'contentType' => 'application/xml'") !== false);
+        $this->assertTrue(strpos($emitted, "'X-Rate-Limit-Limit'") !== false);
+        $this->assertTrue(strpos($emitted, "'description' => 'Limit'") !== false);
     }
 }
