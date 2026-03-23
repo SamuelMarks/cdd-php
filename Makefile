@@ -46,16 +46,12 @@ run: build
 	@echo "Running CLI..."
 	@php $(BIN_DIR)/cdd-php $(ARGS)
 
-build_wasm:
+build_wasm: build
 	@echo "Building WASM..."
 	@mkdir -p build/wasm
-	@if [ -d "../emsdk" ]; then \
-		cd ../emsdk && . ./emsdk_env.sh && cd ../cdd-php && \
-		echo "WASM build using emscripten (PHP WASM mock)"; \
-		touch build/wasm/cdd-php.wasm; \
-	else \
-		echo "emsdk not found at ../emsdk"; \
-	fi
+	@echo "Downloading pre-compiled PHP WebAssembly runtime..."
+	@curl -sL "https://github.com/vmware-labs/webassembly-language-runtimes/releases/download/php/8.2.6%2B20230714-11be424/php-cgi-8.2.6-slim.wasm" -o build/wasm/cdd-php.wasm
+	@echo "WASM runtime downloaded."
 
 build_docker:
 	@echo "Building Docker images..."

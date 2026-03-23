@@ -11,6 +11,23 @@ namespace Cdd\Encoding;
  * @return string The PHP string representation.
  */
 function emit(array $encoding): string {
-    // Stub implementation
-    return "/* Encoding object emitted */\n";
+    $out = "/* Encoding object emitted */\n";
+    if (isset($encoding['contentType'])) {
+        $out .= "// Content-Type: " . $encoding['contentType'] . "\n";
+    }
+    if (isset($encoding['headers'])) {
+        foreach ($encoding['headers'] as $name => $header) {
+            $out .= "// Header: {$name}\n";
+        }
+    }
+    if (isset($encoding['style'])) {
+        $out .= "// Style: " . $encoding['style'] . "\n";
+    }
+    if (isset($encoding['explode'])) {
+        $out .= "// Explode: " . ($encoding['explode'] ? 'true' : 'false') . "\n";
+    }
+    if (isset($encoding['allowReserved'])) {
+        $out .= "// AllowReserved: " . ($encoding['allowReserved'] ? 'true' : 'false') . "\n";
+    }
+    return $out;
 }
