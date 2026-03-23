@@ -35,7 +35,7 @@ build:
 	@echo "Building the CLI binary in $(BIN_DIR)..."
 	@mkdir -p $(BIN_DIR)
 	@php -d phar.readonly=0 scripts/build_phar.php
-	@cp build/cdd-php.phar $(BIN_DIR)/cdd-php
+	@cp build/cdd-php $(BIN_DIR)/cdd-php
 	@chmod +x $(BIN_DIR)/cdd-php
 
 test:
