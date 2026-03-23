@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build WASM
         run: |
+          make install_deps
           make build_wasm
           cp build/wasm/cdd-php.wasm .
       - name: Release WASM Artifact
