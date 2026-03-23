@@ -35,6 +35,12 @@ function emit(array $encoding): string {
     return $out;
 }
 
+/**
+ * Emits PHP code for an individual Header object inside an Encoding.
+ * 
+ * @param array $header The Header object array.
+ * @return string The PHP string representation.
+ */
 function emit_header(array $header): string {
     $out = "[\n";
     if (isset($header['description'])) {
