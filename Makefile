@@ -8,13 +8,13 @@ help:
 	@echo "  install_base   Install language runtime and tools"
 	@echo "  install_deps   Install local dependencies"
 	@echo "  build_docs     Build the API docs (override with DOCS_DIR=...)"
-	@echo "  build          Build the CLI binary (override with BIN_DIR=...)"
-	@echo "  test           Run tests locally"
-	@echo "  run            Run the CLI (builds first if needed). Pass args like: make run ARGS=\"--version\""
+	@echo "  build	  Build the CLI binary (override with BIN_DIR=...)"
+	@echo "  test	   Run tests locally"
+	@echo "  run	    Run the CLI (builds first if needed). Pass args like: make run ARGS=\"--version\""
 	@echo "  build_wasm     Build the WASM binary"
 	@echo "  build_docker   Build the Docker images"
 	@echo "  run_docker     Run the Docker container"
-	@echo "  all            Show help text"
+	@echo "  all	    Show help text"
 
 all: help
 
@@ -31,21 +31,19 @@ build_docs:
 	@mkdir -p $(DOCS_DIR)
 	@php bin/cdd-php to_docs_json -i ./openapi.json -o $(DOCS_DIR)/docs.json || true
 
-build:
-	@echo "Building the CLI binary in $(BIN_DIR)..."
-	@mkdir -p $(BIN_DIR)
+build: install_deps
+	@echo "Building the CLI binary in build/..."
+	@mkdir -p build
 	@php -d phar.readonly=0 scripts/build_phar.php
-	@cp build/cdd-php $(BIN_DIR)/cdd-php
-	@chmod +x $(BIN_DIR)/cdd-php
+	@chmod +x build/cdd-php
 
 test:
 	@echo "Running tests..."
 	@composer test
 
-run: build
+run: install_deps
 	@echo "Running CLI..."
-	@php $(BIN_DIR)/cdd-php $(ARGS)
-
+	@php bin/cdd-php $(ARGS)
 build_wasm: build
 	@echo "Building WASM..."
 	@mkdir -p build/wasm
