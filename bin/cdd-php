@@ -39,8 +39,18 @@ if (file_exists("$baseDir/src/openapi/resolve_refs.php")) {
     require_once "$baseDir/src/openapi/resolve_refs.php";
 }
 
-if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['PHP_SELF'])) {
-        foreach ($_ENV as $k => $v) {
+$sapi = php_sapi_name();
+$isCli = $sapi === 'cli' || $sapi === 'cgi-fcgi' || $sapi === 'cgi';
+if ($isCli && isset($argv) && count($argv) > 0 && basename(__FILE__) === basename($argv[0])) {
+    // php-cgi changes cwd to the script's directory. 
+    // We resolve relative paths against PWD environment variable if available.
+    $originalPwd = getenv('PWD') ?: getcwd();
+    $resolvePath = function($path) use ($originalPwd) {
+        if ($path === '' || $path[0] === '/') return $path;
+        return $originalPwd . '/' . $path;
+    };
+
+    foreach ($_ENV as $k => $v) {
         if (strpos($k, "CDD_") === 0) {
             $argName = "--" . strtolower(str_replace("_", "-", substr($k, 4)));
             if (!in_array($argName, $argv)) {
@@ -164,10 +174,10 @@ Content-Length: " . strlen($resBody) . "
         $dir = '';
         for ($i = 2; $i < $argc; $i++) {
             if ($argv[$i] === '-d' && isset($argv[$i+1])) {
-                $dir = $argv[$i+1];
+                $dir = $resolvePath($argv[$i+1]);
                 $i++;
             } else if ($argv[$i] !== '-d' && $dir === '') {
-                $dir = $argv[$i];
+                $dir = $resolvePath($argv[$i]);
             }
         }
 
@@ -495,13 +505,13 @@ Content-Length: " . strlen($resBody) . "
                 $outFile = '';
         for ($i = 2; $i < $argc; $i++) {
             if ($argv[$i] === '-f' && isset($argv[$i+1])) {
-                $file = $argv[$i+1];
+                $file = $resolvePath($argv[$i+1]);
                 $i++;
             } else if ($argv[$i] === '-o' && isset($argv[$i+1])) {
-                $outFile = $argv[$i+1];
+                $outFile = $resolvePath($argv[$i+1]);
                 $i++;
             } else if ($argv[$i] !== '-f' && $argv[$i] !== '-o' && $file === '') {
-                $file = $argv[$i];
+                $file = $resolvePath($argv[$i]);
             }
         }
         
@@ -796,16 +806,16 @@ Content-Length: " . strlen($resBody) . "
         
         for (; $i < $argc; $i++) {
             if ($argv[$i] === '-i' && isset($argv[$i+1])) {
-                $file = $argv[$i+1];
+                $file = $resolvePath($argv[$i+1]);
                 $i++;
             } elseif ($argv[$i] === '--input-dir' && isset($argv[$i+1])) {
-                $inputDir = $argv[$i+1];
+                $inputDir = $resolvePath($argv[$i+1]);
                 $i++;
             } elseif ($argv[$i] === '-o' && isset($argv[$i+1])) {
-                $dir = $argv[$i+1];
+                $dir = $resolvePath($argv[$i+1]);
                 $i++;
             } else {
-                $dir = $argv[$i];
+                $dir = $resolvePath($argv[$i]);
             }
         }
         
@@ -816,7 +826,7 @@ Content-Length: " . strlen($resBody) . "
         
         if ($file !== '') {
             if (!file_exists($file)) {
-                echo "Error: Spec file not found.\n";
+                echo "Error: Spec file not found ($file).\n";
                 exit(1);
             }
                         $spec = \Cdd\Openapi\parse(file_get_contents($file));
@@ -899,10 +909,10 @@ jobs:
             } elseif ($argv[$i] === '--no-wrapping') {
                 $noWrapping = true;
             } elseif ($argv[$i] === '-i' && isset($argv[$i+1])) {
-                $file = $argv[$i+1];
+                $file = $resolvePath($argv[$i+1]);
                 $i++;
             } elseif ($argv[$i] === '-o' && isset($argv[$i+1])) {
-                $outFileDocs = $argv[$i+1];
+                $outFileDocs = $resolvePath($argv[$i+1]);
                 $i++;
             }
         }
