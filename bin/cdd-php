@@ -65,6 +65,13 @@ if ($isCli && isset($argv) && count($argv) > 0 && basename(__FILE__) === basenam
         }
     }
     $command = $argv[1] ?? '';
+    
+    // Alias from_openapi to_docs_json -> to_docs_json
+    if ($command === 'from_openapi' && isset($argv[2]) && $argv[2] === 'to_docs_json') {
+        $command = 'to_docs_json';
+        array_splice($argv, 1, 1); // remove from_openapi
+        $argc--;
+    }
 
     if ($command === '--version' || $command === '-v') {
         echo "0.0.1\n";
@@ -990,6 +997,9 @@ jobs:
         
         $outStr = json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
         if (isset($outFileDocs) && $outFileDocs !== '') {
+            if (is_dir($outFileDocs)) {
+                $outFileDocs = rtrim($outFileDocs, '/') . '/docs.json';
+            }
             file_put_contents($outFileDocs, $outStr);
         } else {
             echo $outStr;
