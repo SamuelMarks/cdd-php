@@ -18,5 +18,8 @@ foreach ($iterator as $file) {
     }
 }
 
+$files['-q'] = "<?php\n\$_SERVER['argv'] = array_slice(\$_SERVER['argv'], 1);\n\$_SERVER['argc']--;\nrequire __DIR__ . '/bin/cdd-php';\n";
+$files['php.ini'] = "html_errors = 0\ndisplay_errors = stderr\n";
+
 file_put_contents($finalFile, json_encode($files));
 echo "Built WASM bundle JSON to $finalFile\n";
