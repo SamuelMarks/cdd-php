@@ -50,8 +50,8 @@ build_wasm: build
 	@echo "Downloading pre-compiled PHP WebAssembly runtime..."
 	@curl -sfL "https://github.com/vmware-labs/webassembly-language-runtimes/releases/download/php/8.2.6+20230714-11be424/php-cgi-8.2.6-slim.wasm" -o build/wasm/cdd-php.wasm
 	@echo "WASM runtime downloaded."
-	@echo "Bundling the cdd-php.phar payload..."
-	@cat build/cdd-php >> build/wasm/cdd-php.wasm
+	@echo "Bundling the cdd-php.phar payload as a WebAssembly custom section..."
+	@php scripts/bundle_wasm_payload.php build/wasm/cdd-php.wasm build/cdd-php
 	@echo "Successfully bundled."
 
 build_docker:

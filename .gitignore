@@ -108,3 +108,13 @@ wizer-*/
 .env.*
 !.env.example
 !.env.dist
+
+# ==========================================
+# Local development & untracked files
+# ==========================================
+/tmp/
+/cdd-php-*/
+wasm-tools-*/
+wasi-vfs
+/spec.json
+/test*.php

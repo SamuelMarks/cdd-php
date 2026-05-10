@@ -80,6 +80,9 @@ if not exist "build\wasm" mkdir "build\wasm"
 echo Downloading pre-compiled PHP WebAssembly runtime...
 curl -sL "https://github.com/vmware-labs/webassembly-language-runtimes/releases/download/php/8.2.6%%2B20230714-11be424/php-cgi-8.2.6-slim.wasm" -o build\wasm\cdd-php.wasm
 echo WASM runtime downloaded.
+echo Bundling the cdd-php.phar payload as a WebAssembly custom section...
+php scripts\bundle_wasm_payload.php build\wasm\cdd-php.wasm build\cdd-php
+echo Successfully bundled.
 goto :EOF
 
 :build_docker
