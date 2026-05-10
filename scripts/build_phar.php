@@ -17,6 +17,7 @@ foreach ($iterator as $file) {
     if ($file->isDir()) continue;
     $path = $file->getPathname();
     $rel = substr($path, strlen($baseDir) + 1);
+    $rel = str_replace('\\', '/', $rel); // Normalize for Windows
     
     if (preg_match('/^(src|vendor|bin)\//', $rel) && strpos($rel, 'bin/cdd-php.') === false) {
         $files[$rel] = file_get_contents($path);

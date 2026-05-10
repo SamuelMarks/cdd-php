@@ -28,11 +28,6 @@ jobs:
           if ! ls *.wasm 1> /dev/null 2>&1; then
             echo -n -e '\x00asm\x01\x00\x00\x00' > cdd-php.wasm
           fi
-          for f in *.wasm; do
-            if [ -f "$f" ]; then
-              wasm-opt -O3 "$f" -o "$f" || true
-            fi
-          done
       - name: Update latest tag
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
         run: |
