@@ -19,7 +19,9 @@ foreach ($iterator as $file) {
     }
 }
 
-$files['-q'] = "<?php\n\$_SERVER['argv'] = array_slice(\$_SERVER['argv'], 1);\n\$_SERVER['argc']--;\nrequire __DIR__ . '/bin/cdd-php';\n";
+$files['cdd-php'] = "<?php\n\$argv = \$_SERVER['argv'];\narray_unshift(\$argv, 'cdd-php');\n\$argc = count(\$argv);\n\$isCli = true;\n\$GLOBALS['argv'] = \$argv;\n\$GLOBALS['argc'] = \$argc;\n\$_SERVER['argv'] = \$argv;\n\$_SERVER['argc'] = \$argc;\nrequire __DIR__ . '/bin/cdd-php';\n";
+$files['to_docs_json'] = $files['cdd-php'];
+$files['from_openapi'] = $files['cdd-php'];
 $files['php.ini'] = "html_errors = 0\ndisplay_errors = stderr\nmemory_limit = 512M\n";
 
 file_put_contents($finalFile, json_encode($files));

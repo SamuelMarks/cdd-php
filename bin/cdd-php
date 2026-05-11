@@ -840,7 +840,12 @@ Content-Length: " . strlen($resBody) . "
                 echo "Error: Spec file not found ($file).\n";
                 exit(1);
             }
-                        $spec = \Cdd\Openapi\parse(file_get_contents($file));
+                        try {
+                $spec = \Cdd\Openapi\parse(file_get_contents($file));
+            } catch (\Exception $e) {
+                if (is_resource(STDERR)) { fwrite(STDERR, "Fatal error: " . $e->getMessage() . "\n"); } else { echo "Fatal error: " . $e->getMessage() . "\n"; }
+                exit(1);
+            }
             \Cdd\Openapi\emit($spec, $dir);
             if ($subcommand === 'to_sdk_cli') {
                 $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
@@ -857,7 +862,12 @@ Content-Length: " . strlen($resBody) . "
                 echo "Error: No .json files found in input dir.\n";
                 exit(1);
             }
-                        $spec = \Cdd\Openapi\parse(file_get_contents($files[0]));
+            try {
+                $spec = \Cdd\Openapi\parse(file_get_contents($files[0]));
+            } catch (\Exception $e) {
+                if (is_resource(STDERR)) { fwrite(STDERR, "Fatal error processing " . $files[0] . ": " . $e->getMessage() . "\n"); } else { echo "Fatal error processing " . $files[0] . ": " . $e->getMessage() . "\n"; }
+                exit(1);
+            }
             \Cdd\Openapi\emit($spec, $dir);
             if ($subcommand === 'to_sdk_cli') {
                 $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
@@ -929,13 +939,13 @@ jobs:
         }
         
         if (!$file || !file_exists($file)) {
-            fwrite(STDERR, "Error: Spec file not found.\n");
+            if (is_resource(STDERR)) { fwrite(STDERR, "Error: Spec file not found.\n"); } else { echo "Error: Spec file not found.\n"; }
             exit(1);
         }
         
         $spec = json_decode(file_get_contents($file), true);
         if (!$spec) {
-            fwrite(STDERR, "Error parsing JSON spec.\n");
+            if (is_resource(STDERR)) { fwrite(STDERR, "Error parsing JSON spec.\n"); } else { echo "Error parsing JSON spec.\n"; }
             exit(1);
         }
         
