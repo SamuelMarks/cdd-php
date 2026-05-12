@@ -98,6 +98,7 @@ Commands:
 Options for from_openapi:
   --no-github-actions
   --no-installable-package
+  --tests
 
 Additional Commands:
   sync -d directory

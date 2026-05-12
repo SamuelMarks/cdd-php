@@ -152,15 +152,10 @@ if ($isCli && isset($argv) && count($argv) > 0 && basename(__FILE__) === basenam
                 $cmdArgs = [];
                 if (is_array($p)) {
                     foreach ($p as $k => $v) {
-                        $argName = str_replace('_', '-', (string)$k);
                         if (is_int($k)) {
                             $cmdArgs[] = escapeshellarg((string)$v);
-                        } elseif (is_bool($v)) {
-                            if ($v) {
-                                $cmdArgs[] = "--" . escapeshellarg($argName);
-                            }
                         } else {
-                            $cmdArgs[] = "--" . escapeshellarg($argName) . " " . escapeshellarg((string)$v);
+                            $cmdArgs[] = "--" . escapeshellarg((string)$k) . " " . escapeshellarg((string)$v);
                         }
                     }
                 }
@@ -799,18 +794,21 @@ Content-Length: " . strlen($resBody) . "
         $dir = getcwd(); // default out dir is current working directory
         
                 $noGithubActions = false;
-        $noInstallablePackage = false;
-        
-        $newArgv = [];
-        for ($k = 0; $k < $argc; $k++) {
-            if ($argv[$k] === '--no-github-actions') {
-                $noGithubActions = true;
-            } elseif ($argv[$k] === '--no-installable-package') {
-                $noInstallablePackage = true;
-            } else {
-                $newArgv[] = $argv[$k];
-            }
-        }
+                $noInstallablePackage = false;
+                $tests = false;
+
+                $newArgv = [];
+                for ($k = 0; $k < $argc; $k++) {
+                    if ($argv[$k] === '--no-github-actions') {
+                        $noGithubActions = true;
+                    } elseif ($argv[$k] === '--no-installable-package') {
+                        $noInstallablePackage = true;
+                    } elseif ($argv[$k] === '--tests') {
+                        $tests = true;
+                    } else {
+                        $newArgv[] = $argv[$k];
+                    }
+                }
         $argv = $newArgv;
         $argc = count($argv);
         
@@ -845,15 +843,11 @@ Content-Length: " . strlen($resBody) . "
                 echo "Error: Spec file not found ($file).\n";
                 exit(1);
             }
-                        try {
-                $spec = \Cdd\Openapi\parse(file_get_contents($file));
-            } catch (\Exception $e) {
-                if (is_resource(STDERR)) { fwrite(STDERR, "Fatal error: " . $e->getMessage() . "\n"); } else { echo "Fatal error: " . $e->getMessage() . "\n"; }
-                exit(1);
-            }
+                        $spec = \Cdd\Openapi\parse(file_get_contents($file));
             \Cdd\Openapi\emit($spec, $dir, [
                 'no_github_actions' => $noGithubActions,
-                'no_installable_package' => $noInstallablePackage
+                'no_installable_package' => $noInstallablePackage,
+                'tests' => $tests
             ]);
             if ($subcommand === 'to_sdk_cli') {
                 $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
@@ -870,15 +864,11 @@ Content-Length: " . strlen($resBody) . "
                 echo "Error: No .json files found in input dir.\n";
                 exit(1);
             }
-            try {
-                $spec = \Cdd\Openapi\parse(file_get_contents($files[0]));
-            } catch (\Exception $e) {
-                if (is_resource(STDERR)) { fwrite(STDERR, "Fatal error processing " . $files[0] . ": " . $e->getMessage() . "\n"); } else { echo "Fatal error processing " . $files[0] . ": " . $e->getMessage() . "\n"; }
-                exit(1);
-            }
+                        $spec = \Cdd\Openapi\parse(file_get_contents($files[0]));
             \Cdd\Openapi\emit($spec, $dir, [
                 'no_github_actions' => $noGithubActions,
-                'no_installable_package' => $noInstallablePackage
+                'no_installable_package' => $noInstallablePackage,
+                'tests' => $tests
             ]);
             if ($subcommand === 'to_sdk_cli') {
                 $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
@@ -888,6 +878,45 @@ Content-Length: " . strlen($resBody) . "
         
                 echo "Emitted code to $dir successfully.
 ";
+        
+        if (!$noInstallablePackage) {
+            if (!file_exists("$dir/composer.json")) {
+                file_put_contents("$dir/composer.json", json_encode([
+                    "name" => "offscale/generated-api",
+                    "description" => "Generated API client/server",
+                    "require" => [
+                        "php" => ">=8.0"
+                    ],
+                    "autoload" => [
+                        "psr-4" => [
+                            "Api\\" => "src/"
+                        ]
+                    ]
+                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            }
+        }
+        
+        if (!$noGithubActions) {
+            if (!is_dir("$dir/.github/workflows")) {
+                mkdir("$dir/.github/workflows", 0777, true);
+            }
+            if (!file_exists("$dir/.github/workflows/ci.yml")) {
+                file_put_contents("$dir/.github/workflows/ci.yml", "name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+    - run: composer install
+    - run: composer test
+");
+            }
+        }
         exit(0);
     }
 
@@ -911,13 +940,13 @@ Content-Length: " . strlen($resBody) . "
         }
         
         if (!$file || !file_exists($file)) {
-            if (is_resource(STDERR)) { fwrite(STDERR, "Error: Spec file not found.\n"); } else { echo "Error: Spec file not found.\n"; }
+            fwrite(STDERR, "Error: Spec file not found.\n");
             exit(1);
         }
         
         $spec = json_decode(file_get_contents($file), true);
         if (!$spec) {
-            if (is_resource(STDERR)) { fwrite(STDERR, "Error parsing JSON spec.\n"); } else { echo "Error parsing JSON spec.\n"; }
+            fwrite(STDERR, "Error parsing JSON spec.\n");
             exit(1);
         }
         

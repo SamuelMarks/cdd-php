@@ -20,9 +20,11 @@ function parse(string $json): array
     if (!isset($data['openapi'])) {
         throw new \RuntimeException('Missing REQUIRED field "openapi" in OpenAPI Object');
     }
-    if (!is_string($data['openapi']) || $data['openapi'] !== '3.2.0') {
-        throw new \RuntimeException('Spec must be OpenAPI 3.2.0');
+    if (!is_string($data['openapi']) || (!str_starts_with($data['openapi'], '3.0.') && !str_starts_with($data['openapi'], '3.1.') && $data['openapi'] !== '3.2.0')) {
+        throw new \RuntimeException('Spec must be OpenAPI 3.0.x, 3.1.x, or 3.2.0');
     }
+    // Auto-upgrade to 3.2.0
+    $data['openapi'] = '3.2.0';
     // $self (string)
     if (isset($data['$self']) && !is_string($data['$self'])) {
         throw new \RuntimeException('Field "$self" must be a string (URI reference)');

@@ -20,9 +20,10 @@ return [
     ]
 ];
 ";
-        file_put_contents("$tmpDir/mocks.php", $mockCode);
-        file_put_contents("$tmpDir/Models.php", "<?php\n\n");
-        file_put_contents("$tmpDir/routes.php", "<?php\n\n");
+        mkdir("$tmpDir/src", 0777, true);
+        file_put_contents("$tmpDir/src/mocks.php", $mockCode);
+        file_put_contents("$tmpDir/src/Models.php", "<?php\n\n");
+        file_put_contents("$tmpDir/src/routes.php", "<?php\n\n");
 
         // Run sync
         $baseDir = dirname(__DIR__, 2);
@@ -45,7 +46,6 @@ return [
         $this->assertEquals('string', $schema['properties']['tags']['items']['type']);
 
         // Clean up
-        array_map('unlink', glob("$tmpDir/*.*"));
-        rmdir($tmpDir);
+        exec("rm -rf " . escapeshellarg($tmpDir));
     }
 }

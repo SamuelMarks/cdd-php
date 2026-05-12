@@ -26,7 +26,7 @@ class MetadataTest extends \Cdd\Tests\Framework\TestCase {
 
         \Cdd\Openapi\emit($openapi, $tmpDir);
 
-        $this->assertTrue(file_exists("$tmpDir/api_metadata.php"));
+        $this->assertTrue(file_exists("$tmpDir/src/api_metadata.php"));
 
         $baseDir = dirname(__DIR__, 2);
         exec("php $baseDir/bin/cdd-php sync -d $tmpDir", $output, $returnVar);
@@ -48,7 +48,6 @@ class MetadataTest extends \Cdd\Tests\Framework\TestCase {
         $this->assertEquals('Apache 2.0', $parsed['info']['license']['name']);
 
         // Clean up
-        array_map('unlink', glob("$tmpDir/*.*"));
-        rmdir($tmpDir);
+        exec("rm -rf " . escapeshellarg($tmpDir));
     }
 }

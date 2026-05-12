@@ -10,13 +10,14 @@ namespace Cdd\Tests;
  * @param string $method
  * @param string $path
  * @param array $operation
+ * @param bool $composable
  * @return string
  */
-function emit(string $method, string $path, array $operation): string {
+function emit(string $method, string $path, array $operation, bool $composable = false): string {
     if ($method === 'additionalOperations' && is_array($operation)) {
         $out = '';
         foreach ($operation as $addMethod => $addOp) {
-            $out .= emit($addMethod, $path, $addOp) . "\n";
+            $out .= emit($addMethod, $path, $addOp, $composable) . "\n";
         }
         return trim($out);
     }
@@ -34,9 +35,16 @@ function emit(string $method, string $path, array $operation): string {
         }
     }
     
-    $out = "    public function test{$opId}() {\n";
-    $out .= "        \$response = \$this->call('$method', '$path');\n";
-    $out .= "        \$this->assertEquals($status, \$response->status());\n";
-    $out .= "    }\n";
+    if ($composable) {
+        $out = "    '{$opId}' => function(\$client, array \$mocks = []) {\n";
+        $out .= "        \$response = \$client->call('$method', '$path');\n";
+        $out .= "        return \$response->status() === $status;\n";
+        $out .= "    },\n";
+    } else {
+        $out = "    public function test{$opId}() {\n";
+        $out .= "        \$response = \$this->call('$method', '$path');\n";
+        $out .= "        \$this->assertEquals($status, \$response->status());\n";
+        $out .= "    }\n";
+    }
     return $out;
 }

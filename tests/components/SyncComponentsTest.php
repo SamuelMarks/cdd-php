@@ -15,7 +15,8 @@ class SyncComponentsTest extends \Cdd\Tests\Framework\TestCase {
         $code .= "/**\n * @securityScheme\n * @type oauth2\n * @flow implicit {\"authorizationUrl\":\"http://example.com/auth\",\"scopes\":{\"read\":\"read everything\"}}\n */\nclass OAuth2Auth {}\n";
         $code .= "/**\n * @securityScheme\n * @type openIdConnect\n * @openIdConnectUrl http://example.com/.well-known\n */\nclass OpenIdConnectAuth {}\n";
 
-        file_put_contents("$tmpDir/Models.php", $code);
+        mkdir("$tmpDir/src", 0777, true);
+        file_put_contents("$tmpDir/src/Models.php", $code);
 
         $baseDir = dirname(__DIR__, 2);
         exec("php $baseDir/bin/cdd-php sync -d $tmpDir", $output, $returnVar);
@@ -47,7 +48,6 @@ class SyncComponentsTest extends \Cdd\Tests\Framework\TestCase {
         $this->assertEquals('http://example.com/.well-known', $openapi['components']['securitySchemes']['OpenIdConnectAuth']['openIdConnectUrl']);
 
         // Clean up
-        array_map('unlink', glob("$tmpDir/*.*"));
-        rmdir($tmpDir);
+        exec("rm -rf " . escapeshellarg($tmpDir));
     }
 }

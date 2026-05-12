@@ -5,7 +5,7 @@
 return array (
   'info' => 
   array (
-    'title' => 'Test',
-    'version' => '1.0',
+    'title' => 'Synced API',
+    'version' => '0.0.1',
   ),
 );

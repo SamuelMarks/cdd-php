@@ -71,10 +71,10 @@ class ParseEmitTest extends TestCase {
 
     public function testParseWrongOpenapiVersion() {
         try {
-            \Cdd\Openapi\parse('{"openapi":"3.0.0","info":{"title":"A","version":"1"},"paths":{}}');
+            \Cdd\Openapi\parse('{"openapi":"2.0.0","info":{"title":"A","version":"1"},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
         } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Spec must be OpenAPI 3.2.0') !== false);
+            $this->assertTrue(strpos($e->getMessage(), 'Spec must be OpenAPI 3.0.x, 3.1.x, or 3.2.0') !== false);
         }
     }
 
