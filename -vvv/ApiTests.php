@@ -1,0 +1,4 @@
+<?php
+
+// Auto-generated tests
+

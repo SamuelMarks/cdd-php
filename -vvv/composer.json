@@ -1,0 +1,12 @@
+{
+    "name": "offscale/generated-api",
+    "description": "Generated API client/server",
+    "require": {
+        "php": ">=8.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Api\\": "src/"
+        }
+    }
+}
