@@ -12,7 +12,7 @@ namespace Cdd\Openapi;
  * @param string|null $outDir The directory to emit PHP code into
  * @return string The JSON representation
  */
-function emit(array $openapi, ?string $outDir = null): string {
+function emit(array $openapi, ?string $outDir = null, array $options = []): string {
     // Ensuring basic fields are present for 3.2.0 compliance
     if (!isset($openapi['openapi'])) {
         $openapi['openapi'] = '3.2.0';
@@ -94,6 +94,35 @@ function emit(array $openapi, ?string $outDir = null): string {
             }
         }
         file_put_contents("$outDir/ApiTests.php", $testCode);
+        
+        $noInstallablePackage = $options['no_installable_package'] ?? false;
+        $noGithubActions = $options['no_github_actions'] ?? false;
+        
+        if (!$noInstallablePackage) {
+            if (!file_exists("$outDir/composer.json")) {
+                file_put_contents("$outDir/composer.json", json_encode([
+                    "name" => "offscale/generated-api",
+                    "description" => "Generated API client/server",
+                    "require" => [
+                        "php" => ">=8.0"
+                    ],
+                    "autoload" => [
+                        "psr-4" => [
+                            "Api\\" => "src/"
+                        ]
+                    ]
+                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            }
+        }
+        
+        if (!$noGithubActions) {
+            if (!is_dir("$outDir/.github/workflows")) {
+                mkdir("$outDir/.github/workflows", 0777, true);
+            }
+            if (!file_exists("$outDir/.github/workflows/ci.yml")) {
+                file_put_contents("$outDir/.github/workflows/ci.yml", "name: CI\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n    - uses: actions/checkout@v3\n    - name: Use PHP\n      uses: shivammathur/setup-php@v2\n      with:\n        php-version: '8.2'\n    - run: composer install\n    - run: composer test\n");
+            }
+        }
     }
 
     $json = json_encode($openapi, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
