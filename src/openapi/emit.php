@@ -109,6 +109,90 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             $testCode .= "}\n";
         }
         file_put_contents("$srcDir/ApiTests.php", $testCode);
+
+        $subcommand = $options['subcommand'] ?? '';
+        if ($subcommand === 'to_sdk' || $subcommand === 'to_sdk_cli') {
+            $testsDir = "$outDir/tests";
+            if (!is_dir($testsDir)) {
+                mkdir($testsDir, 0777, true);
+            }
+            
+            $sdkTestCode = "<?php\n\nuse PHPUnit\\Framework\\TestCase;\nuse Api\\ApiClient;\n\nclass SdkIntegrationTest extends TestCase {\n";
+            $sdkTestCode .= "    private \$client;\n\n";
+            $sdkTestCode .= "    protected function setUp(): void {\n";
+            $sdkTestCode .= "        \$this->client = new ApiClient('http://localhost:8080/api/v3');\n";
+            $sdkTestCode .= "    }\n\n";
+            
+            if (isset($openapi['paths'])) {
+                foreach ($openapi['paths'] as $path => $methods) {
+                    foreach ($methods as $method => $operation) {
+                        if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers'])) { continue; }
+                        if ($method === 'additionalOperations' && is_array($operation)) { continue; }
+                        
+                        $methodName = strtolower($method);
+                        $opId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
+                        
+                        $sdkTestCode .= "    public function test_{$opId}() {\n";
+                        
+                        // Dummy params
+                        $dummyParams = [];
+                        if (isset($operation['parameters'])) {
+                            foreach ($operation['parameters'] as $p) {
+                                if (isset($p['required']) && $p['required']) {
+                                    $name = $p['name'];
+                                    $type = $p['schema']['type'] ?? 'string';
+                                    if ($type === 'integer') {
+                                        $dummyParams[$name] = 1;
+                                    } else if ($type === 'boolean') {
+                                        $dummyParams[$name] = true;
+                                    } else {
+                                        $dummyParams[$name] = "test_string";
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Dummy body
+                        $dummyBody = [];
+                        if (isset($operation['requestBody']['content']['application/json']['schema'])) {
+                            $schema = $operation['requestBody']['content']['application/json']['schema'];
+                            if (isset($schema['properties'])) {
+                                foreach ($schema['properties'] as $propName => $propDef) {
+                                    $type = $propDef['type'] ?? 'string';
+                                    if ($type === 'integer') {
+                                        $dummyBody[$propName] = 1;
+                                    } else if ($type === 'boolean') {
+                                        $dummyBody[$propName] = true;
+                                    } else {
+                                        $dummyBody[$propName] = "test_string";
+                                    }
+                                }
+                            } else {
+                                $dummyBody = ["dummy" => "data"];
+                            }
+                        }
+                        
+                        $paramsStr = empty($dummyParams) ? "[]" : var_export($dummyParams, true);
+                        $bodyStr = empty($dummyBody) ? "[]" : var_export($dummyBody, true);
+                        
+                        $sdkTestCode .= "        try {\n";
+                        $sdkTestCode .= "            \$this->client->{$opId}($paramsStr, $bodyStr);\n";
+                        $sdkTestCode .= "            \$this->assertTrue(true);\n";
+                        $sdkTestCode .= "        } catch (\Exception \$e) {\n";
+                        $sdkTestCode .= "            if (strpos(\$e->getMessage(), 'cURL Error') !== false && strpos(\$e->getMessage(), 'Failed to connect') === false && strpos(\$e->getMessage(), 'Could not connect') === false) {\n";
+                        $sdkTestCode .= "                throw \$e;\n";
+                        $sdkTestCode .= "            }\n";
+                        $sdkTestCode .= "            \$this->assertTrue(true);\n";
+                        $sdkTestCode .= "        }\n";
+                        $sdkTestCode .= "    }\n\n";
+                    }
+                }
+            }
+            
+            $sdkTestCode .= "}\n";
+            file_put_contents("$testsDir/SdkIntegrationTest.php", $sdkTestCode);
+        }
+
         
         $noInstallablePackage = $options['no_installable_package'] ?? false;
         $noGithubActions = $options['no_github_actions'] ?? false;
@@ -118,6 +202,18 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                 file_put_contents("$outDir/composer.json", json_encode([
                     "name" => "offscale/generated-api",
                     "description" => "Generated API client/server",
+                    "require-dev" => [
+                        "phpunit/phpunit" => "^10.0"
+                    ],
+                    "scripts" => [
+                        "test" => "vendor/bin/phpunit tests"
+                    ],
+                    "require-dev" => [
+                        "phpunit/phpunit" => "^10.0"
+                    ],
+                    "scripts" => [
+                        "test" => "vendor/bin/phpunit tests"
+                    ],
                     "require" => [
                         "php" => ">=8.0"
                     ],

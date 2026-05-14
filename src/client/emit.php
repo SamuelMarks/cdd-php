@@ -69,7 +69,7 @@ function emit_class(array $paths, string $existingCode = ''): string {
     if ($existingCode !== '') {
         $out = $existingCode;
     } else {
-        $out = "<?php\n\nclass ApiClient {\n    private \$baseUrl;\n\n    public function __construct(string \$baseUrl) {\n        \$this->baseUrl = \$baseUrl;\n    }\n\n";
+        $out = "<?php\n\nnamespace Api;\n\nclass ApiClient {\n    private \$baseUrl;\n\n    public function __construct(string \$baseUrl) {\n        \$this->baseUrl = \$baseUrl;\n    }\n\n";
         $out .= "    protected function requireSecurity(string \$name, array \$scopes = []) {\n";
         $out .= "        // Base security requirement mock\n";
         $out .= "    }\n\n}\n";

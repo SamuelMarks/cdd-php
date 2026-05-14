@@ -847,7 +847,8 @@ Content-Length: " . strlen($resBody) . "
             \Cdd\Openapi\emit($spec, $dir, [
                 'no_github_actions' => $noGithubActions,
                 'no_installable_package' => $noInstallablePackage,
-                'tests' => $tests
+                'tests' => $tests,
+                'subcommand' => $subcommand
             ]);
             if ($subcommand === 'to_sdk_cli') {
                 $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
@@ -868,7 +869,8 @@ Content-Length: " . strlen($resBody) . "
             \Cdd\Openapi\emit($spec, $dir, [
                 'no_github_actions' => $noGithubActions,
                 'no_installable_package' => $noInstallablePackage,
-                'tests' => $tests
+                'tests' => $tests,
+                'subcommand' => $subcommand
             ]);
             if ($subcommand === 'to_sdk_cli') {
                 $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
@@ -887,10 +889,16 @@ Content-Length: " . strlen($resBody) . "
                     "require" => [
                         "php" => ">=8.0"
                     ],
+                    "require-dev" => [
+                        "phpunit/phpunit" => "^10.0"
+                    ],
                     "autoload" => [
                         "psr-4" => [
                             "Api\\" => "src/"
                         ]
+                    ],
+                    "scripts" => [
+                        "test" => "vendor/bin/phpunit tests"
                     ]
                 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
             }
