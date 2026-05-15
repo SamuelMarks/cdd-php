@@ -120,7 +120,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             $sdkTestCode = "<?php\n\nuse PHPUnit\\Framework\\TestCase;\nuse Api\\ApiClient;\n\nclass SdkIntegrationTest extends TestCase {\n";
             $sdkTestCode .= "    private \$client;\n\n";
             $sdkTestCode .= "    protected function setUp(): void {\n";
-            $sdkTestCode .= "        \$this->client = new ApiClient('http://localhost:8080/api/v3');\n";
+            $sdkTestCode .= "        \$this->client = new ApiClient('http://localhost:8080/v2');\n";
             $sdkTestCode .= "    }\n\n";
             
             if (isset($openapi['paths'])) {
@@ -134,20 +134,42 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                         
                         $sdkTestCode .= "    public function test_{$opId}() {\n";
                         
+                        $getDummy = function($schema) use ($openapi, &$getDummy) {
+                            if (isset($schema['$ref']) && strpos($schema['$ref'], '#/components/schemas/') === 0) {
+                                $refName = substr($schema['$ref'], 21);
+                                if (isset($openapi['components']['schemas'][$refName])) {
+                                    $schema = $openapi['components']['schemas'][$refName];
+                                }
+                            }
+                            $type = $schema['type'] ?? 'string';
+                            if ($type === 'object' || isset($schema['properties'])) {
+                                $obj = [];
+                                if (isset($schema['properties'])) {
+                                    foreach ($schema['properties'] as $propName => $propDef) {
+                                        $obj[$propName] = $getDummy($propDef);
+                                    }
+                                } else {
+                                    $obj = ["dummy" => "data"];
+                                }
+                                return $obj;
+                            } else if ($type === 'array') {
+                                return [$getDummy($schema['items'] ?? [])];
+                            } else if ($type === 'integer' || $type === 'number') {
+                                return 1;
+                            } else if ($type === 'boolean') {
+                                return true;
+                            }
+                            return "test_string";
+                        };
+
                         // Dummy params
                         $dummyParams = [];
                         if (isset($operation['parameters'])) {
                             foreach ($operation['parameters'] as $p) {
                                 if (isset($p['required']) && $p['required']) {
                                     $name = $p['name'];
-                                    $type = $p['schema']['type'] ?? 'string';
-                                    if ($type === 'integer') {
-                                        $dummyParams[$name] = 1;
-                                    } else if ($type === 'boolean') {
-                                        $dummyParams[$name] = true;
-                                    } else {
-                                        $dummyParams[$name] = "test_string";
-                                    }
+                                    $schema = $p['schema'] ?? [];
+                                    $dummyParams[$name] = $getDummy($schema);
                                 }
                             }
                         }
@@ -155,34 +177,28 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                         // Dummy body
                         $dummyBody = [];
                         if (isset($operation['requestBody']['content']['application/json']['schema'])) {
-                            $schema = $operation['requestBody']['content']['application/json']['schema'];
-                            if (isset($schema['properties'])) {
-                                foreach ($schema['properties'] as $propName => $propDef) {
-                                    $type = $propDef['type'] ?? 'string';
-                                    if ($type === 'integer') {
-                                        $dummyBody[$propName] = 1;
-                                    } else if ($type === 'boolean') {
-                                        $dummyBody[$propName] = true;
-                                    } else {
-                                        $dummyBody[$propName] = "test_string";
-                                    }
-                                }
+                            $res = $getDummy($operation['requestBody']['content']['application/json']['schema']);
+                            if (!is_array($res)) {
+                                $dummyBody = ["dummy" => $res];
                             } else {
-                                $dummyBody = ["dummy" => "data"];
+                                $dummyBody = $res;
+                            }
+                        } else if (isset($operation['requestBody']['content']['application/x-www-form-urlencoded']['schema'])) {
+                            $res = $getDummy($operation['requestBody']['content']['application/x-www-form-urlencoded']['schema']);
+                            if (!is_array($res)) {
+                                $dummyBody = ["dummy" => $res];
+                            } else {
+                                $dummyBody = $res;
                             }
                         }
                         
                         $paramsStr = empty($dummyParams) ? "[]" : var_export($dummyParams, true);
                         $bodyStr = empty($dummyBody) ? "[]" : var_export($dummyBody, true);
                         
-                        $sdkTestCode .= "        try {\n";
-                        $sdkTestCode .= "            \$this->client->{$opId}($paramsStr, $bodyStr);\n";
-                        $sdkTestCode .= "            \$this->assertTrue(true);\n";
-                        $sdkTestCode .= "        } catch (\Exception \$e) {\n";
-                        $sdkTestCode .= "            if (strpos(\$e->getMessage(), 'cURL Error') !== false && strpos(\$e->getMessage(), 'Failed to connect') === false && strpos(\$e->getMessage(), 'Could not connect') === false) {\n";
-                        $sdkTestCode .= "                throw \$e;\n";
-                        $sdkTestCode .= "            }\n";
-                        $sdkTestCode .= "            \$this->assertTrue(true);\n";
+                        $sdkTestCode .= "        \$response = \$this->client->{$opId}($paramsStr, $bodyStr);\n";
+                        $sdkTestCode .= "        \$this->assertTrue(\$response['status'] >= 200 && \$response['status'] < 300, 'Invalid HTTP Status Code: ' . \$response['status']);\n";
+                        $sdkTestCode .= "        if (\$response['data'] === null && json_last_error() !== JSON_ERROR_NONE) {\n";
+                        $sdkTestCode .= "            \$this->fail('Payload failed to deserialize');\n";
                         $sdkTestCode .= "        }\n";
                         $sdkTestCode .= "    }\n\n";
                     }

@@ -16,6 +16,87 @@ function parse(string $json): array
     if (!is_array($data)) {
         throw new \RuntimeException('OpenAPI document must be a JSON object');
     }
+    if (isset($data['swagger']) && !isset($data['openapi'])) {
+        $data['openapi'] = '3.0.0';
+        if (isset($data['definitions'])) {
+            $data['components'] = ['schemas' => $data['definitions']];
+            unset($data['definitions']);
+        }
+        if (isset($data['paths'])) {
+            foreach ($data['paths'] as $path => &$pathItem) {
+                foreach ($pathItem as $method => &$operation) {
+                    if (in_array(strtolower($method), ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'])) {
+                        if (isset($operation['parameters'])) {
+                            $formData = [];
+                            foreach ($operation['parameters'] as $i => &$param) {
+                                if (isset($param['in']) && $param['in'] === 'body') {
+                                    $operation['requestBody'] = [
+                                        'content' => [
+                                            'application/json' => [
+                                                'schema' => $param['schema'] ?? []
+                                            ]
+                                        ],
+                                        'required' => $param['required'] ?? false
+                                    ];
+                                    unset($operation['parameters'][$i]);
+                                } else if (isset($param['in']) && $param['in'] === 'formData') {
+                                    $schema = ['type' => $param['type'] ?? 'string'];
+                                    if (isset($param['format'])) $schema['format'] = $param['format'];
+                                    $formData[$param['name']] = $schema;
+                                    unset($operation['parameters'][$i]);
+                                } else if (!isset($param['schema']) && isset($param['type'])) {
+                                    $param['schema'] = ['type' => $param['type']];
+                                    if (isset($param['format'])) $param['schema']['format'] = $param['format'];
+                                    if (isset($param['items'])) $param['schema']['items'] = $param['items'];
+                                    unset($param['type'], $param['format'], $param['items']);
+                                }
+                            }
+                            $operation['parameters'] = array_values($operation['parameters']);
+                            if (!empty($formData)) {
+                                $operation['requestBody'] = [
+                                    'content' => [
+                                        'application/x-www-form-urlencoded' => [
+                                            'schema' => [
+                                                'type' => 'object',
+                                                'properties' => $formData
+                                            ]
+                                        ]
+                                    ]
+                                ];
+                            }
+                        }
+                        if (isset($operation['responses'])) {
+                            foreach ($operation['responses'] as $code => &$response) {
+                                if (isset($response['schema'])) {
+                                    $response['content'] = [
+                                        'application/json' => [
+                                            'schema' => $response['schema']
+                                        ]
+                                    ];
+                                    unset($response['schema']);
+                                }
+                                if (isset($response['headers'])) {
+                                    foreach ($response['headers'] as $headerName => &$header) {
+                                        if (isset($header['type']) && !isset($header['schema'])) {
+                                            $header['schema'] = ['type' => $header['type']];
+                                            if (isset($header['format'])) $header['schema']['format'] = $header['format'];
+                                            unset($header['type'], $header['format']);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Also update $ref to point to components/schemas instead of definitions
+        $json = json_encode($data);
+        $json = str_replace('#/definitions/', '#/components/schemas/', $json);
+        $json = str_replace('#\/definitions\/', '#\/components\/schemas\/', $json);
+        $data = json_decode($json, true);
+    }
+
     // openapi (string) - REQUIRED
     if (!isset($data['openapi'])) {
         throw new \RuntimeException('Missing REQUIRED field "openapi" in OpenAPI Object');

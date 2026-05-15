@@ -24,7 +24,14 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     }
 
     $out .= "        \$ch = curl_init();\n";
-    $out .= "        \$url = \"{\$this->baseUrl}{$path}\";\n";
+    $out .= "        \$urlPath = '$path';\n";
+    $out .= "        foreach (\$params as \$k => \$v) {\n";
+    $out .= "            if (strpos(\$urlPath, '{' . \$k . '}') !== false) {\n";
+    $out .= "                \$urlPath = str_replace('{' . \$k . '}', urlencode((string)\$v), \$urlPath);\n";
+    $out .= "                unset(\$params[\$k]);\n";
+    $out .= "            }\n";
+    $out .= "        }\n";
+    $out .= "        \$url = \"{\$this->baseUrl}{\$urlPath}\";\n";
     
     $out .= "        if (!empty(\$params)) {\n";
     $out .= "            \$url .= '?' . http_build_query(\$params);\n";
@@ -46,14 +53,15 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     
     $out .= "        \$response = curl_exec(\$ch);\n";
     $out .= "        \$error = curl_error(\$ch);\n";
+    $out .= "        \$httpCode = curl_getinfo(\$ch, CURLINFO_HTTP_CODE);\n";
     $out .= "        curl_close(\$ch);\n";
-    
+
     $out .= "        if (\$error) {\n";
     $out .= "            throw new \\RuntimeException('cURL Error: ' . \$error);\n";
     $out .= "        }\n";
-    
-    $out .= "        return json_decode(\$response, true);\n";
-    $out .= "    }\n";
+
+    $out .= "        \$decoded = json_decode(\$response, true);\n";
+    $out .= "        return ['status' => \$httpCode, 'data' => \$decoded];\n";    $out .= "    }\n";
     
     return $out;
 }

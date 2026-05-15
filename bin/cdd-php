@@ -206,8 +206,8 @@ Content-Length: " . strlen($resBody) . "
         ];
 
         // If api_metadata.php exists, merge it
-        if (file_exists("$dir/api_metadata.php")) {
-            $metadata = include "$dir/api_metadata.php";
+        if (file_exists("$dir/src/api_metadata.php")) {
+            $metadata = include "$dir/src/api_metadata.php";
             if (is_array($metadata)) {
                 foreach (['info', 'jsonSchemaDialect', 'externalDocs', 'tags', 'security'] as $key) {
                     if (isset($metadata[$key])) {
@@ -218,8 +218,8 @@ Content-Length: " . strlen($resBody) . "
         }
         
         // If routes.php exists, parse it
-        if (file_exists("$dir/routes.php")) {
-            $code = file_get_contents("$dir/routes.php");
+        if (file_exists("$dir/src/routes.php")) {
+            $code = file_get_contents("$dir/src/routes.php");
             $routes = function_exists('\Cdd\Routes\parse') ? \Cdd\Routes\parse($code) : [];
             if (!empty($routes)) {
                 $openapi['paths'] = array_replace_recursive((array)$openapi['paths'], $routes);
@@ -227,16 +227,16 @@ Content-Length: " . strlen($resBody) . "
         }
 
         // If ApiClient.php exists, parse it and merge
-        if (file_exists("$dir/ApiClient.php")) {
-            $clientPaths = \Cdd\Client\parse(file_get_contents("$dir/ApiClient.php"));
+        if (file_exists("$dir/src/ApiClient.php")) {
+            $clientPaths = \Cdd\Client\parse(file_get_contents("$dir/src/ApiClient.php"));
             if (!empty($clientPaths)) {
                 $openapi['paths'] = array_replace_recursive((array)$openapi['paths'], $clientPaths);
             }
         }
 
         // If ApiController.php exists, parse it and merge into paths
-        if (file_exists("$dir/ApiController.php") && function_exists('\Cdd\Controllers\parse')) {
-            $controllerOps = \Cdd\Controllers\parse(file_get_contents("$dir/ApiController.php"));
+        if (file_exists("$dir/src/ApiController.php") && function_exists('\Cdd\Controllers\parse')) {
+            $controllerOps = \Cdd\Controllers\parse(file_get_contents("$dir/src/ApiController.php"));
             if (!empty($controllerOps) && isset($openapi['paths'])) {
                 foreach ($openapi['paths'] as $path => &$methods) {
                     foreach ($methods as $method => &$operation) {
@@ -250,8 +250,8 @@ Content-Length: " . strlen($resBody) . "
         }
         
         // If api_cli.php exists, parse it and merge into paths
-        if (file_exists("$dir/api_cli.php") && function_exists('\Cdd\Cli\parse')) {
-            $cliOps = \Cdd\Cli\parse(file_get_contents("$dir/api_cli.php"));
+        if (file_exists("$dir/src/api_cli.php") && function_exists('\Cdd\Cli\parse')) {
+            $cliOps = \Cdd\Cli\parse(file_get_contents("$dir/src/api_cli.php"));
             if (!empty($cliOps) && isset($openapi['paths'])) {
                 foreach ($openapi['paths'] as $path => &$methods) {
                     foreach ($methods as $method => &$operation) {
@@ -265,8 +265,8 @@ Content-Length: " . strlen($resBody) . "
         }
         
         // If Models.php exists, parse classes
-        if (file_exists("$dir/Models.php")) {
-            $code = file_get_contents("$dir/Models.php");
+        if (file_exists("$dir/src/Models.php")) {
+            $code = file_get_contents("$dir/src/Models.php");
                                     $classes = function_exists('\Cdd\Classes\parse') ? \Cdd\Classes\parse($code) : [];
             if (!empty($classes)) {
                 foreach ($classes as $c) {
@@ -447,8 +447,8 @@ Content-Length: " . strlen($resBody) . "
         }
 
         // If mocks.php exists, parse it
-        if (file_exists("$dir/mocks.php")) {
-            $mocks = \Cdd\Mocks\parse(file_get_contents("$dir/mocks.php"));
+        if (file_exists("$dir/src/mocks.php")) {
+            $mocks = \Cdd\Mocks\parse(file_get_contents("$dir/src/mocks.php"));
             if (!empty($mocks)) {
                 $openapi['components']['examples'] = $mocks;
                 // update schema to match mocks (if I edit a mock, update the rest to match)
@@ -482,8 +482,8 @@ Content-Length: " . strlen($resBody) . "
         }
         
         // If ApiServers.php exists, parse it
-        if (file_exists("$dir/ApiServers.php")) {
-            $parsedServers = \Cdd\Servers\parse(file_get_contents("$dir/ApiServers.php"));
+        if (file_exists("$dir/src/ApiServers.php")) {
+            $parsedServers = \Cdd\Servers\parse(file_get_contents("$dir/src/ApiServers.php"));
             if (!empty($parsedServers)) {
                 $openapi['servers'] = $parsedServers;
             }
@@ -498,8 +498,8 @@ Content-Length: " . strlen($resBody) . "
         }
         
         // If ApiTests.php exists, parse it
-        if (file_exists("$dir/ApiTests.php")) {
-            $tests = \Cdd\Tests\parse(file_get_contents("$dir/ApiTests.php"));
+        if (file_exists("$dir/src/ApiTests.php")) {
+            $tests = \Cdd\Tests\parse(file_get_contents("$dir/src/ApiTests.php"));
             // Tests mainly validate paths exist, or add extension tests. For now just verify.
         }
 
@@ -543,8 +543,8 @@ Content-Length: " . strlen($resBody) . "
         ];
         
         $dir = dirname($file);
-        if (file_exists("$dir/api_metadata.php")) {
-            $metadata = include "$dir/api_metadata.php";
+        if (file_exists("$dir/src/api_metadata.php")) {
+            $metadata = include "$dir/src/api_metadata.php";
             if (is_array($metadata)) {
                 foreach (['info', 'jsonSchemaDialect', 'externalDocs', 'tags', 'security'] as $key) {
                     if (isset($metadata[$key])) {
@@ -852,7 +852,7 @@ Content-Length: " . strlen($resBody) . "
             ]);
             if ($subcommand === 'to_sdk_cli') {
                 $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
-                file_put_contents("$dir/api_cli.php", $cliCode);
+                file_put_contents("$dir/src/api_cli.php", $cliCode);
             }
         } elseif ($inputDir !== '') {
             if (!is_dir($inputDir)) {
@@ -874,7 +874,7 @@ Content-Length: " . strlen($resBody) . "
             ]);
             if ($subcommand === 'to_sdk_cli') {
                 $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
-                file_put_contents("$dir/api_cli.php", $cliCode);
+                file_put_contents("$dir/src/api_cli.php", $cliCode);
             }
         }
         
