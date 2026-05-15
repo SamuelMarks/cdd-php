@@ -504,7 +504,8 @@ Content-Length: " . strlen($resBody) . "
         }
 
         // Emitting back to sync the project and OpenAPI json
-        $json = \Cdd\Openapi\emit($openapi, $dir);
+        $options = []; if (in_array("--swagger2", $argv)) { $options["target_version"] = "2.0"; }
+        $json = \Cdd\Openapi\emit($openapi, $dir, $options);
         file_put_contents("$dir/openapi.json", $json);
 
         echo "Synchronized codebase in $dir successfully.\n";
@@ -777,7 +778,8 @@ Content-Length: " . strlen($resBody) . "
         if (empty((array)$openapi['components'])) unset($openapi['components']); else { if (empty((array)$openapi['components']['schemas'])) unset($openapi['components']['schemas']); }
         
         
-        $outStr = json_encode($openapi, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        $options = []; if (in_array("--swagger2", $argv)) { $options["target_version"] = "2.0"; }
+        $outStr = \Cdd\Openapi\emit($openapi, null, $options) . "\n";
         if ($outFile !== '') {
             file_put_contents($outFile, $outStr);
             echo "Emitted OpenAPI to $outFile\n";
