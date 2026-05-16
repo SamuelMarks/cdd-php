@@ -19,6 +19,7 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     $operationId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
 
     $out = "    public function $operationId(array \$params = [], array \$body = []) {\n";
+    $out .= "        \$headers = \$this->defaultHeaders;\n";
 
     if (isset($operation['security'])) {
         $out .= \Cdd\Security\emit($operation['security']);
@@ -35,17 +36,44 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     $out .= "        \$url = \"{\$this->baseUrl}{\$urlPath}\";\n";
 
     $out .= "        if (!empty(\$params)) {\n";
-    $out .= "            \$url .= '?' . http_build_query(\$params);\n";
+    $out .= "            \$queryString = http_build_query(\$params);\n";
+    $out .= "            \$queryString = preg_replace('/%5B(?:[0-9]|[1-9][0-9]+)%5D=/', '=', \$queryString);\n";
+    $out .= "            \$url .= '?' . \$queryString;\n";
     $out .= "        }\n";
 
     $out .= "        curl_setopt(\$ch, CURLOPT_URL, \$url);\n";
     $out .= "        curl_setopt(\$ch, CURLOPT_RETURNTRANSFER, true);\n";
     $out .= "        curl_setopt(\$ch, CURLOPT_CUSTOMREQUEST, strtoupper('$method'));\n";
 
-    $out .= "        \$headers = [];\n";
+    $contentType = 'application/json';
+    if (isset($operation['requestBody']['content'])) {
+        $types = array_keys($operation['requestBody']['content']);
+        if (!empty($types)) {
+            $contentType = $types[0];
+        }
+    } else if (isset($operation['consumes']) && !empty($operation['consumes'])) {
+        $contentType = $operation['consumes'][0];
+    }
+
+    $out .= "        if (empty(\$body) && '$contentType' === 'multipart/form-data' && in_array(strtoupper('$method'), ['POST', 'PUT', 'PATCH'])) {\n";
+    $out .= "            \$body = ['dummy' => 'dummy'];\n";
+    $out .= "        }\n";
     $out .= "        if (!empty(\$body)) {\n";
-    $out .= "            curl_setopt(\$ch, CURLOPT_POSTFIELDS, json_encode(\$body));\n";
-    $out .= "            \$headers[] = 'Content-Type: application/json';\n";
+    $out .= "            if ('$contentType' === 'multipart/form-data') {\n";
+    $out .= "                curl_setopt(\$ch, CURLOPT_POSTFIELDS, \$body);\n";
+    $out .= "                // cURL sets the Content-Type with boundary automatically\n";
+    $out .= "            } else if ('$contentType' === 'application/x-www-form-urlencoded') {\n";
+    $out .= "                curl_setopt(\$ch, CURLOPT_POSTFIELDS, http_build_query(\$body));\n";
+    $out .= "                \$headers[] = 'Content-Type: application/x-www-form-urlencoded';\n";
+    $out .= "            } else {\n";
+    $out .= "                curl_setopt(\$ch, CURLOPT_POSTFIELDS, json_encode(\$body));\n";
+    $out .= "                \$headers[] = 'Content-Type: $contentType';\n";
+    $out .= "            }\n";
+    $out .= "        } else if (in_array(strtoupper('$method'), ['POST', 'PUT', 'PATCH'])) {\n";
+    $out .= "            // Force Content-Type header if no body but method expects it, EXCEPT for multipart where cURL handles boundary\n";
+    $out .= "            if ('$contentType' !== 'multipart/form-data') {\n";
+    $out .= "                \$headers[] = 'Content-Type: $contentType';\n";
+    $out .= "            }\n";
     $out .= "        }\n";
 
     $out .= "        if (!empty(\$headers)) {\n";
@@ -75,14 +103,31 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
  * @param string $existingCode Existing PHP code
  * @return string The generated PHP Client code
  */
-function emit_class(array $paths, string $existingCode = ''): string
+function emit_class(array $paths, string $existingCode = '', array $securityDefinitions = []): string
 {
     if ($existingCode !== '') {
         $out = $existingCode;
     } else {
-        $out = "<?php\n\nnamespace Api;\n\nclass ApiClient {\n    private \$baseUrl;\n\n    public function __construct(string \$baseUrl) {\n        \$this->baseUrl = \$baseUrl;\n    }\n\n";
-        $out .= "    protected function requireSecurity(string \$name, array \$scopes = []) {\n";
-        $out .= "        // Base security requirement mock\n";
+        $out = "<?php\n\nnamespace Api;\n\nclass ApiClient {\n    private \$baseUrl;\n    private \$defaultHeaders = [];\n    private \$apiKeys = [];\n    private \$bearerTokens = [];\n\n    public function __construct(string \$baseUrl, array \$defaultHeaders = []) {\n        \$this->baseUrl = \$baseUrl;\n        \$this->defaultHeaders = \$defaultHeaders;\n    }\n\n    public function setApiKey(string \$name, string \$key) {\n        \$this->apiKeys[\$name] = \$key;\n    }\n\n    public function setBearerToken(string \$name, string \$token) {\n        \$this->bearerTokens[\$name] = \$token;\n    }\n\n";
+        $out .= "    protected function requireSecurity(string \$name, array \$scopes = [], array &\$headers = [], array &\$params = []) {\n";
+        $secDefCode = var_export($securityDefinitions, true);
+        $out .= "        \$secDefs = $secDefCode;\n";
+        $out .= "        \$def = \$secDefs[\$name] ?? null;\n";
+        $out .= "        if (\$def && isset(\$this->apiKeys[\$name])) {\n";
+        $out .= "            if (\$def['type'] === 'apiKey') {\n";
+        $out .= "                \$keyName = \$def['name'];\n";
+        $out .= "                if (\$def['in'] === 'header') {\n";
+        $out .= "                    \$headers[] = \$keyName . ': ' . \$this->apiKeys[\$name];\n";
+        $out .= "                } elseif (\$def['in'] === 'query') {\n";
+        $out .= "                    \$params[\$keyName] = \$this->apiKeys[\$name];\n";
+        $out .= "                }\n";
+        $out .= "            }\n";
+        $out .= "        } elseif (!\$def && isset(\$this->apiKeys[\$name])) {\n";
+        $out .= "            \$headers[] = \$name . ': ' . \$this->apiKeys[\$name];\n";
+        $out .= "        }\n";
+        $out .= "        if (isset(\$this->bearerTokens[\$name])) {\n";
+        $out .= "            \$headers[] = 'Authorization: Bearer ' . \$this->bearerTokens[\$name];\n";
+        $out .= "        }\n";
         $out .= "    }\n\n}\n";
     }
 

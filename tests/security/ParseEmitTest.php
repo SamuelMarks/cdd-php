@@ -16,7 +16,7 @@ class ParseEmitTest extends TestCase
         $this->assertEquals('read', $sec[1]['oauth'][0]);
 
         $emitted = \Cdd\Security\emit($sec);
-        $this->assertTrue(strpos($emitted, "requireSecurity('api_key', [])") !== false);
-        $this->assertTrue(strpos($emitted, "requireSecurity('oauth', ['read', 'write'])") !== false);
+        $this->assertTrue(strpos($emitted, "requireSecurity('api_key', [], \$headers, \$params)") !== false);
+        $this->assertTrue(strpos($emitted, "requireSecurity('oauth', ['read', 'write'], \$headers, \$params)") !== false);
     }
 }

@@ -63,7 +63,8 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             file_put_contents("$srcDir/routes.php", $routeCode);
 
             // Client generation
-            $clientCode = \Cdd\Client\emit_class($openapi['paths'], file_exists("$srcDir/ApiClient.php") ? file_get_contents("$srcDir/ApiClient.php") : '');
+            $securityDefinitions = $openapi['securityDefinitions'] ?? ($openapi['components']['securitySchemes'] ?? []);
+            $clientCode = \Cdd\Client\emit_class($openapi['paths'], file_exists("$srcDir/ApiClient.php") ? file_get_contents("$srcDir/ApiClient.php") : '', $securityDefinitions);
             file_put_contents("$srcDir/ApiClient.php", $clientCode);
         }
 
@@ -121,7 +122,11 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             $sdkTestCode = "<?php\n\nuse PHPUnit\\Framework\\TestCase;\nuse Api\\ApiClient;\n\nclass SdkIntegrationTest extends TestCase {\n";
             $sdkTestCode .= "    private \$client;\n\n";
             $sdkTestCode .= "    protected function setUp(): void {\n";
-            $sdkTestCode .= "        \$this->client = new ApiClient('http://localhost:8080/v2');\n";
+            $baseUrl = 'http://localhost:8080/v2';
+            $sdkTestCode .= "        \$this->client = new ApiClient('$baseUrl');\n";
+            $sdkTestCode .= "        \$this->client->setApiKey('api_key', 'special-key');\n";
+            $sdkTestCode .= "        \$this->client->setBearerToken('petstore_auth', 'special-key');\n";
+            $sdkTestCode .= "        file_put_contents(sys_get_temp_dir() . '/dummy.txt', 'dummy content');\n";
             $sdkTestCode .= "    }\n\n";
 
             if (isset($openapi['paths'])) {
@@ -146,6 +151,9 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                                     $schema = $openapi['components']['schemas'][$refName];
                                 }
                             }
+                            if (isset($schema['enum']) && !empty($schema['enum'])) {
+                                return $schema['enum'][0];
+                            }
                             $type = $schema['type'] ?? 'string';
                             if ($type === 'object' || isset($schema['properties'])) {
                                 $obj = [];
@@ -158,11 +166,14 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                                 }
                                 return $obj;
                             } elseif ($type === 'array') {
-                                return [$getDummy($schema['items'] ?? [])];
+                                $item = $getDummy($schema['items'] ?? []);
+                                return [$item, $item];
                             } elseif ($type === 'integer' || $type === 'number') {
                                 return 1;
                             } elseif ($type === 'boolean') {
                                 return true;
+                            } elseif ($type === 'string' && isset($schema['format']) && $schema['format'] === 'date-time') {
+                                return date('Y-m-d\TH:i:s.000\Z');
                             }
                             return "test_string";
                         };
@@ -195,15 +206,31 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                             } else {
                                 $dummyBody = $res;
                             }
+                        } elseif (isset($operation['requestBody']['content']['multipart/form-data']['schema'])) {
+                            $res = $getDummy($operation['requestBody']['content']['multipart/form-data']['schema']);
+                            if (!is_array($res)) {
+                                $dummyBody = ["dummy" => $res];
+                            } else {
+                                $dummyBody = $res;
+                            }
+                            foreach ($operation['requestBody']['content']['multipart/form-data']['schema']['properties'] ?? [] as $prop => $propDef) {
+                                if (($propDef['type'] ?? '') === 'file' || ($propDef['format'] ?? '') === 'binary') {
+                                    $dummyBody[$prop] = '___CURLFILE_PLACEHOLDER___';
+                                }
+                            }
                         }
 
                         $paramsStr = empty($dummyParams) ? "[]" : var_export($dummyParams, true);
                         $bodyStr = empty($dummyBody) ? "[]" : var_export($dummyBody, true);
+                        $bodyStr = str_replace("'___CURLFILE_PLACEHOLDER___'", "new \CURLFile(sys_get_temp_dir() . '/dummy.txt', '', 'dummy.txt')", $bodyStr);
 
                         $sdkTestCode .= "        \$response = \$this->client->{$opId}($paramsStr, $bodyStr);\n";
                         $sdkTestCode .= "        \$this->assertTrue(\$response['status'] >= 200 && \$response['status'] < 300, 'Invalid HTTP Status Code: ' . \$response['status']);\n";
                         $sdkTestCode .= "        if (\$response['data'] === null && json_last_error() !== JSON_ERROR_NONE) {\n";
                         $sdkTestCode .= "            \$this->fail('Payload failed to deserialize');\n";
+                        $sdkTestCode .= "        }\n";
+                        $sdkTestCode .= "        if (is_array(\$response['data']) && isset(\$response['data']['sabotage'])) {\n";
+                        $sdkTestCode .= "            \$this->fail('Invalid schema detected');\n";
                         $sdkTestCode .= "        }\n";
                         $sdkTestCode .= "    }\n\n";
                     }

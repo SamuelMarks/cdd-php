@@ -119,3 +119,8 @@ wasi-vfs
 /spec.json
 /test*.php
 .php-cs-fixer.cache
+*.py
+out_*/
+-vvv/
+petstore*.json
+petstore*.yaml
