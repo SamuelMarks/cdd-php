@@ -1,6 +1,7 @@
 <?php
 
-class ApiController {
+class ApiController
+{
     /**
      * Update an existing pet.
      *
@@ -8,7 +9,8 @@ class ApiController {
      *
      * @tags pet
      */
-    public function updatePet(Pet $body): Pet {
+    public function updatePet(Pet $body): Pet
+    {
         // Implementation
     }
 
@@ -19,7 +21,8 @@ class ApiController {
      *
      * @tags pet
      */
-    public function addPet(Pet $body): Pet {
+    public function addPet(Pet $body): Pet
+    {
         // Implementation
     }
 
@@ -30,7 +33,8 @@ class ApiController {
      *
      * @tags pet
      */
-    public function findPetsByStatus(string $status): array {
+    public function findPetsByStatus(string $status): array
+    {
         // Implementation
     }
 
@@ -41,7 +45,8 @@ class ApiController {
      *
      * @tags pet
      */
-    public function findPetsByTags(array $tags): array {
+    public function findPetsByTags(array $tags): array
+    {
         // Implementation
     }
 
@@ -52,7 +57,8 @@ class ApiController {
      *
      * @tags pet
      */
-    public function getPetById(int $petId): Pet {
+    public function getPetById(int $petId): Pet
+    {
         // Implementation
     }
 
@@ -63,7 +69,8 @@ class ApiController {
      *
      * @tags pet
      */
-    public function updatePetWithForm(int $petId, ?string $name, ?string $status): Pet {
+    public function updatePetWithForm(int $petId, ?string $name, ?string $status): Pet
+    {
         // Implementation
     }
 
@@ -74,7 +81,8 @@ class ApiController {
      *
      * @tags pet
      */
-    public function deletePet(?string $api_key, int $petId) {
+    public function deletePet(?string $api_key, int $petId)
+    {
         // Implementation
     }
 
@@ -85,7 +93,8 @@ class ApiController {
      *
      * @tags pet
      */
-    public function uploadFile(int $petId, ?string $additionalMetadata, $body): ApiResponse {
+    public function uploadFile(int $petId, ?string $additionalMetadata, $body): ApiResponse
+    {
         // Implementation
     }
 
@@ -96,7 +105,8 @@ class ApiController {
      *
      * @tags store
      */
-    public function getInventory(): object {
+    public function getInventory(): object
+    {
         // Implementation
     }
 
@@ -107,7 +117,8 @@ class ApiController {
      *
      * @tags store
      */
-    public function placeOrder(?Order $body): Order {
+    public function placeOrder(?Order $body): Order
+    {
         // Implementation
     }
 
@@ -118,7 +129,8 @@ class ApiController {
      *
      * @tags store
      */
-    public function getOrderById(int $orderId): Order {
+    public function getOrderById(int $orderId): Order
+    {
         // Implementation
     }
 
@@ -129,7 +141,8 @@ class ApiController {
      *
      * @tags store
      */
-    public function deleteOrder(int $orderId) {
+    public function deleteOrder(int $orderId)
+    {
         // Implementation
     }
 
@@ -140,7 +153,8 @@ class ApiController {
      *
      * @tags user
      */
-    public function createUser(?User $body): User {
+    public function createUser(?User $body): User
+    {
         // Implementation
     }
 
@@ -151,7 +165,8 @@ class ApiController {
      *
      * @tags user
      */
-    public function createUsersWithListInput(?array $body): User {
+    public function createUsersWithListInput(?array $body): User
+    {
         // Implementation
     }
 
@@ -162,7 +177,8 @@ class ApiController {
      *
      * @tags user
      */
-    public function loginUser(?string $username, ?string $password): string {
+    public function loginUser(?string $username, ?string $password): string
+    {
         // Implementation
     }
 
@@ -173,7 +189,8 @@ class ApiController {
      *
      * @tags user
      */
-    public function logoutUser() {
+    public function logoutUser()
+    {
         // Implementation
     }
 
@@ -184,7 +201,8 @@ class ApiController {
      *
      * @tags user
      */
-    public function getUserByName(string $username): User {
+    public function getUserByName(string $username): User
+    {
         // Implementation
     }
 
@@ -195,7 +213,8 @@ class ApiController {
      *
      * @tags user
      */
-    public function updateUser(string $username, ?User $body) {
+    public function updateUser(string $username, ?User $body)
+    {
         // Implementation
     }
 
@@ -206,7 +225,8 @@ class ApiController {
      *
      * @tags user
      */
-    public function deleteUser(string $username) {
+    public function deleteUser(string $username)
+    {
         // Implementation
     }
 

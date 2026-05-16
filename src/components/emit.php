@@ -11,9 +11,10 @@ namespace Cdd\Components;
  * @param string $existingCode Existing PHP code
  * @return string The generated code for the components
  */
-function emit(array $components, string $existingCode = ''): string {
+function emit(array $components, string $existingCode = ''): string
+{
     $out = $existingCode !== '' ? $existingCode : "<?php\n\n";
-    
+
     if (isset($components['schemas'])) {
         foreach ($components['schemas'] as $schemaName => $schemaDef) {
             if (strpos($out, "class $schemaName ") === false && strpos($out, "class $schemaName\n") === false) {
@@ -21,7 +22,7 @@ function emit(array $components, string $existingCode = ''): string {
             }
         }
     }
-    
+
     $types = [
         'parameters' => '@parameter',
         'responses' => '@response',
@@ -33,7 +34,7 @@ function emit(array $components, string $existingCode = ''): string {
         'links' => '@link',
         'mediaTypes' => '@mediaType'
     ];
-    
+
     foreach ($types as $compType => $docTag) {
         if (isset($components[$compType])) {
             foreach ($components[$compType] as $name => $compDef) {
@@ -42,14 +43,26 @@ function emit(array $components, string $existingCode = ''): string {
                     if ($compType === 'parameters') {
                         $doc .= " * @in " . ($compDef['in'] ?? 'query') . "\n";
                         $doc .= " * @name " . ($compDef['name'] ?? $name) . "\n";
-                        if (!empty($compDef['required'])) $doc .= " * @required true\n";
+                        if (!empty($compDef['required'])) {
+                            $doc .= " * @required true\n";
+                        }
                     } elseif ($compType === 'securitySchemes') {
                         $doc .= " * @type " . ($compDef['type'] ?? 'http') . "\n";
-                        if (isset($compDef['scheme'])) $doc .= " * @scheme " . $compDef['scheme'] . "\n";
-                        if (isset($compDef['in'])) $doc .= " * @in " . $compDef['in'] . "\n";
-                        if (isset($compDef['name'])) $doc .= " * @name " . $compDef['name'] . "\n";
-                        if (isset($compDef['bearerFormat'])) $doc .= " * @bearerFormat " . $compDef['bearerFormat'] . "\n";
-                        if (isset($compDef['openIdConnectUrl'])) $doc .= " * @openIdConnectUrl " . $compDef['openIdConnectUrl'] . "\n";
+                        if (isset($compDef['scheme'])) {
+                            $doc .= " * @scheme " . $compDef['scheme'] . "\n";
+                        }
+                        if (isset($compDef['in'])) {
+                            $doc .= " * @in " . $compDef['in'] . "\n";
+                        }
+                        if (isset($compDef['name'])) {
+                            $doc .= " * @name " . $compDef['name'] . "\n";
+                        }
+                        if (isset($compDef['bearerFormat'])) {
+                            $doc .= " * @bearerFormat " . $compDef['bearerFormat'] . "\n";
+                        }
+                        if (isset($compDef['openIdConnectUrl'])) {
+                            $doc .= " * @openIdConnectUrl " . $compDef['openIdConnectUrl'] . "\n";
+                        }
                         if (isset($compDef['flows'])) {
                             foreach ($compDef['flows'] as $flowType => $flow) {
                                 $doc .= " * @flow {$flowType} " . json_encode($flow) . "\n";
@@ -61,14 +74,14 @@ function emit(array $components, string $existingCode = ''): string {
                         }
                     }
                     $doc .= " */\n";
-                    
+
                     $schemaDef = [];
                     if (isset($compDef['schema'])) {
                         $schemaDef = $compDef['schema'];
                     } elseif (isset($compDef['content']['application/json']['schema'])) {
                         $schemaDef = $compDef['content']['application/json']['schema'];
                     }
-                    
+
                     // We emit the class with properties if it has a schema
                     if (!empty($schemaDef)) {
                         $classCode = \Cdd\Schemas\emit($name, $schemaDef);
@@ -81,6 +94,6 @@ function emit(array $components, string $existingCode = ''): string {
             }
         }
     }
-    
+
     return $out;
 }

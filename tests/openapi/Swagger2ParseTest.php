@@ -2,8 +2,10 @@
 
 namespace Cdd\Tests\Openapi;
 
-class Swagger2ParseTest extends \Cdd\Tests\Framework\TestCase {
-    public function testParseSwagger2() {
+class Swagger2ParseTest extends \Cdd\Tests\Framework\TestCase
+{
+    public function testParseSwagger2()
+    {
         $json = '{
             "swagger": "2.0",
             "info": {
@@ -84,7 +86,7 @@ class Swagger2ParseTest extends \Cdd\Tests\Framework\TestCase {
                 }
             }
         }';
-        
+
         $parsed = \Cdd\Openapi\parse($json);
         $this->assertEquals('3.2.0', $parsed['openapi']);
         $this->assertEquals('http://petstore.swagger.io/v1', $parsed['servers'][0]['url']);

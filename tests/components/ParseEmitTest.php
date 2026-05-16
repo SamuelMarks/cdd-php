@@ -6,8 +6,10 @@ namespace Cdd\Tests\Components;
 
 use Cdd\Tests\Framework\TestCase;
 
-class ParseEmitTest extends TestCase {
-    public function testParseAndEmit() {
+class ParseEmitTest extends TestCase
+{
+    public function testParseAndEmit()
+    {
         $schemas = [
             'User' => [
                 'type' => 'object',
@@ -17,16 +19,17 @@ class ParseEmitTest extends TestCase {
                 'required' => ['id'],
             ],
         ];
-        
+
         $components = \Cdd\Components\parse($schemas);
         $this->assertEquals(1, count($components['schemas']));
-        
+
         $emitted = \Cdd\Components\emit($components);
         $this->assertTrue(strpos($emitted, 'class User extends \Illuminate\Database\Eloquent\Model {') !== false);
         $this->assertTrue(strpos($emitted, "'id',") !== false);
     }
 
-    public function testEmitWithExistingCode() {
+    public function testEmitWithExistingCode()
+    {
         $components = [
             'schemas' => [
                 'NewUser' => [
@@ -45,7 +48,8 @@ class ParseEmitTest extends TestCase {
         $this->assertTrue(strpos($emitted, "'id',") !== false);
     }
 
-    public function testEmitOtherComponents() {
+    public function testEmitOtherComponents()
+    {
         $components = [
             'parameters' => [
                 'LimitParam' => [
@@ -77,15 +81,15 @@ class ParseEmitTest extends TestCase {
         ];
 
         $emitted = \Cdd\Components\emit($components);
-        
+
         $this->assertTrue(strpos($emitted, '@parameter') !== false);
         $this->assertTrue(strpos($emitted, '@in query') !== false);
         $this->assertTrue(strpos($emitted, 'class LimitParam') !== false);
-        
+
         $this->assertTrue(strpos($emitted, '@securityScheme') !== false);
         $this->assertTrue(strpos($emitted, '@type http') !== false);
         $this->assertTrue(strpos($emitted, 'class BearerAuth') !== false);
-        
+
         $this->assertTrue(strpos($emitted, '@response') !== false);
         $this->assertTrue(strpos($emitted, 'A generic error response') !== false);
         $this->assertTrue(strpos($emitted, 'class ErrorResponse') !== false);

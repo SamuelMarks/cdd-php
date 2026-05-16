@@ -1,4 +1,5 @@
 <?php
 
-class ApiServers {
+class ApiServers
+{
 }

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Bundles a payload file into a WebAssembly module as a custom section.
  */
@@ -29,7 +30,8 @@ $name_len = strlen($name);
  * @param int $value The integer to encode.
  * @return string The LEB128 encoded binary string.
  */
-function encode_leb128_u($value) {
+function encode_leb128_u($value)
+{
     $result = '';
     do {
         $byte = $value & 0x7F;
@@ -56,4 +58,3 @@ $section = chr(0) . $section_size_leb . $section_content;
 file_put_contents($wasm_file, $section, FILE_APPEND);
 
 echo "Custom section appended successfully.\n";
-

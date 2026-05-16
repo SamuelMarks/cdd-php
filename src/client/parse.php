@@ -17,9 +17,10 @@ use PhpParser\Node\Name;
 /**
  * Parses client PHP code to extract operations.
  */
-function parse(string $clientCode): array {
+function parse(string $clientCode): array
+{
     $operations = [];
-    $parser = (new ParserFactory)->createForNewestSupportedVersion();
+    $parser = (new ParserFactory())->createForNewestSupportedVersion();
     try {
         $stmts = $parser->parse($clientCode);
     } catch (\Throwable $e) {

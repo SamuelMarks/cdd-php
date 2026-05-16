@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 declare (strict_types=1);
+
 namespace Cdd\Mocks;
 
 use PhpParser\ParserFactory;
 use PhpParser\NodeFinder;
 use PhpParser\Node\Expr\Array_;
 use PhpParser\Node\Stmt\Return_;
+
 /**
  * Parses mock code to extract Example Objects.
  * @param string $mockCode Code to parse.

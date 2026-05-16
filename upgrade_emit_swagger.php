@@ -126,4 +126,3 @@ REPLACEMENT;
 array_splice($lines, $start, 1, [$replacement]);
 file_put_contents('src/openapi/emit.php', implode("", $lines));
 echo "Done replacing emit.";
-

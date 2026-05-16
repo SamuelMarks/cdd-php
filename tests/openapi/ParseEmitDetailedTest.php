@@ -6,8 +6,10 @@ namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
-class ParseEmitDetailedTest extends TestCase {
-    public function testPathsObjectInvalid() {
+class ParseEmitDetailedTest extends TestCase
+{
+    public function testPathsObjectInvalid()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":"invalid"}');
             throw new \Exception('Expected exception not thrown');
@@ -16,7 +18,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testPathsObjectKeysWithoutSlash() {
+    public function testPathsObjectKeysWithoutSlash()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"no-slash":{}}}');
             throw new \Exception('Expected exception not thrown');
@@ -25,7 +28,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testPathItemObjectInvalid() {
+    public function testPathItemObjectInvalid()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":"invalid"}}');
             throw new \Exception('Expected exception not thrown');
@@ -34,7 +38,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testOperationObjectInvalid() {
+    public function testOperationObjectInvalid()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":"invalid"}}}');
             throw new \Exception('Expected exception not thrown');
@@ -43,7 +48,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testOperationObjectTags() {
+    public function testOperationObjectTags()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"tags":[123]}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -52,7 +58,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testOperationObjectRequestBody() {
+    public function testOperationObjectRequestBody()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"requestBody":"invalid"}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -61,7 +68,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testOperationObjectRequestBodyNoContent() {
+    public function testOperationObjectRequestBodyNoContent()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"requestBody":{}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -70,7 +78,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testParameterMissingName() {
+    public function testParameterMissingName()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{}]}}}');
             throw new \Exception('Expected exception not thrown');
@@ -79,7 +88,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testParameterMissingIn() {
+    public function testParameterMissingIn()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id"}]}}}');
             throw new \Exception('Expected exception not thrown');
@@ -88,7 +98,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testParameterInvalidIn() {
+    public function testParameterInvalidIn()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"body"}]}}}');
             throw new \Exception('Expected exception not thrown');
@@ -97,7 +108,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testParameterPathMissingRequired() {
+    public function testParameterPathMissingRequired()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"path","required":false}]}}}');
             throw new \Exception('Expected exception not thrown');
@@ -106,7 +118,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testParameterBothSchemaContent() {
+    public function testParameterBothSchemaContent()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query","schema":{},"content":{}}]}}}');
             throw new \Exception('Expected exception not thrown');
@@ -115,7 +128,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testParameterNeitherSchemaContent() {
+    public function testParameterNeitherSchemaContent()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query"}]}}}');
             throw new \Exception('Expected exception not thrown');
@@ -123,7 +137,8 @@ class ParseEmitDetailedTest extends TestCase {
             $this->assertTrue(strpos($e->getMessage(), 'Parameter must contain either "schema" or "content"') !== false);
         }
     }
-    public function testParameterExampleExamples() {
+    public function testParameterExampleExamples()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query","schema":{},"example":1,"examples":{"a":{}}}]}}}');
             throw new \Exception('Expected exception not thrown');
@@ -132,7 +147,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testParameterAllowEmptyValueNotQuery() {
+    public function testParameterAllowEmptyValueNotQuery()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"header","schema":{},"allowEmptyValue":true}]}}}');
             throw new \Exception('Expected exception not thrown');
@@ -141,7 +157,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testParameterQuerystringWithSchemaFields() {
+    public function testParameterQuerystringWithSchemaFields()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"querystring","schema":{},"style":"form"}]}}}');
             throw new \Exception('Expected exception not thrown');
@@ -150,7 +167,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testHeaderExampleExamples() {
+    public function testHeaderExampleExamples()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"MyHeader":{"schema":{},"example":1,"examples":{"a":{}}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -159,7 +177,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testEncodingMutualExclusivity() {
+    public function testEncodingMutualExclusivity()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"mediaTypes":{"MyMediaType":{"schema":{},"encoding":{"a":{}},"prefixEncoding":[{}]}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -168,7 +187,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testOperationQueryQuerystringMutualExclusivity() {
+    public function testOperationQueryQuerystringMutualExclusivity()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"parameters":[{"name":"a","in":"query","schema":{}},{"name":"b","in":"querystring","content":{}}]}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -177,7 +197,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testOperationMultipleQuerystring() {
+    public function testOperationMultipleQuerystring()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"parameters":[{"name":"a","in":"querystring","content":{}},{"name":"b","in":"querystring","content":{}}]}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -186,7 +207,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testResponsesObjectInvalidKeys() {
+    public function testResponsesObjectInvalidKeys()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"invalid":{"description":"ok"}}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -195,12 +217,14 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testResponsesObjectValidKeys() {
+    public function testResponsesObjectValidKeys()
+    {
         $parsed = \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"},"3XX":{"description":"redirect"},"default":{"description":"default"},"x-custom":{}}}}}}');
         $this->assertEquals('ok', $parsed['paths']['/a']['get']['responses']['200']['description']);
     }
 
-    public function testSecuritySchemeOauth2ImplicitRequiresAuthUrl() {
+    public function testSecuritySchemeOauth2ImplicitRequiresAuthUrl()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"o":{"type":"oauth2","flows":{"implicit":{"scopes":{}}}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -209,7 +233,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testSecuritySchemeOauth2PasswordRequiresTokenUrl() {
+    public function testSecuritySchemeOauth2PasswordRequiresTokenUrl()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"o":{"type":"oauth2","flows":{"password":{"scopes":{}}}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -218,7 +243,8 @@ class ParseEmitDetailedTest extends TestCase {
         }
     }
 
-    public function testSecuritySchemeOauth2Valid() {
+    public function testSecuritySchemeOauth2Valid()
+    {
         $parsed = \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"o":{"type":"oauth2","flows":{"implicit":{"authorizationUrl":"http://a","scopes":{}},"password":{"tokenUrl":"http://b","scopes":{}}}}}}}');
         $this->assertEquals('http://a', $parsed['components']['securitySchemes']['o']['flows']['implicit']['authorizationUrl']);
     }

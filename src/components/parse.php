@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 declare (strict_types=1);
+
 namespace Cdd\Components;
 
 /**
@@ -35,18 +36,18 @@ function validateComponentsObject(mixed $components): void
     if (!is_array($components)) {
         throw new \RuntimeException('Field "components" must be an object');
     }
-        $validKeys = [
-        'schemas' => '\Cdd\Schemas\validateSchemaOrReferenceObject',
-        'responses' => '\Cdd\Responses\validateResponseOrReferenceObject',
-        'parameters' => '\Cdd\Parameters\validateParameterOrReferenceObject',
-        'examples' => '\Cdd\Mocks\validateExampleOrReferenceObject',
-        'requestBodies' => '\Cdd\RequestBodies\validateRequestBodyOrReferenceObject',
-        'headers' => '\Cdd\Responses\validateHeaderOrReferenceObject',
-        'securitySchemes' => '\Cdd\Security\validateSecuritySchemeOrReferenceObject',
-        'links' => '\Cdd\Responses\validateLinkOrReferenceObject',
-        'callbacks' => '\Cdd\Operations\validateCallbackOrReferenceObject',
-        'pathItems' => '\Cdd\Paths\validatePathItemObject',
-        'mediaTypes' => '\Cdd\Encoding\validateMediaTypeOrReferenceObject'
+    $validKeys = [
+    'schemas' => '\Cdd\Schemas\validateSchemaOrReferenceObject',
+    'responses' => '\Cdd\Responses\validateResponseOrReferenceObject',
+    'parameters' => '\Cdd\Parameters\validateParameterOrReferenceObject',
+    'examples' => '\Cdd\Mocks\validateExampleOrReferenceObject',
+    'requestBodies' => '\Cdd\RequestBodies\validateRequestBodyOrReferenceObject',
+    'headers' => '\Cdd\Responses\validateHeaderOrReferenceObject',
+    'securitySchemes' => '\Cdd\Security\validateSecuritySchemeOrReferenceObject',
+    'links' => '\Cdd\Responses\validateLinkOrReferenceObject',
+    'callbacks' => '\Cdd\Operations\validateCallbackOrReferenceObject',
+    'pathItems' => '\Cdd\Paths\validatePathItemObject',
+    'mediaTypes' => '\Cdd\Encoding\validateMediaTypeOrReferenceObject'
     ];
     foreach ($validKeys as $key => $validator) {
         if (isset($components[$key])) {

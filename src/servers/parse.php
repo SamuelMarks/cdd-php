@@ -15,8 +15,9 @@ use PhpParser\Node\Scalar\String_;
  * @param string $code
  * @return array
  */
-function parse(string $code): array {
-    $parser = (new ParserFactory)->createForNewestSupportedVersion();
+function parse(string $code): array
+{
+    $parser = (new ParserFactory())->createForNewestSupportedVersion();
     try {
         $stmts = $parser->parse($code);
     } catch (\Throwable $e) {
@@ -35,7 +36,7 @@ function parse(string $code): array {
             if ($valueNode instanceof String_) {
                 $url = $valueNode->value;
                 $server = ['url' => $url];
-                
+
                 $docComment = $prop->getDocComment();
                 if ($docComment) {
                     $docText = trim(str_replace(['/**', '*/', '*'], '', $docComment->getText()));
@@ -43,7 +44,7 @@ function parse(string $code): array {
                         $server['description'] = $docText;
                     }
                 }
-                
+
                 $servers[] = $server;
             }
         }

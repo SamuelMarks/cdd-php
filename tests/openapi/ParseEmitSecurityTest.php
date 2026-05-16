@@ -6,8 +6,10 @@ namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
-class ParseEmitSecurityTest extends TestCase {
-    public function testParseSecurityDeviceAuthorization() {
+class ParseEmitSecurityTest extends TestCase
+{
+    public function testParseSecurityDeviceAuthorization()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },
@@ -33,7 +35,8 @@ class ParseEmitSecurityTest extends TestCase {
         $this->assertEquals("https://example.com/device", $parsed['components']['securitySchemes']['oauth2']['flows']['deviceAuthorization']['deviceAuthorizationUrl']);
     }
 
-    public function testParseSecurityDeviceAuthorizationInvalid() {
+    public function testParseSecurityDeviceAuthorizationInvalid()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },
@@ -60,7 +63,8 @@ class ParseEmitSecurityTest extends TestCase {
         }
     }
 
-    public function testParseSecurityMutualTLS() {
+    public function testParseSecurityMutualTLS()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },
@@ -77,7 +81,8 @@ class ParseEmitSecurityTest extends TestCase {
         $this->assertEquals("mutualTLS", $parsed['components']['securitySchemes']['mtls']['type']);
     }
 
-    public function testParseSecurityOAuth2Metadata() {
+    public function testParseSecurityOAuth2Metadata()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },

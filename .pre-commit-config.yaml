@@ -1,10 +1,42 @@
+exclude: ^(-vvv/|out_.*|build/|vendor/)
 repos:
-
   - repo: local
     hooks:
+      - id: build
+        name: Build
+        entry: make build
+        language: system
+        pass_filenames: false
+
+      - id: format-fix
+        name: Auto-fix formatting
+        entry: vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --allow-risky=yes --using-cache=no -q --
+        language: system
+        types: [php]
+        pass_filenames: true
+
+      - id: format-check
+        name: Check code formatting
+        entry: vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --allow-risky=yes --using-cache=no -q --
+        language: system
+        types: [php]
+        pass_filenames: true
+
+      - id: lint
+        name: Lint PHP code
+        entry: bash -c 'for file in "$@"; do php -l "$file" > /dev/null || exit 1; done' --
+        language: system
+        types: [php]
+        pass_filenames: true
+
+      - id: test
+        name: Run tests
+        entry: make test
+        language: system
+        pass_filenames: false
+
       - id: update-badges
         name: Update Badges
         entry: python3 scripts/update_badges.py
         language: system
-        files: ^README\.md$
         pass_filenames: false

@@ -7,7 +7,8 @@ namespace Cdd\Security;
 /**
  * Emits PHP middleware logic representation for Security Requirement Objects.
  */
-function emit(array $security): string {
+function emit(array $security): string
+{
     $out = "    // Security Requirements
 ";
     foreach ($security as $req) {

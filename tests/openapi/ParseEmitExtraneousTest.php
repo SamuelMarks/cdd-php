@@ -6,9 +6,10 @@ namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
-class ParseEmitExtraneousTest extends TestCase {
-
-    public function testHeaderObjectNoNameInAllowEmptyValue() {
+class ParseEmitExtraneousTest extends TestCase
+{
+    public function testHeaderObjectNoNameInAllowEmptyValue()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"H1":{"name":"test","schema":{}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -38,7 +39,8 @@ class ParseEmitExtraneousTest extends TestCase {
         }
     }
 
-    public function testResponsesObjectNotEmpty() {
+    public function testResponsesObjectNotEmpty()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/p":{"get":{"responses":{}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -47,7 +49,8 @@ class ParseEmitExtraneousTest extends TestCase {
         }
     }
 
-    public function testXmlObjectMutuallyExclusive() {
+    public function testXmlObjectMutuallyExclusive()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":{"S1":{"xml":{"nodeType":"element","attribute":true}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -63,7 +66,8 @@ class ParseEmitExtraneousTest extends TestCase {
         }
     }
 
-    public function testDuplicatePathVariables() {
+    public function testDuplicatePathVariables()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/{id}/user/{id}":{}}}');
             throw new \Exception('Expected exception not thrown');

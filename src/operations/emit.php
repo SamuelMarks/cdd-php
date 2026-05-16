@@ -10,9 +10,10 @@ namespace Cdd\Operations;
  * @param array $operation The OpenAPI Operation Object
  * @return string The generated PHP method signature
  */
-function emit(array $operation): string {
+function emit(array $operation): string
+{
     $operationId = $operation['operationId'] ?? 'unnamedOperation';
-    
+
     $docBlock = '';
     $hasDoc = false;
     $docStr = "/**\n";
@@ -62,13 +63,13 @@ function emit(array $operation): string {
             $paramsOut[] = \Cdd\Parameters\emit($param);
         }
     }
-    
+
     if (isset($operation['requestBody'])) {
         $paramsOut[] = \Cdd\RequestBodies\emit($operation['requestBody'], 'body');
     }
-    
+
     $signature = "public function $operationId(" . implode(', ', $paramsOut) . ")";
-    
+
     // Attempt to resolve return type from 200 response if present
     $returnType = '';
     if (isset($operation['responses']['200']['content']['application/json']['schema'])) {
@@ -88,11 +89,11 @@ function emit(array $operation): string {
             $returnType = end($parts);
         }
     }
-    
+
     if ($returnType !== '') {
         $signature .= ": $returnType";
     }
-    
+
     return $docBlock . $signature . " {
     // Implementation
 }

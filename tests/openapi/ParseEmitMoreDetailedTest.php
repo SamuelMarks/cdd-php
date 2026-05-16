@@ -6,8 +6,10 @@ namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
-class ParseEmitMoreDetailedTest extends TestCase {
-    public function testInvalidResponseObjectContent() {
+class ParseEmitMoreDetailedTest extends TestCase
+{
+    public function testInvalidResponseObjectContent()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"A","content":"invalid"}}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -16,7 +18,8 @@ class ParseEmitMoreDetailedTest extends TestCase {
         }
     }
 
-    public function testInvalidOperationCallback() {
+    public function testInvalidOperationCallback()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"callbacks":{"ev":"invalid"}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -25,7 +28,8 @@ class ParseEmitMoreDetailedTest extends TestCase {
         }
     }
 
-    public function testInvalidSecurityRequirementScope() {
+    public function testInvalidSecurityRequirementScope()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"security":[{"api_key":"invalid"}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -33,8 +37,9 @@ class ParseEmitMoreDetailedTest extends TestCase {
             $this->assertTrue(strpos($e->getMessage(), 'Security Requirement scopes must be an array of strings') !== false);
         }
     }
-    
-    public function testInvalidSecurityRequirementScopeItems() {
+
+    public function testInvalidSecurityRequirementScopeItems()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"security":[{"api_key":[123]}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -43,7 +48,8 @@ class ParseEmitMoreDetailedTest extends TestCase {
         }
     }
 
-    public function testInvalidOperationSecurityRequirement() {
+    public function testInvalidOperationSecurityRequirement()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"security":["invalid"]}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -51,7 +57,8 @@ class ParseEmitMoreDetailedTest extends TestCase {
             $this->assertTrue(strpos($e->getMessage(), 'Security Requirement must be an object/map') !== false);
         }
     }
-    public function testInvalidWebhooksObject() {
+    public function testInvalidWebhooksObject()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"webhooks":"invalid"}');
             throw new \Exception('Expected exception not thrown');
@@ -60,7 +67,8 @@ class ParseEmitMoreDetailedTest extends TestCase {
         }
     }
 
-    public function testInvalidWebhooksPathItem() {
+    public function testInvalidWebhooksPathItem()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"webhooks":{"myHook":"invalid"}}');
             throw new \Exception('Expected exception not thrown');
@@ -69,7 +77,8 @@ class ParseEmitMoreDetailedTest extends TestCase {
         }
     }
 
-    public function testDuplicateOperationIds() {
+    public function testDuplicateOperationIds()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"operationId":"dup","responses":{"200":{"description":"ok"}}}},"/b":{"post":{"operationId":"dup","responses":{"200":{"description":"ok"}}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -78,7 +87,8 @@ class ParseEmitMoreDetailedTest extends TestCase {
         }
     }
 
-    public function testDuplicateOperationParameters() {
+    public function testDuplicateOperationParameters()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"parameters":[{"name":"id","in":"query","schema":{}},{"name":"id","in":"query","schema":{}}]}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -87,7 +97,8 @@ class ParseEmitMoreDetailedTest extends TestCase {
         }
     }
 
-    public function testDuplicatePathItemParameters() {
+    public function testDuplicatePathItemParameters()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query","schema":{}},{"name":"id","in":"query","schema":{}}]}}}');
             throw new \Exception('Expected exception not thrown');

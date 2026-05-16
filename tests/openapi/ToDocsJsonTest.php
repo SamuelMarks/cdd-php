@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Openapi;
@@ -47,7 +48,7 @@ class ToDocsJsonTest extends TestCase
             $this->assertEquals('GET', $op['method']);
             $this->assertEquals('/pet', $op['path']);
             $this->assertEquals('getPet', $op['operationId']);
-            
+
             $code = $op['code'];
             $this->assertTrue(isset($code['snippet']));
             $this->assertTrue(!isset($code['imports']));

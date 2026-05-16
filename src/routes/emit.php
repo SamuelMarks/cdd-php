@@ -7,7 +7,8 @@ namespace Cdd\Routes;
 /**
  * Emits a PHP route file structure from OpenAPI paths array.
  */
-function emit(array $paths, string $existingCode = ''): string {
+function emit(array $paths, string $existingCode = ''): string
+{
     if ($existingCode !== '') {
         $out = $existingCode;
         foreach ($paths as $path => $methods) {

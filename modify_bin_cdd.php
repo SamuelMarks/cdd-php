@@ -2,7 +2,7 @@
 
 $lines = file('bin_cdd_php.php');
 foreach ($lines as $i => &$line) {
-    if (strpos($line, '$openapi = [') !== false && strpos($lines[$i+1] ?? '', "'openapi' => '3.2.0',") !== false) {
+    if (strpos($line, '$openapi = [') !== false && strpos($lines[$i + 1] ?? '', "'openapi' => '3.2.0',") !== false) {
         // Find where we emit to_openapi
     }
 }
@@ -27,4 +27,3 @@ $code = str_replace(
 
 file_put_contents('bin_cdd_php.php', $code);
 echo "Done updating bin_cdd_php.php";
-

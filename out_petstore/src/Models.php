@@ -1,6 +1,7 @@
 <?php
 
-class Order extends \Illuminate\Database\Eloquent\Model {
+class Order extends \Illuminate\Database\Eloquent\Model
+{
     protected $fillable = [
         'id',
         'petId',
@@ -17,7 +18,8 @@ class Order extends \Illuminate\Database\Eloquent\Model {
     ];
 }
 
-class Category extends \Illuminate\Database\Eloquent\Model {
+class Category extends \Illuminate\Database\Eloquent\Model
+{
     protected $fillable = [
         'id',
         'name',
@@ -27,7 +29,8 @@ class Category extends \Illuminate\Database\Eloquent\Model {
     ];
 }
 
-class User extends \Illuminate\Database\Eloquent\Model {
+class User extends \Illuminate\Database\Eloquent\Model
+{
     protected $fillable = [
         'id',
         'username',
@@ -44,7 +47,8 @@ class User extends \Illuminate\Database\Eloquent\Model {
     ];
 }
 
-class Tag extends \Illuminate\Database\Eloquent\Model {
+class Tag extends \Illuminate\Database\Eloquent\Model
+{
     protected $fillable = [
         'id',
         'name',
@@ -54,7 +58,8 @@ class Tag extends \Illuminate\Database\Eloquent\Model {
     ];
 }
 
-class Pet extends \Illuminate\Database\Eloquent\Model {
+class Pet extends \Illuminate\Database\Eloquent\Model
+{
     protected $fillable = [
         'id',
         'name',
@@ -70,7 +75,8 @@ class Pet extends \Illuminate\Database\Eloquent\Model {
     ];
 }
 
-class ApiResponse extends \Illuminate\Database\Eloquent\Model {
+class ApiResponse extends \Illuminate\Database\Eloquent\Model
+{
     protected $fillable = [
         'code',
         'type',
@@ -85,7 +91,8 @@ class ApiResponse extends \Illuminate\Database\Eloquent\Model {
  * @requestBody
  * List of user object
  */
-class UserArray extends \Illuminate\Database\Eloquent\Model {
+class UserArray extends \Illuminate\Database\Eloquent\Model
+{
     protected $fillable = [
     ];
     protected $casts = [
@@ -97,7 +104,9 @@ class UserArray extends \Illuminate\Database\Eloquent\Model {
  * @type oauth2
  * @flow implicit {"authorizationUrl":"https:\/\/petstore3.swagger.io\/oauth\/authorize","scopes":{"write:pets":"modify pets in your account","read:pets":"read your pets"}}
  */
-class petstore_auth {}
+class petstore_auth
+{
+}
 
 /**
  * @securityScheme
@@ -105,5 +114,6 @@ class petstore_auth {}
  * @in header
  * @name api_key
  */
-class api_key {}
-
+class api_key
+{
+}

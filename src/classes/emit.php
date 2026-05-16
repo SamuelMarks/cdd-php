@@ -9,18 +9,19 @@ use PhpParser\Node\Stmt\Class_;
 /**
  * Emits a PHP class from its extracted node.
  */
-function emit(array $classInfo): string {
+function emit(array $classInfo): string
+{
     if (!isset($classInfo['node']) || !isset($classInfo['tokens'])) {
         return '';
     }
-    
+
     /** @var Class_ $node */
     $node = $classInfo['node'];
     $tokens = $classInfo['tokens'];
-    
+
     $start = $node->getStartTokenPos();
     $end = $node->getEndTokenPos();
-    
+
     $comments = $node->getAttribute('comments');
     if ($comments && count($comments) > 0) {
         $firstCommentStart = $comments[0]->getStartTokenPos();
@@ -33,11 +34,11 @@ function emit(array $classInfo): string {
             }
         }
     }
-    
+
     $code = '';
     for ($i = $start; $i <= $end; $i++) {
         $code .= $tokens[$i]->text;
     }
-    
+
     return ltrim($code);
 }

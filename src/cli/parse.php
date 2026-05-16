@@ -9,12 +9,15 @@ namespace Cdd\Cli;
  * @param string $code
  * @return array
  */
-function parse(string $code): array {
+function parse(string $code): array
+{
     $paths = [];
     preg_match_all("/if\s*\(\\$" . "command\s*===\s*'([^']+)'\)/", $code, $matches);
     if (!empty($matches[1])) {
         foreach ($matches[1] as $opId) {
-            if ($opId === '--help' || $opId === '-h') continue;
+            if ($opId === '--help' || $opId === '-h') {
+                continue;
+            }
             $paths["/cli/".$opId] = [
                 'post' => [
                     'operationId' => $opId,

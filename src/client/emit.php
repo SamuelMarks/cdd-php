@@ -13,12 +13,13 @@ namespace Cdd\Client;
  * @param string $baseUrl The base URL for the client.
  * @return string The generated PHP method code.
  */
-function emit(string $method, string $path, array $operation, string $baseUrl = 'http://localhost'): string {
+function emit(string $method, string $path, array $operation, string $baseUrl = 'http://localhost'): string
+{
     $methodName = strtolower($method);
     $operationId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
-    
+
     $out = "    public function $operationId(array \$params = [], array \$body = []) {\n";
-    
+
     if (isset($operation['security'])) {
         $out .= \Cdd\Security\emit($operation['security']);
     }
@@ -32,25 +33,25 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     $out .= "            }\n";
     $out .= "        }\n";
     $out .= "        \$url = \"{\$this->baseUrl}{\$urlPath}\";\n";
-    
+
     $out .= "        if (!empty(\$params)) {\n";
     $out .= "            \$url .= '?' . http_build_query(\$params);\n";
     $out .= "        }\n";
-    
+
     $out .= "        curl_setopt(\$ch, CURLOPT_URL, \$url);\n";
     $out .= "        curl_setopt(\$ch, CURLOPT_RETURNTRANSFER, true);\n";
     $out .= "        curl_setopt(\$ch, CURLOPT_CUSTOMREQUEST, strtoupper('$method'));\n";
-    
+
     $out .= "        \$headers = [];\n";
     $out .= "        if (!empty(\$body)) {\n";
     $out .= "            curl_setopt(\$ch, CURLOPT_POSTFIELDS, json_encode(\$body));\n";
     $out .= "            \$headers[] = 'Content-Type: application/json';\n";
     $out .= "        }\n";
-    
+
     $out .= "        if (!empty(\$headers)) {\n";
     $out .= "            curl_setopt(\$ch, CURLOPT_HTTPHEADER, \$headers);\n";
     $out .= "        }\n";
-    
+
     $out .= "        \$response = curl_exec(\$ch);\n";
     $out .= "        \$error = curl_error(\$ch);\n";
     $out .= "        \$httpCode = curl_getinfo(\$ch, CURLINFO_HTTP_CODE);\n";
@@ -61,8 +62,9 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     $out .= "        }\n";
 
     $out .= "        \$decoded = json_decode(\$response, true);\n";
-    $out .= "        return ['status' => \$httpCode, 'data' => \$decoded];\n";    $out .= "    }\n";
-    
+    $out .= "        return ['status' => \$httpCode, 'data' => \$decoded];\n";
+    $out .= "    }\n";
+
     return $out;
 }
 
@@ -73,7 +75,8 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
  * @param string $existingCode Existing PHP code
  * @return string The generated PHP Client code
  */
-function emit_class(array $paths, string $existingCode = ''): string {
+function emit_class(array $paths, string $existingCode = ''): string
+{
     if ($existingCode !== '') {
         $out = $existingCode;
     } else {
@@ -112,6 +115,6 @@ function emit_class(array $paths, string $existingCode = ''): string {
             }
         }
     }
-    
+
     return $out;
 }

@@ -1,32 +1,29 @@
 #!/usr/bin/env bash
 
-# Run tests
+# This script can be run directly or used as a git pre-commit hook.
+
+set -e
+
+echo "Building project..."
+make build >/dev/null 2>&1
+
+echo "Auto-fixing code formatting..."
+vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --allow-risky=yes --using-cache=no -q
+
+echo "Checking code formatting..."
+vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --allow-risky=yes --using-cache=no -q
+
+echo "Linting PHP files..."
+for file in $(find src tests bin scripts -name "*.php"); do
+    php -l "$file" > /dev/null || exit 1
+done
+
 echo "Running tests..."
-make test
-if [ $? -ne 0 ]; then
-    echo "Tests failed. Commit aborted."
-    exit 1
-fi
+make test >/dev/null
 
-php bin/check_docs.php > /dev/null
-if [ -f "doc_cov.txt" ]; then
-    DOC_COV=$(cat doc_cov.txt)
-else
-    DOC_COV="100"
-fi
+echo "Updating badges..."
+python3 scripts/update_badges.py
+git add README.md
 
-TEST_COV=$(php bin/check_coverage.php | grep -o '[0-9]*' | head -1)
-if [ -z "$TEST_COV" ]; then
-    TEST_COV="100"
-fi
-
-echo "Doc coverage: ${DOC_COV}%"
-echo "Test coverage: ${TEST_COV}%"
-
-if [ -f "README.md" ]; then
-    sed -i -E "s/doc_coverage-[0-9.]+%-/doc_coverage-${DOC_COV}%25-/" README.md
-    sed -i -E "s/test_coverage-[0-9.]+%-/test_coverage-${TEST_COV}%25-/" README.md
-    git add README.md
-fi
-
+echo "Pre-commit checks passed successfully!"
 exit 0

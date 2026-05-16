@@ -6,8 +6,10 @@ namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
-class ResolveRefsTest extends TestCase {
-    public function testResolveRefs() {
+class ResolveRefsTest extends TestCase
+{
+    public function testResolveRefs()
+    {
         $components = [
             'schemas' => [
                 'User' => [
@@ -18,7 +20,7 @@ class ResolveRefsTest extends TestCase {
                 ]
             ]
         ];
-        
+
         $structure = [
             'requestBody' => [
                 'content' => [
@@ -30,9 +32,9 @@ class ResolveRefsTest extends TestCase {
                 ]
             ]
         ];
-        
+
         $resolved = \Cdd\Openapi\resolve_refs($structure, $components);
-        
+
         $this->assertEquals('object', $resolved['requestBody']['content']['application/json']['schema']['type']);
         $this->assertEquals('integer', $resolved['requestBody']['content']['application/json']['schema']['properties']['id']['type']);
         $this->assertTrue(!isset($resolved['requestBody']['content']['application/json']['schema']['$ref']));

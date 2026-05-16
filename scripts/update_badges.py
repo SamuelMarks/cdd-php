@@ -12,18 +12,30 @@ def get_color(pct):
     return 'red'
 
 def main():
-    readme_path = os.path.join(os.path.dirname(__file__), '..', 'README.md')
+    root_dir = os.path.join(os.path.dirname(__file__), '..')
+    readme_path = os.path.join(root_dir, 'README.md')
     if not os.path.exists(readme_path):
         return
+    
+    # Get Test Coverage
     try:
-        res = subprocess.run(["vendor/bin/phpunit", "--coverage-text"], capture_output=True, text=True)
-        out = res.stdout + res.stderr
-        m = re.search(r'Lines:\s+([0-9.]+)%', out)
+        res = subprocess.run(["php", "bin/check_coverage.php"], cwd=root_dir, capture_output=True, text=True)
+        out = res.stdout.strip()
+        m = re.search(r'([0-9.]+)', out)
         test_cov = int(float(m.group(1))) if m else 0
     except Exception as e:
-        print(f'Coverage calculation failed: {e}')
+        print(f'Test coverage calculation failed: {e}')
         test_cov = 0
-    doc_cov = 100
+        
+    # Get Doc Coverage
+    try:
+        res = subprocess.run(["php", "bin/check_docs.php"], cwd=root_dir, capture_output=True, text=True)
+        out = res.stdout.strip()
+        m = re.search(r'Doc Coverage:\s*([0-9.]+)', out)
+        doc_cov = int(float(m.group(1))) if m else 0
+    except Exception as e:
+        print(f'Doc coverage calculation failed: {e}')
+        doc_cov = 0
 
     test_color = get_color(test_cov)
     doc_color = get_color(doc_cov)

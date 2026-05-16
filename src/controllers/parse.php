@@ -11,8 +11,9 @@ use PhpParser\Node\Stmt\ClassMethod;
 /**
  * Parses PHP code to extract OpenAPI metadata from Controller docblocks.
  */
-function parse(string $code): array {
-    $parser = (new ParserFactory)->createForNewestSupportedVersion();
+function parse(string $code): array
+{
+    $parser = (new ParserFactory())->createForNewestSupportedVersion();
     try {
         $stmts = $parser->parse($code);
     } catch (\Throwable $e) {
@@ -27,11 +28,11 @@ function parse(string $code): array {
     foreach ($methods as $method) {
         $operationId = $method->name->toString();
         $op = [];
-        
+
         $docComment = $method->getDocComment();
         if ($docComment) {
             $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-            
+
             if ($parsedDoc['description'] !== '') {
                 // First sentence is summary, rest is description
                 $descLines = explode("\n", $parsedDoc['description']);
@@ -42,7 +43,7 @@ function parse(string $code): array {
                     }
                 }
             }
-            
+
             if (isset($parsedDoc['tags']['tags'])) {
                 $tagsArr = [];
                 foreach ($parsedDoc['tags']['tags'] as $t) {
@@ -50,7 +51,7 @@ function parse(string $code): array {
                 }
                 $op['tags'] = array_map('trim', $tagsArr);
             }
-            
+
             if (isset($parsedDoc['tags']['externalDocs'])) {
                 $ext = explode(' ', $parsedDoc['tags']['externalDocs'][0], 2);
                 $op['externalDocs'] = ['url' => $ext[0]];
@@ -58,7 +59,7 @@ function parse(string $code): array {
                     $op['externalDocs']['description'] = $ext[1];
                 }
             }
-            
+
             if (isset($parsedDoc['tags']['oas-callback'])) {
                 $op['callbacks'] = [];
                 foreach ($parsedDoc['tags']['oas-callback'] as $cbTag) {
@@ -68,7 +69,7 @@ function parse(string $code): array {
                     }
                 }
             }
-            
+
             if (isset($parsedDoc['tags']['oas-link'])) {
                 foreach ($parsedDoc['tags']['oas-link'] as $linkTag) {
                     $parts = explode(' ', $linkTag, 3);
@@ -84,7 +85,7 @@ function parse(string $code): array {
                 }
             }
         }
-        
+
         if (!empty($op)) {
             $operations[$operationId] = $op;
         }

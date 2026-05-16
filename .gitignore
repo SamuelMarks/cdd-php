@@ -118,3 +118,4 @@ wasm-tools-*/
 wasi-vfs
 /spec.json
 /test*.php
+.php-cs-fixer.cache

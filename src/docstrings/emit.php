@@ -7,10 +7,11 @@ namespace Cdd\Docstrings;
 /**
  * Emits a PHP docstring from an array.
  */
-function emit(array $doc): string {
+function emit(array $doc): string
+{
     $out = "/**
 ";
-    
+
     if (!empty($doc['description'])) {
         $lines = explode("
 ", $doc['description']);
@@ -19,7 +20,7 @@ function emit(array $doc): string {
 ";
         }
     }
-    
+
     if (!empty($doc['tags'])) {
         foreach ($doc['tags'] as $tag => $data) {
             if ($tag === 'param') {
@@ -38,7 +39,7 @@ function emit(array $doc): string {
             }
         }
     }
-    
+
     $out .= " */
 ";
     return $out;

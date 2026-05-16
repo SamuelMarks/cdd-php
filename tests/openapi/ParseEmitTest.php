@@ -6,8 +6,10 @@ namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
-class ParseEmitTest extends TestCase {
-    public function testParseValid() {
+class ParseEmitTest extends TestCase
+{
+    public function testParseValid()
+    {
         $json = '{
             "openapi": "3.2.0",
             "$self": "https://example.com/openapi.json",
@@ -32,17 +34,18 @@ class ParseEmitTest extends TestCase {
                 "url": "https://example.com/docs"
             }
         }';
-        
+
         $parsed = \Cdd\Openapi\parse($json);
         $this->assertEquals('3.2.0', $parsed['openapi']);
         $this->assertEquals('Test API', $parsed['info']['title']);
         $this->assertEquals('https://example.com/docs', $parsed['externalDocs']['url']);
-        
+
         $emitted = \Cdd\Openapi\emit($parsed);
         $this->assertTrue(strpos($emitted, '"openapi": "3.2.0"') !== false);
     }
 
-    public function testParseInvalidJson() {
+    public function testParseInvalidJson()
+    {
         try {
             \Cdd\Openapi\parse('{invalid json');
             throw new \Exception('Expected exception not thrown');
@@ -51,7 +54,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseNotObject() {
+    public function testParseNotObject()
+    {
         try {
             \Cdd\Openapi\parse('"string"');
             throw new \Exception('Expected exception not thrown');
@@ -60,7 +64,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseMissingOpenapi() {
+    public function testParseMissingOpenapi()
+    {
         try {
             \Cdd\Openapi\parse('{"info":{"title":"A","version":"1"},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -69,7 +74,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseWrongOpenapiVersion() {
+    public function testParseWrongOpenapiVersion()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"2.0.0","info":{"title":"A","version":"1"},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -78,7 +84,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseMissingInfo() {
+    public function testParseMissingInfo()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -87,7 +94,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseMissingPathsComponentsWebhooks() {
+    public function testParseMissingPathsComponentsWebhooks()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"}}');
             throw new \Exception('Expected exception not thrown');
@@ -96,7 +104,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidSelf() {
+    public function testParseInvalidSelf()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","$self":123,"info":{"title":"A","version":"1"},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -105,7 +114,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidInfo() {
+    public function testParseInvalidInfo()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":"not-array","paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -114,7 +124,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidInfoTitle() {
+    public function testParseInvalidInfoTitle()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"version":"1"},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -123,7 +134,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidInfoVersion() {
+    public function testParseInvalidInfoVersion()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A"},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -132,7 +144,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidJsonSchemaDialect() {
+    public function testParseInvalidJsonSchemaDialect()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"jsonSchemaDialect":123,"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -141,7 +154,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidServers() {
+    public function testParseInvalidServers()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":"invalid","paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -150,7 +164,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidSecurity() {
+    public function testParseInvalidSecurity()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"security":"invalid","paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -159,7 +174,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidTags() {
+    public function testParseInvalidTags()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"tags":"invalid","paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -168,7 +184,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidExternalDocs() {
+    public function testParseInvalidExternalDocs()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"externalDocs":"invalid","paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -177,7 +194,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidExternalDocsUrl() {
+    public function testParseInvalidExternalDocsUrl()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"externalDocs":{"description":"docs"},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -186,7 +204,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidInfoSummary() {
+    public function testParseInvalidInfoSummary()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","summary":123},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -195,7 +214,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidInfoDescription() {
+    public function testParseInvalidInfoDescription()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","description":123},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -204,7 +224,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidInfoTermsOfService() {
+    public function testParseInvalidInfoTermsOfService()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","termsOfService":123},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -213,7 +234,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidContact() {
+    public function testParseInvalidContact()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","contact":"invalid"},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -222,7 +244,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidContactName() {
+    public function testParseInvalidContactName()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","contact":{"name":123}},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -231,7 +254,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidContactUrl() {
+    public function testParseInvalidContactUrl()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","contact":{"url":123}},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -240,7 +264,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidContactEmail() {
+    public function testParseInvalidContactEmail()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","contact":{"email":123}},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -249,7 +274,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidLicense() {
+    public function testParseInvalidLicense()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","license":"invalid"},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -258,7 +284,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidLicenseName() {
+    public function testParseInvalidLicenseName()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","license":{}},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -267,7 +294,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidLicenseIdentifier() {
+    public function testParseInvalidLicenseIdentifier()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","license":{"name":"MIT","identifier":123}},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -276,7 +304,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseInvalidLicenseUrl() {
+    public function testParseInvalidLicenseUrl()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","license":{"name":"MIT","url":123}},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -285,7 +314,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseLicenseMutuallyExclusive() {
+    public function testParseLicenseMutuallyExclusive()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","license":{"name":"MIT","identifier":"MIT","url":"url"}},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -294,7 +324,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseServerMissingUrl() {
+    public function testParseServerMissingUrl()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -303,7 +334,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseServerInvalidDescription() {
+    public function testParseServerInvalidDescription()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","description":123}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -312,7 +344,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseServerInvalidName() {
+    public function testParseServerInvalidName()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","name":123}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -321,7 +354,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseServerInvalidVariables() {
+    public function testParseServerInvalidVariables()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":"invalid"}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -330,7 +364,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseServerVariableInvalid() {
+    public function testParseServerVariableInvalid()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":"invalid"}}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -339,7 +374,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseServerVariableMissingDefault() {
+    public function testParseServerVariableMissingDefault()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":{}}}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -348,7 +384,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseServerVariableInvalidEnum() {
+    public function testParseServerVariableInvalidEnum()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":{"default":"80","enum":[]}}}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -357,7 +394,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseServerVariableInvalidEnumValues() {
+    public function testParseServerVariableInvalidEnumValues()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":{"default":"80","enum":[123]}}}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -366,7 +404,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseServerVariableDefaultNotInEnum() {
+    public function testParseServerVariableDefaultNotInEnum()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":{"default":"80","enum":["443"]}}}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -375,7 +414,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseServerVariableInvalidDescription() {
+    public function testParseServerVariableInvalidDescription()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":{"default":"80","description":123}}}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -384,7 +424,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseTagInvalid() {
+    public function testParseTagInvalid()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"tags":[123],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -393,7 +434,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseTagMissingName() {
+    public function testParseTagMissingName()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"tags":[{}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -402,7 +444,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseTagInvalidDescription() {
+    public function testParseTagInvalidDescription()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"tags":[{"name":"t","description":123}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -411,7 +454,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseTagExternalDocs() {
+    public function testParseTagExternalDocs()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"tags":[{"name":"t","externalDocs":{"description":123}}],"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -420,7 +464,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseExternalDocsDescription() {
+    public function testParseExternalDocsDescription()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"externalDocs":{"url":"a","description":123},"paths":{}}');
             throw new \Exception('Expected exception not thrown');
@@ -429,7 +474,8 @@ class ParseEmitTest extends TestCase {
         }
     }
 
-    public function testParseReferenceObjectWithSummary() {
+    public function testParseReferenceObjectWithSummary()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },
@@ -449,7 +495,8 @@ class ParseEmitTest extends TestCase {
         $this->assertEquals("This is a desc override", $parsed['components']['schemas']['Test']['description']);
     }
 
-    public function testParseReferenceObjectInvalidSummary() {
+    public function testParseReferenceObjectInvalidSummary()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },

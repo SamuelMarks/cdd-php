@@ -6,8 +6,10 @@ namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
-class ParseEmitComponentsTest extends TestCase {
-    public function testComponentsObjectInvalid() {
+class ParseEmitComponentsTest extends TestCase
+{
+    public function testComponentsObjectInvalid()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":"invalid"}');
             throw new \Exception('Expected exception not thrown');
@@ -16,7 +18,8 @@ class ParseEmitComponentsTest extends TestCase {
         }
     }
 
-    public function testComponentsObjectSchemasInvalid() {
+    public function testComponentsObjectSchemasInvalid()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":"invalid"}}');
             throw new \Exception('Expected exception not thrown');
@@ -25,7 +28,8 @@ class ParseEmitComponentsTest extends TestCase {
         }
     }
 
-    public function testComponentsObjectKeysInvalidRegex() {
+    public function testComponentsObjectKeysInvalidRegex()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":{"invalid space":{}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -34,7 +38,8 @@ class ParseEmitComponentsTest extends TestCase {
         }
     }
 
-    public function testComponentsObjectSchemaInvalid() {
+    public function testComponentsObjectSchemaInvalid()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":{"ValidName":"invalid"}}}');
             throw new \Exception('Expected exception not thrown');
@@ -43,7 +48,8 @@ class ParseEmitComponentsTest extends TestCase {
         }
     }
 
-    public function testComponentsResponseMissingDescription() {
+    public function testComponentsResponseMissingDescription()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"responses":{"A":{}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -52,7 +58,8 @@ class ParseEmitComponentsTest extends TestCase {
         }
     }
 
-    public function testComponentsExampleBothValues() {
+    public function testComponentsExampleBothValues()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"examples":{"A":{"value":1,"externalValue":"a"}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -61,7 +68,8 @@ class ParseEmitComponentsTest extends TestCase {
         }
     }
 
-    public function testComponentsSecuritySchemeMissingType() {
+    public function testComponentsSecuritySchemeMissingType()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"A":{}}}}');
             throw new \Exception('Expected exception not thrown');

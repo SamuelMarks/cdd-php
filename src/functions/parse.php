@@ -11,8 +11,9 @@ use PhpParser\Node\Stmt\Function_;
 /**
  * Parses PHP source code to extract standalone functions using nikic/php-parser.
  */
-function parse(string $code): array {
-    $parser = (new ParserFactory)->createForNewestSupportedVersion();
+function parse(string $code): array
+{
+    $parser = (new ParserFactory())->createForNewestSupportedVersion();
     try {
         $stmts = $parser->parse($code);
     } catch (\Throwable $e) {

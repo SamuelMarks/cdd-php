@@ -6,8 +6,10 @@ namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
-class ParseEmitMediaTypeTest extends TestCase {
-    public function testMediaTypeExampleAndExamples() {
+class ParseEmitMediaTypeTest extends TestCase
+{
+    public function testMediaTypeExampleAndExamples()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"requestBody":{"content":{"app/json":{"example":1,"examples":{}}}}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -16,7 +18,8 @@ class ParseEmitMediaTypeTest extends TestCase {
         }
     }
 
-    public function testMediaTypeEncodingAndPrefixEncoding() {
+    public function testMediaTypeEncodingAndPrefixEncoding()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"requestBody":{"content":{"app/json":{"encoding":{},"prefixEncoding":[]}}}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -25,7 +28,8 @@ class ParseEmitMediaTypeTest extends TestCase {
         }
     }
 
-    public function testMediaTypeEncodingInvalidType() {
+    public function testMediaTypeEncodingInvalidType()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"requestBody":{"content":{"app/json":{"encoding":"invalid"}}}}}}}');
             throw new \Exception('Expected exception not thrown');
@@ -34,7 +38,8 @@ class ParseEmitMediaTypeTest extends TestCase {
         }
     }
 
-    public function testEncodingObjectInvalidContentType() {
+    public function testEncodingObjectInvalidContentType()
+    {
         try {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"requestBody":{"content":{"app/json":{"encoding":{"prop":{"contentType":123}}}}}}}}}');
             throw new \Exception('Expected exception not thrown');

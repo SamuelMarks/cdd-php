@@ -207,4 +207,3 @@ REPLACEMENT;
 array_splice($lines, $start, $end - $start, [$replacement]);
 file_put_contents('src/openapi/parse.php', implode("", $lines));
 echo "Done replacing.";
-

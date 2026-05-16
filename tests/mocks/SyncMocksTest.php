@@ -2,8 +2,10 @@
 
 namespace Cdd\Tests\Mocks;
 
-class SyncMocksTest extends \Cdd\Tests\Framework\TestCase {
-    public function testMockUpdatesSchema() {
+class SyncMocksTest extends \Cdd\Tests\Framework\TestCase
+{
+    public function testMockUpdatesSchema()
+    {
         $tmpDir = sys_get_temp_dir() . '/cdd-php-test-' . uniqid();
         mkdir($tmpDir);
 
@@ -30,13 +32,13 @@ return [
         exec("php $baseDir/bin/cdd-php sync -d $tmpDir", $output, $returnVar);
 
         $this->assertEquals(0, $returnVar);
-        
+
         $json = file_get_contents("$tmpDir/openapi.json");
         $openapi = json_decode($json, true);
 
         $this->assertTrue(isset($openapi['components']['examples']['petExample']));
         $this->assertTrue(isset($openapi['components']['schemas']['PetExampleModel']));
-        
+
         $schema = $openapi['components']['schemas']['PetExampleModel'];
         $this->assertEquals('object', $schema['type']);
         $this->assertEquals('integer', $schema['properties']['id']['type']);

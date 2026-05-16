@@ -11,7 +11,8 @@ namespace Cdd\RequestBodies;
  * @param string $description Optional description
  * @return array The OpenAPI RequestBody Object
  */
-function parse(string $type, string $description = ''): array {
+function parse(string $type, string $description = ''): array
+{
     $requestBody = [
         'required' => true,
         'content' => [
@@ -22,18 +23,19 @@ function parse(string $type, string $description = ''): array {
             ],
         ],
     ];
-    
+
     if ($description !== '') {
         $requestBody['description'] = $description;
     }
-    
+
     return $requestBody;
 }
 
 /**
  * Validates a Request Body Object or Reference Object.
  */
-function validateRequestBodyOrReferenceObject(mixed $requestBody): void {
+function validateRequestBodyOrReferenceObject(mixed $requestBody): void
+{
     if (!is_array($requestBody)) {
         throw new \RuntimeException('Request Body must be an object');
     }

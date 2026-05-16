@@ -1,5 +1,6 @@
 #!/usr/bin/env php
 <?php
+
 /**
  * CDD-PHP (Compiler Driven Development) CLI
  * No external dependencies.
@@ -11,9 +12,15 @@ namespace Cdd;
 
 $baseDir = dirname(__DIR__);
 
-if (!defined('STDIN')) { define('STDIN', @fopen('php://stdin', 'r')); }
-if (!defined('STDOUT')) { define('STDOUT', @fopen('php://stdout', 'w')); }
-if (!defined('STDERR')) { define('STDERR', @fopen('php://stderr', 'w')); }
+if (!defined('STDIN')) {
+    define('STDIN', @fopen('php://stdin', 'r'));
+}
+if (!defined('STDOUT')) {
+    define('STDOUT', @fopen('php://stdout', 'w'));
+}
+if (!defined('STDERR')) {
+    define('STDERR', @fopen('php://stderr', 'w'));
+}
 
 if (file_exists("$baseDir/vendor/autoload.php")) {
     require_once "$baseDir/vendor/autoload.php";
@@ -35,8 +42,12 @@ $dirs = ['functions', 'classes', 'docstrings', 'routes', 'tests', 'mocks', 'open
 foreach ($dirs as $dir) {
     $parseFile = "$baseDir/src/$dir/parse.php";
     $emitFile = "$baseDir/src/$dir/emit.php";
-    if (file_exists($parseFile)) require_once $parseFile;
-    if (file_exists($emitFile)) require_once $emitFile;
+    if (file_exists($parseFile)) {
+        require_once $parseFile;
+    }
+    if (file_exists($emitFile)) {
+        require_once $emitFile;
+    }
 }
 
 if (file_exists("$baseDir/src/openapi/resolve_refs.php")) {
@@ -46,11 +57,13 @@ if (file_exists("$baseDir/src/openapi/resolve_refs.php")) {
 $sapi = php_sapi_name();
 $isCli = $sapi === 'cli' || $sapi === 'cgi-fcgi' || $sapi === 'cgi';
 if ($isCli && isset($argv) && count($argv) > 0 && basename(__FILE__) === basename($argv[0])) {
-    // php-cgi changes cwd to the script's directory. 
+    // php-cgi changes cwd to the script's directory.
     // We resolve relative paths against PWD environment variable if available.
     $originalPwd = getenv('PWD') ?: getcwd();
-    $resolvePath = function($path) use ($originalPwd) {
-        if ($path === '' || $path[0] === '/') return $path;
+    $resolvePath = function ($path) use ($originalPwd) {
+        if ($path === '' || $path[0] === '/') {
+            return $path;
+        }
         return $originalPwd . '/' . $path;
     };
 
@@ -65,7 +78,7 @@ if ($isCli && isset($argv) && count($argv) > 0 && basename(__FILE__) === basenam
         }
     }
     $command = $argv[1] ?? '';
-    
+
     // Alias from_openapi to_docs_json -> to_docs_json
     if ($command === 'from_openapi' && isset($argv[2]) && $argv[2] === 'to_docs_json') {
         $command = 'to_docs_json';
@@ -101,13 +114,13 @@ if ($isCli && isset($argv) && count($argv) > 0 && basename(__FILE__) === basenam
         exit(0);
     }
 
-        if ($command === "serve_json_rpc") {
+    if ($command === "serve_json_rpc") {
         $port = 8080;
         $listen = "0.0.0.0";
         for ($i = 2; $i < $argc; $i++) {
-            if ($argv[$i] === "--port" && isset($argv[$i+1])) {
+            if ($argv[$i] === "--port" && isset($argv[$i + 1])) {
                 $port = (int)$argv[++$i];
-            } elseif ($argv[$i] === "--listen" && isset($argv[$i+1])) {
+            } elseif ($argv[$i] === "--listen" && isset($argv[$i + 1])) {
                 $listen = $argv[++$i];
             }
         }
@@ -125,7 +138,9 @@ if ($isCli && isset($argv) && count($argv) > 0 && basename(__FILE__) === basenam
                 $request .= $data;
                 if (strpos($request, "
 
-") !== false) break;
+") !== false) {
+                    break;
+                }
             }
             $headersEnd = strpos($request, "
 
@@ -140,10 +155,10 @@ if ($isCli && isset($argv) && count($argv) > 0 && basename(__FILE__) === basenam
                     }
                 }
             }
-            
+
             $reqData = json_decode($body, true);
             $res = ["jsonrpc" => "2.0", "id" => $reqData["id"] ?? null];
-            
+
             if (!$reqData || !isset($reqData["method"])) {
                 $res["error"] = ["code" => -32600, "message" => "Invalid Request"];
             } else {
@@ -184,10 +199,10 @@ Content-Length: " . strlen($resBody) . "
     if ($command === 'sync') {
         $dir = '';
         for ($i = 2; $i < $argc; $i++) {
-            if ($argv[$i] === '-d' && isset($argv[$i+1])) {
-                $dir = $resolvePath($argv[$i+1]);
+            if ($argv[$i] === '-d' && isset($argv[$i + 1])) {
+                $dir = $resolvePath($argv[$i + 1]);
                 $i++;
-            } else if ($argv[$i] !== '-d' && $dir === '') {
+            } elseif ($argv[$i] !== '-d' && $dir === '') {
                 $dir = $resolvePath($argv[$i]);
             }
         }
@@ -216,7 +231,7 @@ Content-Length: " . strlen($resBody) . "
                 }
             }
         }
-        
+
         // If routes.php exists, parse it
         if (file_exists("$dir/src/routes.php")) {
             $code = file_get_contents("$dir/src/routes.php");
@@ -248,7 +263,7 @@ Content-Length: " . strlen($resBody) . "
                 }
             }
         }
-        
+
         // If api_cli.php exists, parse it and merge into paths
         if (file_exists("$dir/src/api_cli.php") && function_exists('\Cdd\Cli\parse')) {
             $cliOps = \Cdd\Cli\parse(file_get_contents("$dir/src/api_cli.php"));
@@ -263,11 +278,11 @@ Content-Length: " . strlen($resBody) . "
                 }
             }
         }
-        
+
         // If Models.php exists, parse classes
         if (file_exists("$dir/src/Models.php")) {
             $code = file_get_contents("$dir/src/Models.php");
-                                    $classes = function_exists('\Cdd\Classes\parse') ? \Cdd\Classes\parse($code) : [];
+            $classes = function_exists('\Cdd\Classes\parse') ? \Cdd\Classes\parse($code) : [];
             if (!empty($classes)) {
                 foreach ($classes as $c) {
                     $schema = \Cdd\Schemas\parse($c['node']);
@@ -277,7 +292,7 @@ Content-Length: " . strlen($resBody) . "
                     }
                     if ($type === 'mediaTypes') {
                         $mediaType = ['schema' => $schema];
-                        
+
                         // Parse extra docblock tags for Media Type Objects (3.2.0)
                         $docComment = $c['node']->getDocComment();
                         if ($docComment !== null) {
@@ -480,7 +495,7 @@ Content-Length: " . strlen($resBody) . "
                 }
             }
         }
-        
+
         // If ApiServers.php exists, parse it
         if (file_exists("$dir/src/ApiServers.php")) {
             $parsedServers = \Cdd\Servers\parse(file_get_contents("$dir/src/ApiServers.php"));
@@ -496,7 +511,7 @@ Content-Length: " . strlen($resBody) . "
                 $openapi['webhooks'] = $webhooks;
             }
         }
-        
+
         // If ApiTests.php exists, parse it
         if (file_exists("$dir/src/ApiTests.php")) {
             $tests = \Cdd\Tests\parse(file_get_contents("$dir/src/ApiTests.php"));
@@ -513,25 +528,25 @@ Content-Length: " . strlen($resBody) . "
 
     if ($command === 'to_openapi' || $command === 'parse') {
         $file = '';
-                $outFile = '';
+        $outFile = '';
         for ($i = 2; $i < $argc; $i++) {
-            if ($argv[$i] === '-f' && isset($argv[$i+1])) {
-                $file = $resolvePath($argv[$i+1]);
+            if (($argv[$i] === '-f' || $argv[$i] === '-i') && isset($argv[$i + 1])) {
+                $file = $resolvePath($argv[$i + 1]);
                 $i++;
-            } else if ($argv[$i] === '-o' && isset($argv[$i+1])) {
-                $outFile = $resolvePath($argv[$i+1]);
+            } elseif ($argv[$i] === '-o' && isset($argv[$i + 1])) {
+                $outFile = $resolvePath($argv[$i + 1]);
                 $i++;
-            } else if ($argv[$i] !== '-f' && $argv[$i] !== '-o' && $file === '') {
+            } elseif ($argv[$i] !== '-f' && $argv[$i] !== '-o' && $file === '') {
                 $file = $resolvePath($argv[$i]);
             }
         }
-        
+
         if (!$file || !file_exists($file)) {
             echo "Error: File not found.\n";
             exit(1);
         }
         $code = file_get_contents($file);
-        
+
         $openapi = [
             'openapi' => '3.2.0',
             'info' => [
@@ -541,7 +556,7 @@ Content-Length: " . strlen($resBody) . "
             'paths' => [],
             'components' => ['schemas' => []]
         ];
-        
+
         $dir = dirname($file);
         if (file_exists("$dir/src/api_metadata.php")) {
             $metadata = include "$dir/src/api_metadata.php";
@@ -553,48 +568,48 @@ Content-Length: " . strlen($resBody) . "
                 }
             }
         }
-        
+
         if (strpos($code, 'curl_exec') !== false) {
-             $openapi['paths'] = \Cdd\Client\parse($code);
+            $openapi['paths'] = \Cdd\Client\parse($code);
         } else {
-             
-             $routes = function_exists('\Cdd\Routes\parse') ? \Cdd\Routes\parse($code) : [];
-             if (!empty($routes)) {
-                 $openapi['paths'] = $routes;
-             }
-             
-             if (function_exists('\Cdd\Controllers\parse') && !empty($openapi['paths'])) {
-                 $controllerOps = \Cdd\Controllers\parse($code);
-                 foreach ($openapi['paths'] as $path => &$methods) {
-                     foreach ($methods as $method => &$operation) {
-                         $opId = $operation['operationId'] ?? '';
-                         if (isset($controllerOps[$opId])) {
-                             $operation = array_replace_recursive((array)$operation, $controllerOps[$opId]);
-                         }
-                     }
-                 }
-             }
 
-             if (function_exists('\Cdd\Cli\parse') && !empty($openapi['paths'])) {
-                 $cliOps = \Cdd\Cli\parse($code);
-                 foreach ($openapi['paths'] as $path => &$methods) {
-                     foreach ($methods as $method => &$operation) {
-                         $opId = $operation['operationId'] ?? '';
-                         if (isset($cliOps["/cli/".$opId])) {
-                             $operation = array_replace_recursive((array)$operation, $cliOps["/cli/".$opId]);
-                         }
-                     }
-                 }
-             }
+            $routes = function_exists('\Cdd\Routes\parse') ? \Cdd\Routes\parse($code) : [];
+            if (!empty($routes)) {
+                $openapi['paths'] = $routes;
+            }
 
-             if (function_exists('\Cdd\Servers\parse')) {
-                 $servers = \Cdd\Servers\parse($code);
-                 if (!empty($servers)) {
-                     $openapi['servers'] = $servers;
-                 }
-             }
-             
-                                     $classes = function_exists('\Cdd\Classes\parse') ? \Cdd\Classes\parse($code) : [];
+            if (function_exists('\Cdd\Controllers\parse') && !empty($openapi['paths'])) {
+                $controllerOps = \Cdd\Controllers\parse($code);
+                foreach ($openapi['paths'] as $path => &$methods) {
+                    foreach ($methods as $method => &$operation) {
+                        $opId = $operation['operationId'] ?? '';
+                        if (isset($controllerOps[$opId])) {
+                            $operation = array_replace_recursive((array)$operation, $controllerOps[$opId]);
+                        }
+                    }
+                }
+            }
+
+            if (function_exists('\Cdd\Cli\parse') && !empty($openapi['paths'])) {
+                $cliOps = \Cdd\Cli\parse($code);
+                foreach ($openapi['paths'] as $path => &$methods) {
+                    foreach ($methods as $method => &$operation) {
+                        $opId = $operation['operationId'] ?? '';
+                        if (isset($cliOps["/cli/".$opId])) {
+                            $operation = array_replace_recursive((array)$operation, $cliOps["/cli/".$opId]);
+                        }
+                    }
+                }
+            }
+
+            if (function_exists('\Cdd\Servers\parse')) {
+                $servers = \Cdd\Servers\parse($code);
+                if (!empty($servers)) {
+                    $openapi['servers'] = $servers;
+                }
+            }
+
+            $classes = function_exists('\Cdd\Classes\parse') ? \Cdd\Classes\parse($code) : [];
             if (!empty($classes)) {
                 foreach ($classes as $c) {
                     $schema = \Cdd\Schemas\parse($c['node']);
@@ -604,7 +619,7 @@ Content-Length: " . strlen($resBody) . "
                     }
                     if ($type === 'mediaTypes') {
                         $mediaType = ['schema' => $schema];
-                        
+
                         // Parse extra docblock tags for Media Type Objects (3.2.0)
                         $docComment = $c['node']->getDocComment();
                         if ($docComment !== null) {
@@ -772,11 +787,19 @@ Content-Length: " . strlen($resBody) . "
                 }
             }
         }
-        
-        if (empty((array)$openapi['paths'])) unset($openapi['paths']);
-        if (empty((array)$openapi['components'])) unset($openapi['components']); else { if (empty((array)$openapi['components']['schemas'])) unset($openapi['components']['schemas']); }
-        
-        
+
+        if (empty((array)$openapi['paths'])) {
+            unset($openapi['paths']);
+        }
+        if (empty((array)$openapi['components'])) {
+            unset($openapi['components']);
+        } else {
+            if (empty((array)$openapi['components']['schemas'])) {
+                unset($openapi['components']['schemas']);
+            }
+        }
+
+
         $outStr = json_encode($openapi, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
         if ($outFile !== '') {
             file_put_contents($outFile, $outStr);
@@ -787,63 +810,63 @@ Content-Length: " . strlen($resBody) . "
         exit(0);
     }
 
-        if ($command === 'from_openapi' || $command === 'emit') {
+    if ($command === 'from_openapi' || $command === 'emit') {
         $subcommand = 'to_sdk';
         $file = '';
         $inputDir = '';
         $dir = getcwd(); // default out dir is current working directory
-        
-                $noGithubActions = false;
-                $noInstallablePackage = false;
-                $tests = false;
 
-                $newArgv = [];
-                for ($k = 0; $k < $argc; $k++) {
-                    if ($argv[$k] === '--no-github-actions') {
-                        $noGithubActions = true;
-                    } elseif ($argv[$k] === '--no-installable-package') {
-                        $noInstallablePackage = true;
-                    } elseif ($argv[$k] === '--tests') {
-                        $tests = true;
-                    } else {
-                        $newArgv[] = $argv[$k];
-                    }
-                }
+        $noGithubActions = false;
+        $noInstallablePackage = false;
+        $tests = false;
+
+        $newArgv = [];
+        for ($k = 0; $k < $argc; $k++) {
+            if ($argv[$k] === '--no-github-actions') {
+                $noGithubActions = true;
+            } elseif ($argv[$k] === '--no-installable-package') {
+                $noInstallablePackage = true;
+            } elseif ($argv[$k] === '--tests') {
+                $tests = true;
+            } else {
+                $newArgv[] = $argv[$k];
+            }
+        }
         $argv = $newArgv;
         $argc = count($argv);
-        
+
         $i = 2;
         if (isset($argv[$i]) && in_array($argv[$i], ['to_sdk_cli', 'to_sdk', 'to_server'])) {
             $subcommand = $argv[$i];
             $i++;
         }
-        
+
         for (; $i < $argc; $i++) {
-            if ($argv[$i] === '-i' && isset($argv[$i+1])) {
-                $file = $resolvePath($argv[$i+1]);
+            if ($argv[$i] === '-i' && isset($argv[$i + 1])) {
+                $file = $resolvePath($argv[$i + 1]);
                 $i++;
-            } elseif ($argv[$i] === '--input-dir' && isset($argv[$i+1])) {
-                $inputDir = $resolvePath($argv[$i+1]);
+            } elseif ($argv[$i] === '--input-dir' && isset($argv[$i + 1])) {
+                $inputDir = $resolvePath($argv[$i + 1]);
                 $i++;
-            } elseif ($argv[$i] === '-o' && isset($argv[$i+1])) {
-                $dir = $resolvePath($argv[$i+1]);
+            } elseif ($argv[$i] === '-o' && isset($argv[$i + 1])) {
+                $dir = $resolvePath($argv[$i + 1]);
                 $i++;
             } else {
                 $dir = $resolvePath($argv[$i]);
             }
         }
-        
+
         if ($file === '' && $inputDir === '') {
             echo "Error: Spec file or input dir not provided.\n";
             exit(1);
         }
-        
+
         if ($file !== '') {
             if (!file_exists($file)) {
                 echo "Error: Spec file not found ($file).\n";
                 exit(1);
             }
-                        $spec = \Cdd\Openapi\parse(file_get_contents($file));
+            $spec = \Cdd\Openapi\parse(file_get_contents($file));
             \Cdd\Openapi\emit($spec, $dir, [
                 'no_github_actions' => $noGithubActions,
                 'no_installable_package' => $noInstallablePackage,
@@ -865,7 +888,7 @@ Content-Length: " . strlen($resBody) . "
                 echo "Error: No .json files found in input dir.\n";
                 exit(1);
             }
-                        $spec = \Cdd\Openapi\parse(file_get_contents($files[0]));
+            $spec = \Cdd\Openapi\parse(file_get_contents($files[0]));
             \Cdd\Openapi\emit($spec, $dir, [
                 'no_github_actions' => $noGithubActions,
                 'no_installable_package' => $noInstallablePackage,
@@ -877,10 +900,10 @@ Content-Length: " . strlen($resBody) . "
                 file_put_contents("$dir/src/api_cli.php", $cliCode);
             }
         }
-        
-                echo "Emitted code to $dir successfully.
+
+        echo "Emitted code to $dir successfully.
 ";
-        
+
         if (!$noInstallablePackage) {
             if (!file_exists("$dir/composer.json")) {
                 file_put_contents("$dir/composer.json", json_encode([
@@ -903,7 +926,7 @@ Content-Length: " . strlen($resBody) . "
                 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
             }
         }
-        
+
         if (!$noGithubActions) {
             if (!is_dir("$dir/.github/workflows")) {
                 mkdir("$dir/.github/workflows", 0777, true);
@@ -928,47 +951,51 @@ jobs:
         exit(0);
     }
 
-                if ($command === 'to_docs_json') {
+    if ($command === 'to_docs_json') {
         $file = '';
         $noImports = false;
         $noWrapping = false;
-        
+
         for ($i = 2; $i < $argc; $i++) {
             if ($argv[$i] === '--no-imports') {
                 $noImports = true;
             } elseif ($argv[$i] === '--no-wrapping') {
                 $noWrapping = true;
-            } elseif ($argv[$i] === '-i' && isset($argv[$i+1])) {
-                $file = $resolvePath($argv[$i+1]);
+            } elseif ($argv[$i] === '-i' && isset($argv[$i + 1])) {
+                $file = $resolvePath($argv[$i + 1]);
                 $i++;
-            } elseif ($argv[$i] === '-o' && isset($argv[$i+1])) {
-                $outFileDocs = $resolvePath($argv[$i+1]);
+            } elseif ($argv[$i] === '-o' && isset($argv[$i + 1])) {
+                $outFileDocs = $resolvePath($argv[$i + 1]);
                 $i++;
             }
         }
-        
+
         if (!$file || !file_exists($file)) {
             fwrite(STDERR, "Error: Spec file not found.\n");
             exit(1);
         }
-        
+
         $spec = json_decode(file_get_contents($file), true);
         if (!$spec) {
             fwrite(STDERR, "Error parsing JSON spec.\n");
             exit(1);
         }
-        
+
         $operations = [];
         if (isset($spec['paths'])) {
             foreach ($spec['paths'] as $path => $methods) {
                 foreach ($methods as $method => $operation) {
-                    if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers'])) continue;
-                    
+                    if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers'])) {
+                        continue;
+                    }
+
                     $opId = $operation['operationId'] ?? strtolower($method) . preg_replace('/[^a-zA-Z0-9]/', '', $path);
-                    
+
                     // Generate basic snippet
-                    $camelOpId = preg_replace_callback('/[-_](.)/', function($m) { return strtoupper($m[1]); }, $opId);
-                    
+                    $camelOpId = preg_replace_callback('/[-_](.)/', function ($m) {
+                        return strtoupper($m[1]);
+                    }, $opId);
+
                     $params = [];
                     if (isset($operation['parameters'])) {
                         foreach ($operation['parameters'] as $p) {
@@ -980,22 +1007,22 @@ jobs:
                         $params[] = "'body' => [...]";
                     }
                     $paramStr = empty($params) ? '' : '[' . implode(', ', $params) . ']';
-                    
+
                     $snippet = "\$response = \$client->{$camelOpId}($paramStr);\nprint_r(\$response);";
-                    
+
                     $codeBlock = [
                         'snippet' => $snippet
                     ];
-                    
+
                     if (!$noImports) {
                         $codeBlock['imports'] = "require_once 'vendor/autoload.php';\nuse ApiClient;";
                     }
-                    
+
                     if (!$noWrapping) {
                         $codeBlock['wrapper_start'] = "\$client = new ApiClient('https://api.example.com');";
                         $codeBlock['wrapper_end'] = "";
                     }
-                    
+
                     $operations[] = [
                         'method' => strtoupper($method),
                         'path' => $path,
@@ -1005,15 +1032,15 @@ jobs:
                 }
             }
         }
-        
+
         $result = [
             [
                 'language' => 'php',
                 'operations' => $operations
             ]
         ];
-        
-        
+
+
         $outStr = json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
         if (isset($outFileDocs) && $outFileDocs !== '') {
             if (is_dir($outFileDocs)) {

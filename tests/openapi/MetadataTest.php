@@ -2,11 +2,13 @@
 
 namespace Cdd\Tests\Openapi;
 
-class MetadataTest extends \Cdd\Tests\Framework\TestCase {
-    public function testMetadataEmitAndParse() {
+class MetadataTest extends \Cdd\Tests\Framework\TestCase
+{
+    public function testMetadataEmitAndParse()
+    {
         $tmpDir = sys_get_temp_dir() . '/cdd-php-metadata-' . uniqid();
         mkdir($tmpDir);
-        
+
         $openapi = [
             'openapi' => '3.2.0',
             'info' => [
@@ -30,7 +32,7 @@ class MetadataTest extends \Cdd\Tests\Framework\TestCase {
 
         $baseDir = dirname(__DIR__, 2);
         exec("php $baseDir/bin/cdd-php sync -d $tmpDir", $output, $returnVar);
-        
+
         $json = file_get_contents("$tmpDir/openapi.json");
         $parsed = json_decode($json, true);
 
@@ -38,7 +40,7 @@ class MetadataTest extends \Cdd\Tests\Framework\TestCase {
         $this->assertEquals('http://example.com/docs', $parsed['externalDocs']['url']);
         $this->assertEquals('user', $parsed['tags'][0]['name']);
         $this->assertTrue(isset($parsed['security'][0]['apiKey']));
-        
+
         $this->assertEquals('Test API', $parsed['info']['title']);
         $this->assertEquals('1.0.0', $parsed['info']['version']);
         $this->assertEquals('A test api.', $parsed['info']['description']);

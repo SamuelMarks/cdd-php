@@ -11,7 +11,8 @@ namespace Cdd\Webhooks;
  * @param string $existingCode
  * @return string
  */
-function emit(array $webhooks, string $existingCode = ''): string {
+function emit(array $webhooks, string $existingCode = ''): string
+{
     if (empty($webhooks)) {
         return '';
     }
@@ -24,7 +25,7 @@ function emit(array $webhooks, string $existingCode = ''): string {
 ";
     $code .= "interface WebhookHandlers {
 ";
-    
+
     foreach ($webhooks as $name => $pathItem) {
         if (isset($pathItem['$ref'])) {
             $code .= "    // Webhook '{$name}' uses reference: {$pathItem['$ref']}
@@ -41,7 +42,7 @@ function emit(array $webhooks, string $existingCode = ''): string {
 ";
         }
     }
-    
+
     $code .= "}
 ";
     return $code;

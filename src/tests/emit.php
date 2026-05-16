@@ -13,7 +13,8 @@ namespace Cdd\Tests;
  * @param bool $composable
  * @return string
  */
-function emit(string $method, string $path, array $operation, bool $composable = false): string {
+function emit(string $method, string $path, array $operation, bool $composable = false): string
+{
     if ($method === 'additionalOperations' && is_array($operation)) {
         $out = '';
         foreach ($operation as $addMethod => $addOp) {
@@ -21,10 +22,10 @@ function emit(string $method, string $path, array $operation, bool $composable =
         }
         return trim($out);
     }
-    
+
     $m = ucfirst(strtolower($method));
     $opId = $operation['operationId'] ?? "{$m}Route";
-    
+
     $status = '200';
     if (isset($operation['responses'])) {
         foreach ($operation['responses'] as $code => $resp) {
@@ -34,7 +35,7 @@ function emit(string $method, string $path, array $operation, bool $composable =
             }
         }
     }
-    
+
     if ($composable) {
         $out = "    '{$opId}' => function(\$client, array \$mocks = []) {\n";
         $out .= "        \$response = \$client->call('$method', '$path');\n";

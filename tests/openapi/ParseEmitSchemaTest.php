@@ -6,8 +6,10 @@ namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
-class ParseEmitSchemaTest extends TestCase {
-    public function testParseSchemaDiscriminator() {
+class ParseEmitSchemaTest extends TestCase
+{
+    public function testParseSchemaDiscriminator()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },
@@ -26,7 +28,8 @@ class ParseEmitSchemaTest extends TestCase {
         $this->assertEquals("type", $parsed['components']['schemas']['Test']['discriminator']['propertyName']);
     }
 
-    public function testParseSchemaDiscriminatorInvalid() {
+    public function testParseSchemaDiscriminatorInvalid()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },
@@ -49,7 +52,8 @@ class ParseEmitSchemaTest extends TestCase {
         }
     }
 
-    public function testParseSchemaXMLInvalid() {
+    public function testParseSchemaXMLInvalid()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },
@@ -72,7 +76,8 @@ class ParseEmitSchemaTest extends TestCase {
         }
     }
 
-    public function testSchemaTypeValidation() {
+    public function testSchemaTypeValidation()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },
@@ -93,7 +98,8 @@ class ParseEmitSchemaTest extends TestCase {
         }
     }
 
-    public function testSchemaPropertiesValidation() {
+    public function testSchemaPropertiesValidation()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },
@@ -110,7 +116,8 @@ class ParseEmitSchemaTest extends TestCase {
         $this->assertEquals([], $parsed['components']['schemas']['Test']['properties']);
     }
 
-    public function testSchemaItemsValidation() {
+    public function testSchemaItemsValidation()
+    {
         $json = '{
             "openapi": "3.2.0",
             "info": { "title": "Test", "version": "1.0" },

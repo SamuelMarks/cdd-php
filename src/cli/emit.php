@@ -10,7 +10,8 @@ namespace Cdd\Cli;
  * @param string $existingCode
  * @return string
  */
-function emit(array $paths, string $existingCode = ''): string {
+function emit(array $paths, string $existingCode = ''): string
+{
     $out = "<?php\n\n/**\n * Auto-generated API CLI\n * Usage: php api_cli.php <command> [args]\n */\n\n";
     $out .= "require_once __DIR__ . '/ApiClient.php';\n\n";
     $out .= "\$client = new ApiClient('http://localhost');\n\n";
@@ -21,7 +22,9 @@ function emit(array $paths, string $existingCode = ''): string {
     $commands = [];
     foreach ($paths as $path => $methods) {
         foreach ($methods as $method => $operation) {
-            if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers'])) continue;
+            if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers'])) {
+                continue;
+            }
             $opId = $operation['operationId'] ?? strtolower($method) . preg_replace('/[^a-zA-Z0-9]/', '', $path);
             $commands[$opId] = $operation;
             $desc = $operation['description'] ?? 'Call ' . strtoupper($method) . ' ' . $path;
@@ -30,7 +33,7 @@ function emit(array $paths, string $existingCode = ''): string {
     }
     $out .= "    exit(0);\n";
     $out .= "}\n\n";
-    
+
     foreach ($commands as $opId => $operation) {
         $out .= "if (\$command === '$opId') {\n";
         $out .= "    if (isset(\$argv[2]) && (\$argv[2] === '--help' || \$argv[2] === '-h')) {\n";
@@ -39,7 +42,7 @@ function emit(array $paths, string $existingCode = ''): string {
             $out .= "        echo \"" . addslashes($operation['description']) . "\\n\\n\";\n";
         }
         $out .= "        echo \"Options:\\n\";\n";
-        
+
         $paramsHelp = [];
         if (isset($operation['parameters'])) {
             foreach ($operation['parameters'] as $p) {
@@ -54,7 +57,7 @@ function emit(array $paths, string $existingCode = ''): string {
         }
         $out .= "        exit(0);\n";
         $out .= "    }\n";
-        
+
         $out .= "    \$params = [];\n";
         $out .= "    \$body = [];\n";
         if (isset($operation['parameters'])) {
@@ -78,8 +81,8 @@ function emit(array $paths, string $existingCode = ''): string {
         $out .= "    exit(0);\n";
         $out .= "}\n\n";
     }
-    
+
     $out .= "echo \"Unknown command: \$command\\n\";\nexit(1);\n";
-    
+
     return $out;
 }

@@ -12,7 +12,8 @@ namespace Cdd\Openapi;
  * @param array $components The components object containing the schemas.
  * @return array The resolved structure.
  */
-function resolve_refs(array $structure, array $components): array {
+function resolve_refs(array $structure, array $components): array
+{
     $resolved = [];
     foreach ($structure as $key => $value) {
         if ($key === '$ref' && is_string($value)) {
@@ -29,7 +30,7 @@ function resolve_refs(array $structure, array $components): array {
                         break;
                     }
                 }
-                
+
                 if ($found) {
                     // recursively resolve the referenced data itself
                     $refData = resolve_refs($refData, $components);
@@ -41,7 +42,7 @@ function resolve_refs(array $structure, array $components): array {
                 }
             }
         }
-        
+
         if (is_array($value)) {
             $resolved[$key] = resolve_refs($value, $components);
         } else {

@@ -7,9 +7,10 @@ namespace Cdd\Schemas;
 /**
  * Emits a PHP class definition from an OpenAPI Schema Object.
  */
-function emit(string $className, array $schema): string {
+function emit(string $className, array $schema): string
+{
     $out = '';
-    
+
     $docTags = [];
     if (isset($schema['description'])) {
         $docTags[] = $schema['description'];
@@ -30,7 +31,7 @@ function emit(string $className, array $schema): string {
             }
         }
     }
-    
+
     if (!empty($docTags)) {
         $out .= "/**\n";
         foreach ($docTags as $tag) {
@@ -38,7 +39,7 @@ function emit(string $className, array $schema): string {
         }
         $out .= " */\n";
     }
-    
+
     $out .= "class $className extends \\Illuminate\\Database\\Eloquent\\Model {\n";
     $out .= "    protected \$fillable = [\n";
     if (isset($schema['properties']) && is_array($schema['properties'])) {
@@ -47,7 +48,7 @@ function emit(string $className, array $schema): string {
         }
     }
     $out .= "    ];\n";
-    
+
     $out .= "    protected \$casts = [\n";
     if (isset($schema['properties']) && is_array($schema['properties'])) {
         foreach ($schema['properties'] as $propName => $propSchema) {
@@ -66,7 +67,7 @@ function emit(string $className, array $schema): string {
         }
     }
     $out .= "    ];\n";
-    
+
     $out .= "}\n";
     return $out;
 }

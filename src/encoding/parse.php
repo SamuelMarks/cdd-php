@@ -3,11 +3,12 @@
 declare(strict_types=1);
 
 declare (strict_types=1);
+
 namespace Cdd\Encoding;
 
 /**
  * Parses an Encoding Object from a PHP array definition.
- * 
+ *
  * @param array $encoding The PHP array representing the Encoding object.
  * @return array The validated and parsed Encoding object.
  */

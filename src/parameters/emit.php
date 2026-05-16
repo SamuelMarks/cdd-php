@@ -10,10 +10,11 @@ namespace Cdd\Parameters;
  * @param array $parameter The OpenAPI Parameter Object
  * @return string The generated parameter definition string
  */
-function emit(array $parameter): string {
+function emit(array $parameter): string
+{
     $name = $parameter['name'] ?? 'param';
     $schema = $parameter['schema'] ?? [];
-    
+
     $type = '';
     if (isset($schema['type'])) {
         $typeMap = [
@@ -29,13 +30,13 @@ function emit(array $parameter): string {
         $parts = explode('/', $schema['$ref']);
         $type = end($parts);
     }
-    
+
     $required = $parameter['required'] ?? false;
     if (isset($parameter['in']) && $parameter['in'] === 'path') {
         $required = true;
     }
-    
+
     $typeStr = ($type !== '') ? ($required ? $type : "?$type") . ' ' : '';
-    
+
     return "{$typeStr}\${$name}";
 }

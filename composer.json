@@ -21,5 +21,8 @@
   },
   "scripts": {
     "test": "php tests/test_runner.php"
+  },
+  "require-dev": {
+    "friendsofphp/php-cs-fixer": "^3.95"
   }
 }

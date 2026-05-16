@@ -1,4 +1,5 @@
 <?php
+
 $_SERVER['argv'] = array_slice($_SERVER['argv'], 1);
 $_SERVER['argc']--;
 $argv = $_SERVER['argv'];

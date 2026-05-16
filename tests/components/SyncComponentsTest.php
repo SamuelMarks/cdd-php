@@ -2,8 +2,10 @@
 
 namespace Cdd\Tests\Components;
 
-class SyncComponentsTest extends \Cdd\Tests\Framework\TestCase {
-    public function testComponentsSync() {
+class SyncComponentsTest extends \Cdd\Tests\Framework\TestCase
+{
+    public function testComponentsSync()
+    {
         $tmpDir = sys_get_temp_dir() . '/cdd-php-comps-' . uniqid();
         mkdir($tmpDir);
 
@@ -38,7 +40,7 @@ class SyncComponentsTest extends \Cdd\Tests\Framework\TestCase {
         $this->assertTrue(isset($openapi['components']['mediaTypes']['UserMedia']));
         $this->assertEquals('#/components/schemas/User', $openapi['components']['mediaTypes']['UserMedia']['itemSchema']['$ref']);
         $this->assertEquals('application/json', $openapi['components']['mediaTypes']['UserMedia']['itemEncoding']['contentType']);
-        
+
         $this->assertTrue(isset($openapi['components']['securitySchemes']['OAuth2Auth']));
         $this->assertEquals('oauth2', $openapi['components']['securitySchemes']['OAuth2Auth']['type']);
         $this->assertEquals('http://example.com/auth', $openapi['components']['securitySchemes']['OAuth2Auth']['flows']['implicit']['authorizationUrl']);

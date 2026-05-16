@@ -6,8 +6,10 @@ namespace Cdd\Tests\Encoding;
 
 use Cdd\Tests\Framework\TestCase;
 
-class ParseEmitTest extends TestCase {
-    public function testParseAndEmit() {
+class ParseEmitTest extends TestCase
+{
+    public function testParseAndEmit()
+    {
         $encodingData = [
             'contentType' => 'application/xml',
             'headers' => [
@@ -17,11 +19,11 @@ class ParseEmitTest extends TestCase {
                 ]
             ]
         ];
-        
+
         $parsed = \Cdd\Encoding\parse($encodingData);
         $this->assertEquals('application/xml', $parsed['contentType']);
         $this->assertTrue(isset($parsed['headers']['X-Rate-Limit-Limit']));
-        
+
         $emitted = \Cdd\Encoding\emit($parsed);
         $this->assertTrue(strpos($emitted, "'contentType' => 'application/xml'") !== false);
         $this->assertTrue(strpos($emitted, "'X-Rate-Limit-Limit'") !== false);

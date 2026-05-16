@@ -10,7 +10,8 @@ namespace Cdd\Mocks;
  * @param string $existingCode Unused in this simplified version.
  * @return string The emitted PHP code.
  */
-function emit(array $examples, string $existingCode = ''): string {
+function emit(array $examples, string $existingCode = ''): string
+{
     $out = "<?php\n\n// Auto-generated mock\n\nreturn [\n";
     foreach ($examples as $name => $example) {
         // Output the full Example Object structure

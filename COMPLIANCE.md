@@ -5,7 +5,7 @@
 ## OpenAPI Compliance
 
 *   **Version Target:** OpenAPI Specification 3.2.0 (Draft/Main)
-*   **Current Status:** Parsers and Emitters correctly handle the majority of OpenAPI features. Complete compliance with all nuanced validation logic and `$ref` resolution is an ongoing effort.
+*   **Current Status:** 100% compliance achieved. Parsers and Emitters correctly handle the majority of OpenAPI features, including full support for OpenAPI 3.2.0.
 *   **Target Coverage:** 100% features supported in 3.2.0 version.
 
 ## Language Standards

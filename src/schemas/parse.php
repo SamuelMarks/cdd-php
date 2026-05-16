@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 declare (strict_types=1);
+
 namespace Cdd\Schemas;
 
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\NullableType;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
+
 /**
  * Parses a PHP class node into an OpenAPI Schema Object.
  *

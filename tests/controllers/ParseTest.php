@@ -2,8 +2,10 @@
 
 namespace Cdd\Tests\Controllers;
 
-class ParseTest extends \Cdd\Tests\Framework\TestCase {
-    public function testParseDocBlocks() {
+class ParseTest extends \Cdd\Tests\Framework\TestCase
+{
+    public function testParseDocBlocks()
+    {
         $code = '<?php
         class ApiController {
             /**
@@ -21,7 +23,7 @@ class ParseTest extends \Cdd\Tests\Framework\TestCase {
 
         $ops = \Cdd\Controllers\parse($code);
         $this->assertTrue(isset($ops['createUser']));
-        
+
         $op = $ops['createUser'];
         $this->assertEquals('Create a user', $op['summary']);
         $this->assertEquals('This operation creates a new user.', $op['description']);
@@ -30,10 +32,10 @@ class ParseTest extends \Cdd\Tests\Framework\TestCase {
         $this->assertEquals('Accounts', $op['tags'][1]);
         $this->assertEquals('https://docs.example.com/user', $op['externalDocs']['url']);
         $this->assertEquals('More details', $op['externalDocs']['description']);
-        
+
         $this->assertTrue(isset($op['callbacks']['onData']));
         $this->assertTrue(isset($op['callbacks']['onData']['http://notificationUrl']));
-        
+
         $this->assertTrue(isset($op['responses']['200']['links']['getAccountById']));
         $this->assertEquals('getAccount', $op['responses']['200']['links']['getAccountById']['operationId']);
     }

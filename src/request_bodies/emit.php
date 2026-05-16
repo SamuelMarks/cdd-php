@@ -11,9 +11,10 @@ namespace Cdd\RequestBodies;
  * @param string $name The parameter name
  * @return string The generated parameter definition
  */
-function emit(array $requestBody, string $name = 'body'): string {
+function emit(array $requestBody, string $name = 'body'): string
+{
     $schema = $requestBody['content']['application/json']['schema'] ?? [];
-    
+
     $type = '';
     if (isset($schema['type'])) {
         $type = $schema['type'];
@@ -21,10 +22,10 @@ function emit(array $requestBody, string $name = 'body'): string {
         $parts = explode('/', $schema['$ref']);
         $type = end($parts);
     }
-    
+
     $required = $requestBody['required'] ?? false;
-    
+
     $typeStr = ($type !== '') ? ($required ? $type : "?$type") . ' ' : '';
-    
+
     return "{$typeStr}\${$name}";
 }

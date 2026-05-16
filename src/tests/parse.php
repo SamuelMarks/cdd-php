@@ -13,9 +13,10 @@ use PhpParser\Node\Scalar\String_;
 /**
  * Parses a test file to extract operations tested.
  */
-function parse(string $testCode): array {
+function parse(string $testCode): array
+{
     $tested = [];
-    $parser = (new ParserFactory)->createForNewestSupportedVersion();
+    $parser = (new ParserFactory())->createForNewestSupportedVersion();
     try {
         $stmts = $parser->parse($testCode);
     } catch (\Throwable $e) {

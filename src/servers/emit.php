@@ -7,7 +7,8 @@ namespace Cdd\Servers;
 /**
  * Emits PHP class properties representing base URLs from OpenAPI Server Objects.
  */
-function emit(array $servers): string {
+function emit(array $servers): string
+{
     $out = '';
     foreach ($servers as $index => $server) {
         $url = $server['url'] ?? '';

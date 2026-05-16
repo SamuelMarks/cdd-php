@@ -2,8 +2,10 @@
 
 namespace Cdd\Tests\Webhooks;
 
-class ParseEmitTest extends \Cdd\Tests\Framework\TestCase {
-    public function testParseAndEmit() {
+class ParseEmitTest extends \Cdd\Tests\Framework\TestCase
+{
+    public function testParseAndEmit()
+    {
         $webhooks = [
             'myWebhook' => [
                 'post' => [

@@ -1,19 +1,23 @@
 <?php
 
-class ApiClient {
+class ApiClient
+{
     private $baseUrl;
 
-    public function __construct(string $baseUrl) {
+    public function __construct(string $baseUrl)
+    {
         $this->baseUrl = $baseUrl;
     }
 
-    protected function requireSecurity(string $name, array $scopes = []) {
+    protected function requireSecurity(string $name, array $scopes = [])
+    {
         // Base security requirement mock
     }
 
-    public function updatePet(array $params = [], array $body = []) {
-    // Security Requirements
-    $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
+    public function updatePet(array $params = [], array $body = [])
+    {
+        // Security Requirements
+        $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
         $ch = curl_init();
         $url = "{$this->baseUrl}/pet";
         if (!empty($params)) {
@@ -39,9 +43,10 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function addPet(array $params = [], array $body = []) {
-    // Security Requirements
-    $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
+    public function addPet(array $params = [], array $body = [])
+    {
+        // Security Requirements
+        $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
         $ch = curl_init();
         $url = "{$this->baseUrl}/pet";
         if (!empty($params)) {
@@ -67,9 +72,10 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function findPetsByStatus(array $params = [], array $body = []) {
-    // Security Requirements
-    $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
+    public function findPetsByStatus(array $params = [], array $body = [])
+    {
+        // Security Requirements
+        $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
         $ch = curl_init();
         $url = "{$this->baseUrl}/pet/findByStatus";
         if (!empty($params)) {
@@ -95,9 +101,10 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function findPetsByTags(array $params = [], array $body = []) {
-    // Security Requirements
-    $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
+    public function findPetsByTags(array $params = [], array $body = [])
+    {
+        // Security Requirements
+        $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
         $ch = curl_init();
         $url = "{$this->baseUrl}/pet/findByTags";
         if (!empty($params)) {
@@ -123,10 +130,11 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function getPetById(array $params = [], array $body = []) {
-    // Security Requirements
-    $this->requireSecurity('api_key', []);
-    $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
+    public function getPetById(array $params = [], array $body = [])
+    {
+        // Security Requirements
+        $this->requireSecurity('api_key', []);
+        $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
         $ch = curl_init();
         $url = "{$this->baseUrl}/pet/{petId}";
         if (!empty($params)) {
@@ -152,9 +160,10 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function updatePetWithForm(array $params = [], array $body = []) {
-    // Security Requirements
-    $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
+    public function updatePetWithForm(array $params = [], array $body = [])
+    {
+        // Security Requirements
+        $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
         $ch = curl_init();
         $url = "{$this->baseUrl}/pet/{petId}";
         if (!empty($params)) {
@@ -180,9 +189,10 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function deletePet(array $params = [], array $body = []) {
-    // Security Requirements
-    $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
+    public function deletePet(array $params = [], array $body = [])
+    {
+        // Security Requirements
+        $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
         $ch = curl_init();
         $url = "{$this->baseUrl}/pet/{petId}";
         if (!empty($params)) {
@@ -208,9 +218,10 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function uploadFile(array $params = [], array $body = []) {
-    // Security Requirements
-    $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
+    public function uploadFile(array $params = [], array $body = [])
+    {
+        // Security Requirements
+        $this->requireSecurity('petstore_auth', ['write:pets', 'read:pets']);
         $ch = curl_init();
         $url = "{$this->baseUrl}/pet/{petId}/uploadImage";
         if (!empty($params)) {
@@ -236,9 +247,10 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function getInventory(array $params = [], array $body = []) {
-    // Security Requirements
-    $this->requireSecurity('api_key', []);
+    public function getInventory(array $params = [], array $body = [])
+    {
+        // Security Requirements
+        $this->requireSecurity('api_key', []);
         $ch = curl_init();
         $url = "{$this->baseUrl}/store/inventory";
         if (!empty($params)) {
@@ -264,7 +276,8 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function placeOrder(array $params = [], array $body = []) {
+    public function placeOrder(array $params = [], array $body = [])
+    {
         $ch = curl_init();
         $url = "{$this->baseUrl}/store/order";
         if (!empty($params)) {
@@ -290,7 +303,8 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function getOrderById(array $params = [], array $body = []) {
+    public function getOrderById(array $params = [], array $body = [])
+    {
         $ch = curl_init();
         $url = "{$this->baseUrl}/store/order/{orderId}";
         if (!empty($params)) {
@@ -316,7 +330,8 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function deleteOrder(array $params = [], array $body = []) {
+    public function deleteOrder(array $params = [], array $body = [])
+    {
         $ch = curl_init();
         $url = "{$this->baseUrl}/store/order/{orderId}";
         if (!empty($params)) {
@@ -342,7 +357,8 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function createUser(array $params = [], array $body = []) {
+    public function createUser(array $params = [], array $body = [])
+    {
         $ch = curl_init();
         $url = "{$this->baseUrl}/user";
         if (!empty($params)) {
@@ -368,7 +384,8 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function createUsersWithListInput(array $params = [], array $body = []) {
+    public function createUsersWithListInput(array $params = [], array $body = [])
+    {
         $ch = curl_init();
         $url = "{$this->baseUrl}/user/createWithList";
         if (!empty($params)) {
@@ -394,7 +411,8 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function loginUser(array $params = [], array $body = []) {
+    public function loginUser(array $params = [], array $body = [])
+    {
         $ch = curl_init();
         $url = "{$this->baseUrl}/user/login";
         if (!empty($params)) {
@@ -420,7 +438,8 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function logoutUser(array $params = [], array $body = []) {
+    public function logoutUser(array $params = [], array $body = [])
+    {
         $ch = curl_init();
         $url = "{$this->baseUrl}/user/logout";
         if (!empty($params)) {
@@ -446,7 +465,8 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function getUserByName(array $params = [], array $body = []) {
+    public function getUserByName(array $params = [], array $body = [])
+    {
         $ch = curl_init();
         $url = "{$this->baseUrl}/user/{username}";
         if (!empty($params)) {
@@ -472,7 +492,8 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function updateUser(array $params = [], array $body = []) {
+    public function updateUser(array $params = [], array $body = [])
+    {
         $ch = curl_init();
         $url = "{$this->baseUrl}/user/{username}";
         if (!empty($params)) {
@@ -498,7 +519,8 @@ class ApiClient {
         return json_decode($response, true);
     }
 
-    public function deleteUser(array $params = [], array $body = []) {
+    public function deleteUser(array $params = [], array $body = [])
+    {
         $ch = curl_init();
         $url = "{$this->baseUrl}/user/{username}";
         if (!empty($params)) {

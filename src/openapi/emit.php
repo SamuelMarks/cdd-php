@@ -12,19 +12,20 @@ namespace Cdd\Openapi;
  * @param string|null $outDir The directory to emit PHP code into
  * @return string The JSON representation
  */
-function emit(array $openapi, ?string $outDir = null, array $options = []): string {
+function emit(array $openapi, ?string $outDir = null, array $options = []): string
+{
     // Ensuring basic fields are present for 3.2.0 compliance
     if (!isset($openapi['openapi'])) {
         $openapi['openapi'] = '3.2.0';
     }
-    
+
     if (!isset($openapi['info'])) {
         $openapi['info'] = [
             'title' => 'Default API',
             'version' => '0.0.1'
         ];
     }
-    
+
     if (!isset($openapi['paths']) && !isset($openapi['components']) && !isset($openapi['webhooks'])) {
         $openapi['paths'] = (object)[]; // Empty paths object
     }
@@ -34,7 +35,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
         if (!is_dir($srcDir)) {
             mkdir($srcDir, 0777, true);
         }
-        
+
         $serverCode = "<?php\n\nclass ApiServers {\n";
         if (isset($openapi['servers'])) {
             $serverCode .= \Cdd\Servers\emit($openapi['servers']);
@@ -53,19 +54,19 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             $metadataCode = "<?php\n\n// Auto-generated API metadata\n\nreturn " . var_export($metadata, true) . ";\n";
             file_put_contents("$srcDir/api_metadata.php", $metadataCode);
         }
-        
+
         if (isset($openapi['paths'])) {
             $controllerCode = \Cdd\Paths\emit($openapi['paths'], file_exists("$srcDir/ApiController.php") ? file_get_contents("$srcDir/ApiController.php") : '');
             file_put_contents("$srcDir/ApiController.php", $controllerCode);
-            
+
             $routeCode = \Cdd\Routes\emit($openapi['paths'], file_exists("$srcDir/routes.php") ? file_get_contents("$srcDir/routes.php") : '');
             file_put_contents("$srcDir/routes.php", $routeCode);
-            
+
             // Client generation
             $clientCode = \Cdd\Client\emit_class($openapi['paths'], file_exists("$srcDir/ApiClient.php") ? file_get_contents("$srcDir/ApiClient.php") : '');
             file_put_contents("$srcDir/ApiClient.php", $clientCode);
         }
-        
+
         if (isset($openapi['components'])) {
             $componentsCode = \Cdd\Components\emit($openapi['components'], file_exists("$srcDir/Models.php") ? file_get_contents("$srcDir/Models.php") : '');
             file_put_contents("$srcDir/Models.php", $componentsCode);
@@ -94,7 +95,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
         } else {
             $testCode .= "use PHPUnit\\Framework\\TestCase;\n\nclass ApiTests extends TestCase {\n";
         }
-        
+
         if (isset($openapi['paths'])) {
             foreach ($openapi['paths'] as $path => $methods) {
                 foreach ($methods as $method => $operation) {
@@ -102,7 +103,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                 }
             }
         }
-        
+
         if ($tests) {
             $testCode .= "];\n";
         } else {
@@ -116,25 +117,29 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             if (!is_dir($testsDir)) {
                 mkdir($testsDir, 0777, true);
             }
-            
+
             $sdkTestCode = "<?php\n\nuse PHPUnit\\Framework\\TestCase;\nuse Api\\ApiClient;\n\nclass SdkIntegrationTest extends TestCase {\n";
             $sdkTestCode .= "    private \$client;\n\n";
             $sdkTestCode .= "    protected function setUp(): void {\n";
             $sdkTestCode .= "        \$this->client = new ApiClient('http://localhost:8080/v2');\n";
             $sdkTestCode .= "    }\n\n";
-            
+
             if (isset($openapi['paths'])) {
                 foreach ($openapi['paths'] as $path => $methods) {
                     foreach ($methods as $method => $operation) {
-                        if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers'])) { continue; }
-                        if ($method === 'additionalOperations' && is_array($operation)) { continue; }
-                        
+                        if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers'])) {
+                            continue;
+                        }
+                        if ($method === 'additionalOperations' && is_array($operation)) {
+                            continue;
+                        }
+
                         $methodName = strtolower($method);
                         $opId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
-                        
+
                         $sdkTestCode .= "    public function test_{$opId}() {\n";
-                        
-                        $getDummy = function($schema) use ($openapi, &$getDummy) {
+
+                        $getDummy = function ($schema) use ($openapi, &$getDummy) {
                             if (isset($schema['$ref']) && strpos($schema['$ref'], '#/components/schemas/') === 0) {
                                 $refName = substr($schema['$ref'], 21);
                                 if (isset($openapi['components']['schemas'][$refName])) {
@@ -152,11 +157,11 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                                     $obj = ["dummy" => "data"];
                                 }
                                 return $obj;
-                            } else if ($type === 'array') {
+                            } elseif ($type === 'array') {
                                 return [$getDummy($schema['items'] ?? [])];
-                            } else if ($type === 'integer' || $type === 'number') {
+                            } elseif ($type === 'integer' || $type === 'number') {
                                 return 1;
-                            } else if ($type === 'boolean') {
+                            } elseif ($type === 'boolean') {
                                 return true;
                             }
                             return "test_string";
@@ -173,7 +178,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                                 }
                             }
                         }
-                        
+
                         // Dummy body
                         $dummyBody = [];
                         if (isset($operation['requestBody']['content']['application/json']['schema'])) {
@@ -183,7 +188,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                             } else {
                                 $dummyBody = $res;
                             }
-                        } else if (isset($operation['requestBody']['content']['application/x-www-form-urlencoded']['schema'])) {
+                        } elseif (isset($operation['requestBody']['content']['application/x-www-form-urlencoded']['schema'])) {
                             $res = $getDummy($operation['requestBody']['content']['application/x-www-form-urlencoded']['schema']);
                             if (!is_array($res)) {
                                 $dummyBody = ["dummy" => $res];
@@ -191,10 +196,10 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                                 $dummyBody = $res;
                             }
                         }
-                        
+
                         $paramsStr = empty($dummyParams) ? "[]" : var_export($dummyParams, true);
                         $bodyStr = empty($dummyBody) ? "[]" : var_export($dummyBody, true);
-                        
+
                         $sdkTestCode .= "        \$response = \$this->client->{$opId}($paramsStr, $bodyStr);\n";
                         $sdkTestCode .= "        \$this->assertTrue(\$response['status'] >= 200 && \$response['status'] < 300, 'Invalid HTTP Status Code: ' . \$response['status']);\n";
                         $sdkTestCode .= "        if (\$response['data'] === null && json_last_error() !== JSON_ERROR_NONE) {\n";
@@ -204,15 +209,15 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                     }
                 }
             }
-            
+
             $sdkTestCode .= "}\n";
             file_put_contents("$testsDir/SdkIntegrationTest.php", $sdkTestCode);
         }
 
-        
+
         $noInstallablePackage = $options['no_installable_package'] ?? false;
         $noGithubActions = $options['no_github_actions'] ?? false;
-        
+
         if (!$noInstallablePackage) {
             if (!file_exists("$outDir/composer.json")) {
                 file_put_contents("$outDir/composer.json", json_encode([
@@ -241,7 +246,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
             }
         }
-        
+
         if (!$noGithubActions) {
             if (!is_dir("$outDir/.github/workflows")) {
                 mkdir("$outDir/.github/workflows", 0777, true);
@@ -255,12 +260,20 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
     $targetVersion = $options['target_version'] ?? '3.2.0';
     if ($targetVersion === '2.0') {
         $swagger = ['swagger' => '2.0'];
-        if (isset($openapi['info'])) $swagger['info'] = $openapi['info'];
+        if (isset($openapi['info'])) {
+            $swagger['info'] = $openapi['info'];
+        }
         if (isset($openapi['servers']) && count($openapi['servers']) > 0) {
             $url = parse_url($openapi['servers'][0]['url']);
-            if (isset($url['host'])) $swagger['host'] = $url['host'] . (isset($url['port']) ? ':' . $url['port'] : '');
-            if (isset($url['path'])) $swagger['basePath'] = $url['path'];
-            if (isset($url['scheme'])) $swagger['schemes'] = [$url['scheme']];
+            if (isset($url['host'])) {
+                $swagger['host'] = $url['host'] . (isset($url['port']) ? ':' . $url['port'] : '');
+            }
+            if (isset($url['path'])) {
+                $swagger['basePath'] = $url['path'];
+            }
+            if (isset($url['scheme'])) {
+                $swagger['schemes'] = [$url['scheme']];
+            }
         }
         $swagger['consumes'] = ['application/json'];
         $swagger['produces'] = ['application/json'];
@@ -274,7 +287,9 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                             foreach ($content as $mime => $media) {
                                 if ($mime === 'application/x-www-form-urlencoded' || $mime === 'multipart/form-data') {
                                     $props = $media['schema']['properties'] ?? [];
-                                    if (!isset($op['parameters'])) $op['parameters'] = [];
+                                    if (!isset($op['parameters'])) {
+                                        $op['parameters'] = [];
+                                    }
                                     foreach ($props as $name => $propSchema) {
                                         $p = $propSchema;
                                         $p['name'] = $name;
@@ -288,8 +303,12 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                                         'required' => $op['requestBody']['required'] ?? false,
                                         'schema' => $media['schema'] ?? []
                                     ];
-                                    if (isset($op['requestBody']['description'])) $p['description'] = $op['requestBody']['description'];
-                                    if (!isset($op['parameters'])) $op['parameters'] = [];
+                                    if (isset($op['requestBody']['description'])) {
+                                        $p['description'] = $op['requestBody']['description'];
+                                    }
+                                    if (!isset($op['parameters'])) {
+                                        $op['parameters'] = [];
+                                    }
                                     $op['parameters'][] = $p;
                                 }
                                 break; // Only take first content type
@@ -331,22 +350,38 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                     $scheme['type'] = 'oauth2';
                     foreach ($scheme['flows'] as $flowType => $flow) {
                         $ft = $flowType;
-                        if ($ft === 'clientCredentials') $ft = 'application';
-                        if ($ft === 'authorizationCode') $ft = 'accessCode';
+                        if ($ft === 'clientCredentials') {
+                            $ft = 'application';
+                        }
+                        if ($ft === 'authorizationCode') {
+                            $ft = 'accessCode';
+                        }
                         $scheme['flow'] = $ft;
-                        if (isset($flow['authorizationUrl'])) $scheme['authorizationUrl'] = $flow['authorizationUrl'];
-                        if (isset($flow['tokenUrl'])) $scheme['tokenUrl'] = $flow['tokenUrl'];
-                        if (isset($flow['scopes'])) $scheme['scopes'] = $flow['scopes'];
+                        if (isset($flow['authorizationUrl'])) {
+                            $scheme['authorizationUrl'] = $flow['authorizationUrl'];
+                        }
+                        if (isset($flow['tokenUrl'])) {
+                            $scheme['tokenUrl'] = $flow['tokenUrl'];
+                        }
+                        if (isset($flow['scopes'])) {
+                            $scheme['scopes'] = $flow['scopes'];
+                        }
                         break;
                     }
                     unset($scheme['flows']);
                 }
             }
         }
-        if (isset($openapi['security'])) $swagger['security'] = $openapi['security'];
-        if (isset($openapi['tags'])) $swagger['tags'] = $openapi['tags'];
-        if (isset($openapi['externalDocs'])) $swagger['externalDocs'] = $openapi['externalDocs'];
-        
+        if (isset($openapi['security'])) {
+            $swagger['security'] = $openapi['security'];
+        }
+        if (isset($openapi['tags'])) {
+            $swagger['tags'] = $openapi['tags'];
+        }
+        if (isset($openapi['externalDocs'])) {
+            $swagger['externalDocs'] = $openapi['externalDocs'];
+        }
+
         $jsonStr = json_encode($swagger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $jsonStr = str_replace('#/components/schemas/', '#/definitions/', $jsonStr);
         $jsonStr = str_replace('#\/components\/schemas\/', '#\/definitions\/', $jsonStr);
@@ -361,9 +396,10 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
         $openapiToEncode = $openapi;
     }
 
-    $json = json_encode($openapiToEncode, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);    if ($json === false) {
+    $json = json_encode($openapiToEncode, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
         throw new \RuntimeException('Failed to encode OpenAPI array to JSON: ' . json_last_error_msg());
     }
-    
+
     return $json;
 }

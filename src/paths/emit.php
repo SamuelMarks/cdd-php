@@ -12,9 +12,10 @@ namespace Cdd\Paths;
  * @param string $existingCode Existing PHP code
  * @return string The generated PHP Controller code
  */
-function emit(array $paths, string $existingCode = ''): string {
+function emit(array $paths, string $existingCode = ''): string
+{
     $out = $existingCode !== '' ? $existingCode : "<?php\n\nclass ApiController {\n";
-    
+
     foreach ($paths as $path => $pathItem) {
         foreach ($pathItem as $method => $operation) {
             if ($method === 'additionalOperations' && is_array($operation)) {
@@ -44,7 +45,7 @@ function emit(array $paths, string $existingCode = ''): string {
                     if (!isset($operation['operationId'])) {
                         $operation['operationId'] = $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', $path);
                     }
-                    
+
                     $opName = $operation['operationId'];
                     // Check if function already exists
                     if (strpos($out, "function $opName(") === false) {
@@ -65,7 +66,7 @@ function emit(array $paths, string $existingCode = ''): string {
             }
         }
     }
-    
+
     if ($existingCode === '') {
         $out .= "}\n";
     }

@@ -7,11 +7,12 @@ namespace Cdd\Info;
 /**
  * Emits PHP comment block from an OpenAPI Info Object.
  */
-function emit(array $info): string {
+function emit(array $info): string
+{
     $title = $info['title'] ?? 'API';
     $version = $info['version'] ?? '1.0.0';
     $description = $info['description'] ?? '';
-    
+
     $out = "/**
  * $title (v$version)
 ";
