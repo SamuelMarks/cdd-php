@@ -109,9 +109,6 @@ function parse(Class_ $classNode): array
     if (!empty($required)) {
         $schema['required'] = array_values(array_unique($required));
     }
-    if (empty($schema['properties'])) {
-        unset($schema['properties']);
-    }
     return $schema;
 }
 /**

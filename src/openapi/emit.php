@@ -99,7 +99,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
 
         if (isset($openapi['paths'])) {
             foreach ($openapi['paths'] as $path => $methods) {
-                foreach ($methods as $method => $operation) {
+                foreach ($methods as $method => $operation) { if (!is_array($operation) || in_array(strtolower($method), ["parameters", "summary", "description", "servers", "additionaloperations"])) continue;
                     $testCode .= \Cdd\Tests\emit($method, $path, $operation, $tests) . "\n";
                 }
             }

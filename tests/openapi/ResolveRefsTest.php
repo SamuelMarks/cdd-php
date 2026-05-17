@@ -39,4 +39,21 @@ class ResolveRefsTest extends TestCase
         $this->assertEquals('integer', $resolved['requestBody']['content']['application/json']['schema']['properties']['id']['type']);
         $this->assertTrue(!isset($resolved['requestBody']['content']['application/json']['schema']['$ref']));
     }
+
+    public function testResolveRefsNotFound()
+    {
+        $components = [
+            'schemas' => []
+        ];
+
+        $structure = [
+            'schema' => [
+                '$ref' => '#/components/schemas/NonExistent'
+            ]
+        ];
+
+        $resolved = \Cdd\Openapi\resolve_refs($structure, $components);
+
+        $this->assertEquals('#/components/schemas/NonExistent', $resolved['schema']['$ref']);
+    }
 }

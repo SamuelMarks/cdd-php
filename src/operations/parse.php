@@ -121,9 +121,6 @@ function validateOperationObject(mixed $operation, array $pathItemParams = []): 
         }
         foreach ($operation['responses'] as $key => $val) {
             $keyStr = (string) $key;
-            if (!is_string($keyStr)) {
-                throw new \RuntimeException('Responses keys must be strings');
-            }
             if ($keyStr !== 'default' && !preg_match('/^[1-5](?:[0-9]{2}|XX)$/', $keyStr)) {
                 // Extensions are allowed
                 if (!str_starts_with($keyStr, 'x-')) {
@@ -177,9 +174,6 @@ function validateCallbackOrReferenceObject(mixed $callback): void
     }
     foreach ($callback as $expression => $pathItem) {
         $exprStr = (string) $expression;
-        if (!is_string($exprStr)) {
-            throw new \RuntimeException('Callback expression keys must be strings');
-        }
         if (str_starts_with($exprStr, 'x-')) {
             continue;
         }

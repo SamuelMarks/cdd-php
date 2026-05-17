@@ -26,4 +26,22 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(strpos($emitted, '* @param string $foo') !== false);
         $this->assertTrue(strpos($emitted, '* @return int') !== false);
     }
+
+    public function testParseEmpty()
+    {
+        $this->assertEquals(['description' => '', 'tags' => []], \Cdd\Docstrings\parse(''));
+    }
+
+    public function testEmitCustomTags()
+    {
+        $parsed = [
+            'description' => '',
+            'tags' => [
+                'custom' => ['value1', 'value2']
+            ]
+        ];
+        $emitted = \Cdd\Docstrings\emit($parsed);
+        $this->assertTrue(strpos($emitted, '* @custom value1') !== false);
+        $this->assertTrue(strpos($emitted, '* @custom value2') !== false);
+    }
 }

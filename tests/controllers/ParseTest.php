@@ -39,4 +39,9 @@ class ParseTest extends \Cdd\Tests\Framework\TestCase
         $this->assertTrue(isset($op['responses']['200']['links']['getAccountById']));
         $this->assertEquals('getAccount', $op['responses']['200']['links']['getAccountById']['operationId']);
     }
+
+    public function testParseInvalidCode()
+    {
+        $this->assertEquals([], \Cdd\Controllers\parse('<?php class {'));
+    }
 }

@@ -26,4 +26,38 @@ class ParseEmitTest extends TestCase
         $this->assertEquals(123, $parsed['example1']['dataValue']['test']);
     }
 
+
+    public function testParseCatch()
+    {
+        $code = "<?php throw new \Exception('test');";
+        $parsed = \Cdd\Mocks\parse($code);
+        $this->assertEquals([], $parsed);
+    }
+
+    public function testValidateExampleOrReferenceObject()
+    {
+        $tests = [
+            ['input' => 'not array', 'error' => 'Example must be an object'],
+            ['input' => ['summary' => 123], 'error' => 'Example "summary" must be a string'],
+            ['input' => ['description' => 123], 'error' => 'Example "description" must be a string'],
+            ['input' => ['dataValue' => 1, 'value' => 2], 'error' => 'Example cannot contain both "dataValue" and "value"'],
+            ['input' => ['serializedValue' => 'a', 'value' => 1], 'error' => 'Example cannot contain "serializedValue" with "value" or "externalValue"'],
+            ['input' => ['externalValue' => 123], 'error' => 'Example "externalValue" must be a string (URI)'],
+            ['input' => ['serializedValue' => 123], 'error' => 'Example "serializedValue" must be a string'],
+        ];
+
+        foreach ($tests as $test) {
+            $caught = false;
+            try {
+                \Cdd\Mocks\validateExampleOrReferenceObject($test['input']);
+            } catch (\RuntimeException $e) {
+                $this->assertEquals($test['error'], $e->getMessage());
+                $caught = true;
+            }
+            $this->assertTrue($caught, "Expected exception: {$test['error']}");
+        }
+
+        // test valid reference object
+        \Cdd\Mocks\validateExampleOrReferenceObject(['$ref' => '#/components/examples/Test']);
+    }
 }

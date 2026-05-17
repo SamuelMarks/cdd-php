@@ -20,7 +20,6 @@ function my_func(int \$a): int {
 }
 ";
 
-
         $functions = \Cdd\Functions\parse($code);
         $this->assertEquals(1, count($functions));
 
@@ -34,5 +33,15 @@ function my_func(int $a): int {
     return $a + 1;
 }';
         $this->assertEquals($expected, $emitted);
+    }
+
+    public function testEmitWithMissingKeys()
+    {
+        $this->assertEquals('', \Cdd\Functions\emit([]));
+    }
+
+    public function testParseInvalidCode()
+    {
+        $this->assertEquals([], \Cdd\Functions\parse('<?php class { '));
     }
 }

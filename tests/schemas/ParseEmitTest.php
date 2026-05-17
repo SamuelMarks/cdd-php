@@ -53,4 +53,85 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(strpos($emitted, '* @discriminator defaultMapping Guest') !== false);
         $this->assertTrue(strpos($emitted, '* @discriminator mapping admin AdminUser') !== false);
     }
+
+    public function testParseOptionals()
+    {
+        $code = "<?php
+/**
+ * @discriminator defaultMapping Guest
+ * @discriminator mapping admin AdminUser
+ */
+class DefaultDisc {
+    protected \$hidden;
+    public mixed \$mixedProp;
+    public MyType \$customType;
+} class EmptyClass {}
+";
+        $classes = \Cdd\Classes\parse($code);
+        $schema = \Cdd\Schemas\parse($classes[0]['node']);
+        $this->assertEquals('type', $schema['discriminator']['propertyName']); // 45, 56
+
+        $this->assertEquals('string', $schema['properties']['mixedProp']['type']); // 94
+        $this->assertEquals('#/components/schemas/MyType', $schema['properties']['customType']['$ref']); // 98
+        $this->assertTrue(empty($schema['properties']['hidden']));
+
+        $schemaEmpty = \Cdd\Schemas\parse($classes[1]['node']);
+        $this->assertTrue(empty($schemaEmpty['properties']));
+    }
+
+    public function testValidationErrors()
+    {
+        $tests = [
+            ['input' => ['properties' => 123], 'error' => 'Schema "properties" must be a map'],
+            ['input' => ['allOf' => 123], 'error' => 'Schema "allOf" must be an array'],
+            ['input' => ['anyOf' => 123], 'error' => 'Schema "anyOf" must be an array'],
+            ['input' => ['oneOf' => 123], 'error' => 'Schema "oneOf" must be an array'],
+            ['input' => ['discriminator' => 123], 'error' => 'Discriminator must be an object'],
+            ['input' => ['discriminator' => ['propertyName' => 'a', 'mapping' => 123]], 'error' => 'Discriminator "mapping" must be a map'],
+            ['input' => ['discriminator' => ['propertyName' => 'a', 'defaultMapping' => 123]], 'error' => 'Discriminator "defaultMapping" must be a string'],
+            ['input' => ['xml' => 123], 'error' => 'XML must be an object'],
+            ['input' => ['xml' => ['namespace' => 123]], 'error' => 'XML "namespace" must be a string'],
+            ['input' => ['xml' => ['prefix' => 123]], 'error' => 'XML "prefix" must be a string'],
+            ['input' => ['xml' => ['attribute' => 123]], 'error' => 'XML "attribute" must be a boolean'],
+            ['input' => ['xml' => ['wrapped' => 123]], 'error' => 'XML "wrapped" must be a boolean'],
+            ['input' => ['xml' => ['nodeType' => 123]], 'error' => 'XML "nodeType" must be a string'],
+            ['input' => ['xml' => ['nodeType' => 'invalid']], 'error' => 'XML "nodeType" must be one of: element, attribute, text, cdata, none'],
+        ];
+
+        foreach ($tests as $test) {
+            $caught = false;
+            try {
+                \Cdd\Schemas\validateSchemaOrReferenceObject($test['input']);
+            } catch (\RuntimeException $e) {
+                $this->assertEquals($test['error'], $e->getMessage());
+                $caught = true;
+            }
+            $this->assertTrue($caught, "Expected exception: {$test['error']}");
+        }
+
+        // boolean schema
+        \Cdd\Schemas\validateSchemaOrReferenceObject(true);
+
+        // schema with allOf/anyOf/oneOf/not and externalDocs
+        \Cdd\Schemas\validateSchemaOrReferenceObject([
+            'allOf' => [['type' => 'string']],
+            'anyOf' => [['type' => 'string']],
+            'oneOf' => [['type' => 'string']],
+            'not' => ['type' => 'string'],
+            'externalDocs' => ['url' => 'http://example.com']
+        ]);
+        $this->assertTrue(true);
+    }
+    public function testParseDiscriminatorMappingOnly()
+    {
+        $code = "<?php
+/**
+ * @discriminator mapping admin AdminUser
+ */
+class MappingOnly { }
+";
+        $classes = \Cdd\Classes\parse($code);
+        $schema = \Cdd\Schemas\parse($classes[0]['node']);
+        $this->assertEquals('type', $schema['discriminator']['propertyName']);
+    }
 }

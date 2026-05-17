@@ -49,7 +49,7 @@ function emit(array $paths, string $existingCode = ''): string
                 $name = $p['name'] ?? 'param';
                 $req = !empty($p['required']) ? '(required)' : '(optional)';
                 $desc = $p['description'] ?? '';
-                $out .= "        echo \"  --$name \$req $desc\\n\";\n";
+                $out .= "        echo \"  --$name $req $desc\\n\";\n";
             }
         }
         if (isset($operation['requestBody'])) {

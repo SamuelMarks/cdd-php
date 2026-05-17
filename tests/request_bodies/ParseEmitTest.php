@@ -19,4 +19,36 @@ class ParseEmitTest extends TestCase
         $emitted = \Cdd\RequestBodies\emit($rb, 'user');
         $this->assertEquals('User $user', $emitted);
     }
+
+    public function testValidateRef()
+    {
+        \Cdd\RequestBodies\validateRequestBodyOrReferenceObject(['$ref' => '#/components/requestBodies/User']);
+        $this->assertTrue(true); // just testing it doesn't throw
+    }
+
+    public function testValidateDescriptionNotString()
+    {
+        try {
+            \Cdd\RequestBodies\validateRequestBodyOrReferenceObject([
+                'content' => [],
+                'description' => 123
+            ]);
+            $this->assertTrue(false);
+        } catch (\RuntimeException $e) {
+            $this->assertEquals('Request Body "description" must be a string', $e->getMessage());
+        }
+    }
+
+    public function testValidateRequiredNotBool()
+    {
+        try {
+            \Cdd\RequestBodies\validateRequestBodyOrReferenceObject([
+                'content' => [],
+                'required' => 'yes'
+            ]);
+            $this->assertTrue(false);
+        } catch (\RuntimeException $e) {
+            $this->assertEquals('Request Body "required" must be a boolean', $e->getMessage());
+        }
+    }
 }

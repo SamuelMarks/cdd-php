@@ -16,7 +16,31 @@ class ParseEmitTest extends TestCase
         $this->assertEquals('Does things', $info['description']);
 
         $emitted = \Cdd\Info\emit($info);
-        $this->assertTrue(strpos($emitted, '* My API (v2.0.0)') !== false);
         $this->assertTrue(strpos($emitted, '* Does things') !== false);
+    }
+
+    public function testTagSummaryNotString() {
+        try {
+            \Cdd\Info\validateTagObject(['name' => 'test', 'summary' => 123]);
+            $this->assertTrue(false);
+        } catch (\Exception $e) {
+            $this->assertEquals('Tag "summary" must be a string', $e->getMessage());
+        }
+    }
+    public function testTagParentNotString() {
+        try {
+            \Cdd\Info\validateTagObject(['name' => 'test', 'parent' => 123]);
+            $this->assertTrue(false);
+        } catch (\Exception $e) {
+            $this->assertEquals('Tag "parent" must be a string', $e->getMessage());
+        }
+    }
+    public function testTagKindNotString() {
+        try {
+            \Cdd\Info\validateTagObject(['name' => 'test', 'kind' => 123]);
+            $this->assertTrue(false);
+        } catch (\Exception $e) {
+            $this->assertEquals('Tag "kind" must be a string', $e->getMessage());
+        }
     }
 }

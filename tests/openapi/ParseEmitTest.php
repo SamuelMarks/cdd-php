@@ -517,4 +517,66 @@ class ParseEmitTest extends TestCase
             $this->assertTrue(strpos($e->getMessage(), 'Reference "summary" must be a string') !== false);
         }
     }
+
+    public function testRefMustBeString()
+    {
+        $json = '{
+            "openapi": "3.2.0",
+            "info": {"title": "Test", "version": "1.0"},
+            "components": {
+                "schemas": {
+                    "Test": {
+                        "$ref": 123
+                    }
+                }
+            }
+        }';
+        $threw = false;
+        try { \Cdd\Openapi\parse($json); } catch (\RuntimeException $e) {
+            $threw = $e->getMessage() === 'Reference "$ref" must be a string';
+        }
+        $this->assertTrue($threw);
+    }
+
+    public function testRefSummaryMustBeString()
+    {
+        $json = '{
+            "openapi": "3.2.0",
+            "info": {"title": "Test", "version": "1.0"},
+            "components": {
+                "schemas": {
+                    "Test": {
+                        "$ref": "#/components/schemas/Other",
+                        "summary": 123
+                    }
+                }
+            }
+        }';
+        $threw = false;
+        try { \Cdd\Openapi\parse($json); } catch (\RuntimeException $e) {
+            $threw = $e->getMessage() === 'Reference "summary" must be a string';
+        }
+        $this->assertTrue($threw);
+    }
+
+    public function testRefDescriptionMustBeString()
+    {
+        $json = '{
+            "openapi": "3.2.0",
+            "info": {"title": "Test", "version": "1.0"},
+            "components": {
+                "schemas": {
+                    "Test": {
+                        "$ref": "#/components/schemas/Other",
+                        "description": 123
+                    }
+                }
+            }
+        }';
+        $threw = false;
+        try { \Cdd\Openapi\parse($json); } catch (\RuntimeException $e) {
+            $threw = $e->getMessage() === 'Reference "description" must be a string';
+        }
+        $this->assertTrue($threw);
+    }
 }

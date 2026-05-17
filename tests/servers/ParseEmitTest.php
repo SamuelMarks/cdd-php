@@ -21,4 +21,32 @@ class ParseEmitTest extends TestCase
         $this->assertEquals('https://api.example.com', $servers[0]['url']);
         $this->assertEquals('https://dev.example.com', $servers[1]['url']);
     }
+
+    public function testParseInvalidCode()
+    {
+        $this->assertEquals([], \Cdd\Servers\parse('<?php class {'));
+    }
+
+    public function testValidateServerObjectVariableNotArray()
+    {
+        try {
+            \Cdd\Servers\validateServerObject([
+                'url' => 'http://example.com',
+                'variables' => 'not an array'
+            ]);
+            $this->assertTrue(false);
+        } catch (\RuntimeException $e) {
+            $this->assertEquals('Server "variables" must be a map', $e->getMessage());
+        }
+    }
+
+    public function testValidateServerObjectNotArray()
+    {
+        try {
+            \Cdd\Servers\validateServerObject('not an array');
+            $this->assertTrue(false);
+        } catch (\RuntimeException $e) {
+            $this->assertEquals('Server must be an object', $e->getMessage());
+        }
+    }
 }
