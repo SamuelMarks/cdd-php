@@ -5,7 +5,7 @@
 ## OpenAPI Compliance
 
 *   **Version Target:** OpenAPI Specification 3.2.0 (Draft/Main)
-*   **Current Status:** 100% compliance achieved. Parsers and Emitters correctly handle the majority of OpenAPI features, including full support for OpenAPI 3.2.0.
+*   **Current Status:** 100% compliance achieved. Parsers and Emitters correctly handle the majority of OpenAPI features, including full support for Swagger 2.0 and OpenAPI 3.2.0.
 *   **Target Coverage:** 100% features supported in 3.2.0 version.
 
 ## Language Standards
