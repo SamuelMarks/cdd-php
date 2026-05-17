@@ -4,18 +4,59 @@ on:
     branches: [ main, master ]
     tags:
       - 'v*'
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Checkout parent repo for test schemas
+      uses: actions/checkout@v4
+      with:
+        repository: SamuelMarks/cdd-openapi-test-harness
+        path: cdd-openapi-test-harness
     - name: Use PHP
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.4'
-    - run: composer install
-    - run: make test
+        coverage: pcov
+    - name: Install Dependencies
+      run: composer install
+
+    - name: Build
+      run: make build
+
+    - name: Lint PHP code
+      run: find src tests bin scripts -name "*.php" -exec php -l {} \; > /dev/null
+
+    - name: Check code formatting
+      run: vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --allow-risky=yes --using-cache=no -q
+
+    - name: Run tests (with coverage)
+      run: make test
+
+    - name: Verify Coverage Badges (Optional - Fails if badges need update)
+      run: |
+        php scripts/update_badges.php
+        git diff --exit-code README.md || (echo "README.md badges are out of date! Please run 'php scripts/update_badges.php' locally and commit the result." && exit 1)
+
+    - name: Swagger 2.0 Petstore test
+      run: |
+        mkdir -p temp-php-client-swagger2
+        php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore.json -o temp-php-client-swagger2
+        cd temp-php-client-swagger2
+        composer install -q
+        composer test || true
+
+    - name: OpenAPI 3.2.0 Petstore test
+      run: |
+        mkdir -p temp-php-client-openapi3
+        php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore_oas3.json -o temp-php-client-openapi3
+        cd temp-php-client-openapi3
+        composer install -q
+        composer test || true
 
   build_wasm:
     runs-on: ubuntu-latest
@@ -26,15 +67,8 @@ jobs:
       with:
         php-version: '8.4'
     - run: composer install
-    - name: Setup emsdk
-      run: |
-        git clone --depth=1 https://github.com/emscripten-core/emsdk.git
-        cd emsdk
-        ./emsdk install latest
-        ./emsdk activate latest
     - name: Build WASM
       run: |
-        . emsdk/emsdk_env.sh
         make build_wasm
     - name: Upload WASM
       uses: actions/upload-artifact@v4

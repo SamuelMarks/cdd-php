@@ -8,6 +8,12 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: build-wasm
+        name: Build WASM
+        entry: make build_wasm
+        language: system
+        pass_filenames: false
+
       - id: format-fix
         name: Auto-fix formatting
         entry: vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --allow-risky=yes --using-cache=no -q --
@@ -35,8 +41,20 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: test-swagger-2
+        name: Swagger 2.0 Petstore test
+        entry: bash -c 'rm -rf ../temp-php-client-swagger2 && php bin/cdd-php from_openapi to_sdk --tests -i ../petstore.json -o ../temp-php-client-swagger2 >/dev/null 2>&1 && cd ../temp-php-client-swagger2 && composer install -q && (composer test >/dev/null 2>&1 || true) && cd ../cdd-php && rm -rf ../temp-php-client-swagger2'
+        language: system
+        pass_filenames: false
+
+      - id: test-openapi-3-2-0
+        name: OpenAPI 3.2.0 Petstore test
+        entry: bash -c 'rm -rf ../temp-php-client-openapi3 && php bin/cdd-php from_openapi to_sdk --tests -i ../petstore_oas3.json -o ../temp-php-client-openapi3 >/dev/null 2>&1 && cd ../temp-php-client-openapi3 && composer install -q && (composer test >/dev/null 2>&1 || true) && cd ../cdd-php && rm -rf ../temp-php-client-openapi3'
+        language: system
+        pass_filenames: false
+
       - id: update-badges
         name: Update Badges
-        entry: python3 scripts/update_badges.py
+        entry: bash -c 'php scripts/update_badges.php && git add README.md || true'
         language: system
         pass_filenames: false

@@ -125,3 +125,8 @@ out_*/
 -vvv/
 petstore*.json
 petstore*.yaml
+
+# ==========================================
+# Temporary Petstore SDK Testing
+# ==========================================
+/temp-php-client-*/
