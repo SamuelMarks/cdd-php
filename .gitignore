@@ -120,6 +120,7 @@ wasi-vfs
 /test*.php
 .php-cs-fixer.cache
 *.py
+convert.py
 out_*/
 -vvv/
 petstore*.json
