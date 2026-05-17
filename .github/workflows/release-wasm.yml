@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Use PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
       - name: Install binaryen
         run: sudo apt-get update && sudo apt-get install -y binaryen
       - name: Build WASM

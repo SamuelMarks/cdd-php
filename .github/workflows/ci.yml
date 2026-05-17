@@ -13,7 +13,7 @@ jobs:
     - name: Use PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.2'
+        php-version: '8.4'
     - run: composer install
     - run: make test
 
@@ -24,7 +24,7 @@ jobs:
     - name: Use PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.2'
+        php-version: '8.4'
     - run: composer install
     - name: Setup emsdk
       run: |
@@ -52,7 +52,7 @@ jobs:
     - name: Use PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.2'
+        php-version: '8.4'
     - run: composer install
     - run: make build
     - name: Download WASM artifact
