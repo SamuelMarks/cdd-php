@@ -20,7 +20,10 @@ foreach ($iterator as $file) {
     $rel = str_replace('\\', '/', $rel); // Normalize for Windows
 
     if (preg_match('/^(src|vendor|bin)\//', $rel) && strpos($rel, 'bin/cdd-php.') === false) {
-        $files[$rel] = file_get_contents($path);
+        $data = file_get_contents($path);
+        if (mb_check_encoding($data, 'UTF-8')) {
+            $files[$rel] = $data;
+        }
     }
 }
 
@@ -29,5 +32,11 @@ $files['to_docs_json'] = $files['cdd-php'];
 $files['from_openapi'] = $files['cdd-php'];
 $files['php.ini'] = "html_errors = 0\ndisplay_errors = stderr\nmemory_limit = 512M\n";
 
-file_put_contents($finalFile, json_encode($files));
+$json = json_encode($files);
+if ($json === false) {
+    echo "JSON encoding failed: " . json_last_error_msg() . "\n";
+    exit(1);
+}
+
+file_put_contents($finalFile, $json);
 echo "Built WASM bundle JSON to $finalFile\n";
