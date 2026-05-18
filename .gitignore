@@ -130,3 +130,4 @@ petstore*.yaml
 # Temporary Petstore SDK Testing
 # ==========================================
 /temp-php-client-*/
+/cdd-openapi-test-harness/
