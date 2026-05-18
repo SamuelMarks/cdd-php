@@ -125,6 +125,7 @@ out_*/
 -vvv/
 petstore*.json
 petstore*.yaml
+job_log.txt
 
 # ==========================================
 # Temporary Petstore SDK Testing

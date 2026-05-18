@@ -83,8 +83,7 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     $out .= "        \$response = curl_exec(\$ch);\n";
     $out .= "        \$error = curl_error(\$ch);\n";
     $out .= "        \$httpCode = curl_getinfo(\$ch, CURLINFO_HTTP_CODE);\n";
-    $out .= "        curl_close(\$ch);\n";
-
+    $out .= "\n";
     $out .= "        if (\$error) {\n";
     $out .= "            throw new \\RuntimeException('cURL Error: ' . \$error);\n";
     $out .= "        }\n";

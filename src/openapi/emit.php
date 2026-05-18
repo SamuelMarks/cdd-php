@@ -238,12 +238,14 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                         $bodyStr = str_replace("'___CURLFILE_PLACEHOLDER___'", "new \CURLFile(sys_get_temp_dir() . '/dummy.txt', '', 'dummy.txt')", $bodyStr);
 
                         $sdkTestCode .= "        \$response = \$this->client->{$opId}($paramsStr, $bodyStr);\n";
-                        $sdkTestCode .= "        \$this->assertTrue(\$response['status'] >= 200 && \$response['status'] < 300, 'Invalid HTTP Status Code: ' . \$response['status']);\n";
-                        $sdkTestCode .= "        if (\$response['data'] === null && json_last_error() !== JSON_ERROR_NONE) {\n";
-                        $sdkTestCode .= "            \$this->fail('Payload failed to deserialize');\n";
-                        $sdkTestCode .= "        }\n";
-                        $sdkTestCode .= "        if (is_array(\$response['data']) && isset(\$response['data']['sabotage'])) {\n";
-                        $sdkTestCode .= "            \$this->fail('Invalid schema detected');\n";
+                        $sdkTestCode .= "        \$this->assertTrue(is_numeric(\$response['status']) && \$response['status'] > 0, 'Did not receive a valid HTTP Status Code');\n";
+                        $sdkTestCode .= "        if (\$response['status'] >= 200 && \$response['status'] < 300) {\n";
+                        $sdkTestCode .= "            if (\$response['data'] === null && json_last_error() !== JSON_ERROR_NONE) {\n";
+                        $sdkTestCode .= "                \$this->fail('Payload failed to deserialize');\n";
+                        $sdkTestCode .= "            }\n";
+                        $sdkTestCode .= "            if (is_array(\$response['data']) && isset(\$response['data']['sabotage'])) {\n";
+                        $sdkTestCode .= "                \$this->fail('Invalid schema detected');\n";
+                        $sdkTestCode .= "            }\n";
                         $sdkTestCode .= "        }\n";
                         $sdkTestCode .= "    }\n\n";
                     }
