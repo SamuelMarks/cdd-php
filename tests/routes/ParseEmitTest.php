@@ -38,7 +38,7 @@ class ParseEmitTest extends TestCase
         $routesAdd = ['/api/custom' => ['additionalOperations' => ['CUSTOM' => ['operationId' => 'CustomController@action']]]];
         $emitted3 = \Cdd\Routes\emit($routesAdd, "<?php\n\nRoute::get('/api/users', 'UserController@index');\n");
         $this->assertTrue(strpos($emitted3, "Route::custom('/api/custom', 'CustomController@action');") !== false);
-        
+
         // And when it already exists
         $emitted4 = \Cdd\Routes\emit($routesAdd, "<?php\n\nRoute::custom('/api/custom', 'CustomController@action');\n");
         // Should not add it again
@@ -59,14 +59,14 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(isset($routes['/api/custom']['additionalOperations']['CUSTOM_M']));
 
         $emitted = \Cdd\Routes\emit($routes);
-        // test passing manually since we just want to suppress errors related to Route::custom_m formatting 
- $this->assertTrue(true);
+        // test passing manually since we just want to suppress errors related to Route::custom_m formatting
+        $this->assertTrue(true);
 
         // Test emit with existing code
         $existing = "<?php\n\nRoute::get('/api/users', 'UserController@index');\n";
         $emittedExisting = \Cdd\Routes\emit($routes, $existing);
-        // test passing manually 
- $this->assertTrue(true);
+        // test passing manually
+        $this->assertTrue(true);
         $this->assertTrue(strpos($emittedExisting, "Route::get('/api/users', 'UserController@index');") !== false);
     }
 }

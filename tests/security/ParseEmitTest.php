@@ -64,16 +64,16 @@ class ParseEmitTest extends TestCase
             ['input' => ['type' => 'invalid'], 'error' => 'Security Scheme "type" must be one of: apiKey, http, mutualTLS, oauth2, openIdConnect'],
             ['input' => ['type' => 'apiKey', 'description' => 123], 'error' => 'Security Scheme "description" must be a string'],
             ['input' => ['type' => 'apiKey', 'deprecated' => 'yes'], 'error' => 'Security Scheme "deprecated" must be a boolean'],
-            
+
             ['input' => ['type' => 'apiKey'], 'error' => 'Security Scheme "apiKey" requires a "name" string'],
             ['input' => ['type' => 'apiKey', 'name' => 'api_key'], 'error' => 'Security Scheme "apiKey" requires an "in" string (query, header, cookie)'],
-            
+
             ['input' => ['type' => 'http'], 'error' => 'Security Scheme "http" requires a "scheme" string'],
             ['input' => ['type' => 'http', 'scheme' => 'bearer', 'bearerFormat' => 123], 'error' => 'Security Scheme "bearerFormat" must be a string'],
-            
+
             ['input' => ['type' => 'oauth2'], 'error' => 'Security Scheme "oauth2" requires a "flows" map'],
             ['input' => ['type' => 'oauth2', 'flows' => [], 'oauth2MetadataUrl' => 123], 'error' => 'Security Scheme "oauth2MetadataUrl" must be a string'],
-            
+
             ['input' => ['type' => 'oauth2', 'flows' => ['invalid' => []]], 'error' => 'OAuth2 flow type must be one of: implicit, password, clientCredentials, authorizationCode, deviceAuthorization'],
             ['input' => ['type' => 'oauth2', 'flows' => ['implicit' => 'not_array']], 'error' => 'OAuth2 flow must be an object'],
             ['input' => ['type' => 'oauth2', 'flows' => ['implicit' => []]], 'error' => 'OAuth2 flow must contain a "scopes" map'],

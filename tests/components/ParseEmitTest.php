@@ -134,18 +134,18 @@ class ParseEmitTest extends TestCase
                 ]
             ]
         ];
-        
+
         $emitted = \Cdd\Components\emit($components);
-        
+
         $this->assertTrue(strpos($emitted, '@required true') !== false);
-        
+
         $this->assertTrue(strpos($emitted, '@in header') !== false);
         $this->assertTrue(strpos($emitted, '@name X-API-KEY') !== false);
-        
+
         $this->assertTrue(strpos($emitted, '@bearerFormat JWT') !== false);
-        
+
         $this->assertTrue(strpos($emitted, '@openIdConnectUrl https://example.com/.well-known/openid-configuration') !== false);
-        
+
         $this->assertTrue(strpos($emitted, '@flow implicit') !== false);
     }
 }

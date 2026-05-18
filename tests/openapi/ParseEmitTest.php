@@ -532,7 +532,9 @@ class ParseEmitTest extends TestCase
             }
         }';
         $threw = false;
-        try { \Cdd\Openapi\parse($json); } catch (\RuntimeException $e) {
+        try {
+            \Cdd\Openapi\parse($json);
+        } catch (\RuntimeException $e) {
             $threw = $e->getMessage() === 'Reference "$ref" must be a string';
         }
         $this->assertTrue($threw);
@@ -553,7 +555,9 @@ class ParseEmitTest extends TestCase
             }
         }';
         $threw = false;
-        try { \Cdd\Openapi\parse($json); } catch (\RuntimeException $e) {
+        try {
+            \Cdd\Openapi\parse($json);
+        } catch (\RuntimeException $e) {
             $threw = $e->getMessage() === 'Reference "summary" must be a string';
         }
         $this->assertTrue($threw);
@@ -574,7 +578,9 @@ class ParseEmitTest extends TestCase
             }
         }';
         $threw = false;
-        try { \Cdd\Openapi\parse($json); } catch (\RuntimeException $e) {
+        try {
+            \Cdd\Openapi\parse($json);
+        } catch (\RuntimeException $e) {
             $threw = $e->getMessage() === 'Reference "description" must be a string';
         }
         $this->assertTrue($threw);

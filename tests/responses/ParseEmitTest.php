@@ -62,7 +62,7 @@ class ParseEmitTest extends TestCase
             ]
         ];
         $this->assertEquals(" * @return mixed\n", \Cdd\Responses\emit($res));
-        
+
         $res = [
             '200' => [
                 'content' => [
@@ -77,7 +77,7 @@ class ParseEmitTest extends TestCase
     {
         \Cdd\Responses\validateResponseOrReferenceObject(['description' => 'valid']);
         \Cdd\Responses\validateResponseOrReferenceObject(['$ref' => '#/components/responses/Ref']);
-        
+
         \Cdd\Responses\validateResponseOrReferenceObject([
             'description' => 'valid',
             'content' => [

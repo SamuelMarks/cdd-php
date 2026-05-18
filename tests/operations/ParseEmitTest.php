@@ -13,7 +13,7 @@ class ParseEmitTest extends TestCase
         global $globalOperationIds;
         $globalOperationIds = [];
     }
-    
+
     public function tearDown(): void
     {
         global $globalOperationIds;
@@ -63,7 +63,7 @@ class ParseEmitTest extends TestCase
                 'content' => ['application/json' => ['schema' => ['type' => 'object']]]
             ]
         ];
-        
+
         $emitted = \Cdd\Operations\emit($op);
         $this->assertStringContainsString('* Summary', $emitted);
         $this->assertStringContainsString('* Desc line 1', $emitted);
@@ -72,7 +72,7 @@ class ParseEmitTest extends TestCase
         $this->assertStringContainsString('* @oas-callback myCb []', $emitted);
         $this->assertStringContainsString('* @oas-link 200 link1 {"operationId":"otherOp"}', $emitted);
         $this->assertStringContainsString('public function fullOp(string $id, ?object $body): int', $emitted);
-        
+
         // ref return type
         $opRef = [
             'operationId' => 'refOp',
@@ -117,9 +117,9 @@ class ParseEmitTest extends TestCase
                     // actually if it's 123, it will fail `!isset`? No, isset(123) is true.
                     // wait, `if (!isset($operation['responses']))` will be skipped for 123.
                     // then `if (!is_array($operation['responses']))` will throw 'Operation "responses" must be a Responses Object map'.
-                } else if ($test['error'] === 'Operation must contain a "responses" object') {
-                     // if we pass `['responses' => null]`
-                     $test['input'] = []; // this triggers !isset
+                } elseif ($test['error'] === 'Operation must contain a "responses" object') {
+                    // if we pass `['responses' => null]`
+                    $test['input'] = []; // this triggers !isset
                 }
                 \Cdd\Operations\validateOperationObject($test['input']);
             } catch (\RuntimeException $e) {
@@ -150,7 +150,7 @@ class ParseEmitTest extends TestCase
             $caught = true;
         }
         $this->assertTrue($caught);
-        
+
         $caught = false;
         try {
             \Cdd\Operations\validateOperationObject([
@@ -162,7 +162,7 @@ class ParseEmitTest extends TestCase
             $caught = true;
         }
         $this->assertTrue($caught);
-        
+
         $caught = false;
         try {
             \Cdd\Operations\validateOperationObject([
@@ -210,10 +210,10 @@ class ParseEmitTest extends TestCase
             $caught = true;
         }
         $this->assertTrue($caught);
-        
+
         // ref
         \Cdd\Operations\validateCallbackOrReferenceObject(['$ref' => '#/components/callbacks/MyCb']);
-        
+
         // extensions
         \Cdd\Operations\validateCallbackOrReferenceObject([
             'x-ignore' => 123,

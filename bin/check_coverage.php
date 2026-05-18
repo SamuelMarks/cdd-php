@@ -1,4 +1,5 @@
 <?php
+
 if (!function_exists('phpdbg_start_oplog')) {
     echo "Please run with phpdbg: phpdbg -qrr bin/check_coverage.php\n";
     exit(1);

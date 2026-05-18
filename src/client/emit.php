@@ -51,7 +51,7 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
         if (!empty($types)) {
             $contentType = $types[0];
         }
-    } else if (isset($operation['consumes']) && !empty($operation['consumes'])) {
+    } elseif (isset($operation['consumes']) && !empty($operation['consumes'])) {
         $contentType = $operation['consumes'][0];
     }
 

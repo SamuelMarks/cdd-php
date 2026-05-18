@@ -58,10 +58,10 @@ class ParseEmitTest extends TestCase
             }
             $this->assertTrue($caught, "Expected exception: {$test['error']}");
         }
-        
+
         // test success on $ref
         \Cdd\Encoding\validateMediaTypeOrReferenceObject(['$ref' => '#/components/schemas/Item']);
-        
+
         // test hasItemEncoding coverage
         $caught = false;
         try {
@@ -96,7 +96,7 @@ class ParseEmitTest extends TestCase
             $caught = true;
         }
         $this->assertTrue($caught);
-        
+
         // valid calls
         \Cdd\Encoding\validateMediaTypeOrReferenceObject([
             'itemEncoding' => []
@@ -133,7 +133,7 @@ class ParseEmitTest extends TestCase
             }
             $this->assertTrue($caught, "Expected exception: {$test['error']}");
         }
-        
+
         $caught = false;
         try {
             \Cdd\Encoding\validateEncodingObject([
@@ -144,7 +144,7 @@ class ParseEmitTest extends TestCase
             $caught = true;
         }
         $this->assertTrue($caught);
-        
+
         $caught = false;
         try {
             \Cdd\Encoding\validateEncodingObject([
@@ -155,7 +155,7 @@ class ParseEmitTest extends TestCase
             $caught = true;
         }
         $this->assertTrue($caught);
-        
+
         // valid calls
         \Cdd\Encoding\validateEncodingObject([
             'encoding' => [

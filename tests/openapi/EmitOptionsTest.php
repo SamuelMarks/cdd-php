@@ -14,7 +14,7 @@ class EmitOptionsTest extends TestCase
         $openapi = [];
         $emitted = \Cdd\Openapi\emit($openapi);
         $decoded = json_decode($emitted, true);
-        
+
         $this->assertEquals('3.2.0', $decoded['openapi']);
         $this->assertEquals('Default API', $decoded['info']['title']);
         $this->assertEquals('0.0.1', $decoded['info']['version']);
@@ -24,7 +24,7 @@ class EmitOptionsTest extends TestCase
     public function testEmitWithOutDirAndSubcommandToSdk()
     {
         $outDir = sys_get_temp_dir() . '/cdd_test_emit_outdir_' . uniqid();
-        
+
         $openapi = [
             'openapi' => '3.2.0',
             'info' => ['title' => 'Test API', 'version' => '1.0.0'],
@@ -82,7 +82,7 @@ class EmitOptionsTest extends TestCase
                             'content' => [
                                 'multipart/form-data' => [
                                     'schema' => [
-                                        'type' => 'object', 
+                                        'type' => 'object',
                                         'properties' => [
                                             'prop' => ['type' => 'string'],
                                             'file' => ['type' => 'string', 'format' => 'binary']
@@ -137,9 +137,9 @@ class EmitOptionsTest extends TestCase
         // Ensure functions exist to prevent fatal errors, mock them if needed
         // The script just checks function_exists for \Cdd\Webhooks\emit
         // Actually, emit is loaded.
-        
+
         \Cdd\Openapi\emit($openapi, $outDir, $options);
-        
+
         $this->assertTrue(is_dir($outDir . '/src'));
         $this->assertTrue(is_dir($outDir . '/tests'));
         $this->assertTrue(file_exists($outDir . '/src/ApiServers.php'));
@@ -162,7 +162,7 @@ class EmitOptionsTest extends TestCase
     public function testEmitWithSubcommandToSdkCliAndNoPackages()
     {
         $outDir = sys_get_temp_dir() . '/cdd_test_emit_outdir2_' . uniqid();
-        
+
         $openapi = ['openapi' => '3.2.0', 'info' => ['title' => 'A', 'version' => '1'], 'paths' => []];
         $options = [
             'subcommand' => 'to_sdk_cli',
@@ -170,13 +170,13 @@ class EmitOptionsTest extends TestCase
             'no_github_actions' => true,
             'tests' => false
         ];
-        
+
         \Cdd\Openapi\emit($openapi, $outDir, $options);
-        
+
         $this->assertTrue(file_exists($outDir . '/tests/SdkIntegrationTest.php'));
         $this->assertTrue(!file_exists($outDir . '/composer.json'));
         $this->assertTrue(!file_exists($outDir . '/.github/workflows/ci.yml'));
-        
+
         system("rm -rf " . escapeshellarg($outDir));
     }
 
@@ -268,11 +268,11 @@ class EmitOptionsTest extends TestCase
             'tags' => [['name' => 'test']],
             'externalDocs' => ['url' => 'https://example.com/docs']
         ];
-        
+
         $options = ['target_version' => '2.0'];
         $emitted = \Cdd\Openapi\emit($openapi, null, $options);
         $decoded = json_decode($emitted, true);
-        
+
         $this->assertEquals('2.0', $decoded['swagger']);
         $this->assertEquals('api.example.com', $decoded['host']);
         $this->assertEquals('/v1', $decoded['basePath']);

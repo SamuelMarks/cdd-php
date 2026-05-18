@@ -3,6 +3,7 @@
 namespace Cdd\Tests\Cli;
 
 use Cdd\Tests\Framework\TestCase;
+
 use function Cdd\Cli\emit;
 use function Cdd\Cli\parse;
 
@@ -52,11 +53,11 @@ class ParseEmitTest extends TestCase
 
         $fakeCode = "if (\$command === '--help') { } if (\$command === '-h') { } if (\$command === 'myOp') { }";
         $parsedFake = parse($fakeCode);
-        
+
         $this->assertTrue(isset($parsedFake['/cli/myOp']));
         $this->assertTrue(!isset($parsedFake['/cli/--help']));
         $this->assertTrue(!isset($parsedFake['/cli/-h']));
-        
+
         $parsed = parse($emitted);
         $this->assertTrue(isset($parsed['/cli/gettestpath']));
         $this->assertTrue(isset($parsed['/cli/testPost']));

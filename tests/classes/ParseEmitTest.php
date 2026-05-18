@@ -39,7 +39,7 @@ class ParseEmitTest extends TestCase
         $code = "<?php\n\n/**\n * Some comment\n */\nclass MyClass2 {}\n";
         $classes = \Cdd\Classes\parse($code);
         $this->assertEquals(1, count($classes));
-        
+
         $emitted = \Cdd\Classes\emit($classes[0]);
         $expected = "/**\n * Some comment\n */\nclass MyClass2 {}";
         $this->assertEquals($expected, $emitted);

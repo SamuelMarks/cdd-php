@@ -18,7 +18,9 @@ if (file_exists($finalFile)) {
 $baseDir = dirname(__DIR__);
 $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($baseDir, FilesystemIterator::SKIP_DOTS));
 
-$files = [];
+$phar = new Phar($pharFile);
+$phar->startBuffering();
+
 foreach ($iterator as $file) {
     if ($file->isDir()) {
         continue;
@@ -28,15 +30,13 @@ foreach ($iterator as $file) {
     $rel = str_replace('\\', '/', $rel); // Normalize for Windows
 
     if (preg_match('/^(src|vendor|bin)\//', $rel) && strpos($rel, 'bin/cdd-php.') === false) {
-        $files[$rel] = file_get_contents($path);
+        if (strpos($rel, 'vendor/friendsofphp/') === 0 || strpos($rel, 'vendor/bin/') === 0 || strpos($rel, 'vendor/symfony/') === 0) {
+            if (strpos($rel, 'vendor/symfony/console/') !== 0 && strpos($rel, 'vendor/symfony/string/') !== 0 && strpos($rel, 'vendor/symfony/service-contracts/') !== 0 && strpos($rel, 'vendor/symfony/polyfill') !== 0) {
+                continue; // symfony/finder, symfony/process, symfony/filesystem etc are used by php-cs-fixer
+            }
+        }
+        $phar->addFile($path, $rel);
     }
-}
-
-$phar = new Phar($pharFile);
-$phar->startBuffering();
-
-foreach ($files as $path => $content) {
-    $phar->addFromString($path, $content);
 }
 
 $stub = "#!/usr/bin/env php\n<?php\nPhar::mapPhar('cdd-php.phar');\nrequire 'phar://cdd-php.phar/bin/cdd-php';\n__HALT_COMPILER();\n";

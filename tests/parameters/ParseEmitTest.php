@@ -67,7 +67,7 @@ class ParseEmitTest extends TestCase
             'in' => 'query',
             'schema' => []
         ]);
-        
+
         \Cdd\Parameters\validateParameterOrReferenceObject([
             'name' => 'foo',
             'in' => 'query',

@@ -1,4 +1,5 @@
 <?php
+
 $rootDir = dirname(__DIR__);
 $readmePath = $rootDir . '/README.md';
 
@@ -6,12 +7,23 @@ if (!file_exists($readmePath)) {
     exit(1);
 }
 
-function getColor($pct) {
-    if ($pct >= 90) return 'brightgreen';
-    if ($pct >= 80) return 'green';
-    if ($pct >= 70) return 'yellowgreen';
-    if ($pct >= 60) return 'yellow';
-    if ($pct >= 50) return 'orange';
+function getColor($pct)
+{
+    if ($pct >= 90) {
+        return 'brightgreen';
+    }
+    if ($pct >= 80) {
+        return 'green';
+    }
+    if ($pct >= 70) {
+        return 'yellowgreen';
+    }
+    if ($pct >= 60) {
+        return 'yellow';
+    }
+    if ($pct >= 50) {
+        return 'orange';
+    }
     return 'red';
 }
 

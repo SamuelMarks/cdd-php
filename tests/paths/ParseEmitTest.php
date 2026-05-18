@@ -124,7 +124,7 @@ class ParseEmitTest extends TestCase
         $this->assertThrows(function () {
             \Cdd\Paths\validatePathItemObject(['parameters' => 'not array']);
         }, \RuntimeException::class, 'Path Item "parameters" must be an array');
-        
+
         $this->assertThrows(function () {
             \Cdd\Paths\validatePathItemObject([
                 'parameters' => [
