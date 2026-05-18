@@ -125,7 +125,17 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             $sdkTestCode = "<?php\n\nuse PHPUnit\\Framework\\TestCase;\nuse Api\\ApiClient;\n\nclass SdkIntegrationTest extends TestCase {\n";
             $sdkTestCode .= "    private \$client;\n\n";
             $sdkTestCode .= "    protected function setUp(): void {\n";
-            $baseUrl = 'http://localhost:8080/v2';
+            $basePath = '';
+            if (isset($openapi['servers']) && is_array($openapi['servers']) && count($openapi['servers']) > 0) {
+                $serverUrl = $openapi['servers'][0]['url'];
+                $parsedUrl = parse_url($serverUrl);
+                if (isset($parsedUrl['path'])) {
+                    $basePath = rtrim($parsedUrl['path'], '/');
+                }
+            } elseif (isset($openapi['basePath'])) {
+                $basePath = rtrim($openapi['basePath'], '/');
+            }
+            $baseUrl = 'http://localhost:8080' . $basePath;
             $sdkTestCode .= "        \$this->client = new ApiClient('$baseUrl');\n";
             $sdkTestCode .= "        \$this->client->setApiKey('api_key', 'special-key');\n";
             $sdkTestCode .= "        \$this->client->setBearerToken('petstore_auth', 'special-key');\n";

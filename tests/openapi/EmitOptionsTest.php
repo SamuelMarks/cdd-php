@@ -284,6 +284,46 @@ class EmitOptionsTest extends TestCase
         $this->assertEquals('application', $decoded['securityDefinitions']['oauth2']['flow']); // first flow is clientCredentials mapped to application
     }
 
+    public function testEmitBaseUrlCalculation()
+    {
+        $outDir = sys_get_temp_dir() . '/cdd_test_emit_outdir3_' . uniqid();
+
+        // Test with URL without a path
+        $openapiNoPath = [
+            'openapi' => '3.2.0',
+            'info' => ['title' => 'Test', 'version' => '1'],
+            'servers' => [['url' => 'http://localhost:8080']], // No path here
+            'paths' => []
+        ];
+        \Cdd\Openapi\emit($openapiNoPath, $outDir, ['subcommand' => 'to_sdk']);
+        $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
+        $this->assertTrue(strpos($testCode, "new ApiClient('http://localhost:8080')") !== false);
+
+        // Test with URL with a path
+        $openapiWithPath = [
+            'openapi' => '3.2.0',
+            'info' => ['title' => 'Test', 'version' => '1'],
+            'servers' => [['url' => 'http://localhost:8080/api/v2']],
+            'paths' => []
+        ];
+        \Cdd\Openapi\emit($openapiWithPath, $outDir, ['subcommand' => 'to_sdk']);
+        $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
+        $this->assertTrue(strpos($testCode, "new ApiClient('http://localhost:8080/api/v2')") !== false);
+
+        // Test with Swagger 2.0 basePath
+        $openapiBasePath = [
+            'swagger' => '2.0',
+            'info' => ['title' => 'Test', 'version' => '1'],
+            'basePath' => '/api/v1',
+            'paths' => []
+        ];
+        \Cdd\Openapi\emit($openapiBasePath, $outDir, ['subcommand' => 'to_sdk']);
+        $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
+        $this->assertTrue(strpos($testCode, "new ApiClient('http://localhost:8080/api/v1')") !== false);
+
+        system("rm -rf " . escapeshellarg($outDir));
+    }
+
     public function testEmitJsonEncodeFailure()
     {
         // Force json_encode to fail by providing a circular reference

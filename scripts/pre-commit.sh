@@ -17,9 +17,7 @@ echo "Checking code formatting..."
 vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --allow-risky=yes --using-cache=no -q
 
 echo "Linting PHP files..."
-while IFS= read -r file; do
-    php -l "$file" > /dev/null || exit 1
-done < <(find src tests bin scripts -name "*.php")
+find src tests bin scripts -name "*.php" -exec php -l {} \; > /dev/null
 
 echo "Running tests..."
 make test >/dev/null
