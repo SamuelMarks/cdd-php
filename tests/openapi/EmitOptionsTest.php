@@ -151,6 +151,7 @@ class EmitOptionsTest extends TestCase
         $this->assertTrue(file_exists($outDir . '/src/mocks.php'));
         $this->assertTrue(file_exists($outDir . '/src/Webhooks.php'));
         $this->assertTrue(file_exists($outDir . '/src/ApiTests.php'));
+        $this->assertTrue(file_exists($outDir . '/src/ComposableTests.php'));
         $this->assertTrue(file_exists($outDir . '/tests/SdkIntegrationTest.php'));
         $this->assertTrue(file_exists($outDir . '/composer.json'));
         $this->assertTrue(file_exists($outDir . '/.github/workflows/ci.yml'));
@@ -173,7 +174,7 @@ class EmitOptionsTest extends TestCase
 
         \Cdd\Openapi\emit($openapi, $outDir, $options);
 
-        $this->assertTrue(file_exists($outDir . '/tests/SdkIntegrationTest.php'));
+        $this->assertTrue(!file_exists($outDir . '/tests/SdkIntegrationTest.php'));
         $this->assertTrue(!file_exists($outDir . '/composer.json'));
         $this->assertTrue(!file_exists($outDir . '/.github/workflows/ci.yml'));
 
@@ -295,7 +296,7 @@ class EmitOptionsTest extends TestCase
             'servers' => [['url' => 'http://localhost:8080']], // No path here
             'paths' => []
         ];
-        \Cdd\Openapi\emit($openapiNoPath, $outDir, ['subcommand' => 'to_sdk']);
+        \Cdd\Openapi\emit($openapiNoPath, $outDir, ['subcommand' => 'to_sdk', 'tests' => true]);
         $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
         $this->assertTrue(strpos($testCode, "new ApiClient('http://localhost:8080')") !== false);
 
@@ -306,7 +307,7 @@ class EmitOptionsTest extends TestCase
             'servers' => [['url' => 'http://localhost:8080/api/v2']],
             'paths' => []
         ];
-        \Cdd\Openapi\emit($openapiWithPath, $outDir, ['subcommand' => 'to_sdk']);
+        \Cdd\Openapi\emit($openapiWithPath, $outDir, ['subcommand' => 'to_sdk', 'tests' => true]);
         $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
         $this->assertTrue(strpos($testCode, "new ApiClient('http://localhost:8080/api/v2')") !== false);
 
@@ -317,7 +318,7 @@ class EmitOptionsTest extends TestCase
             'basePath' => '/api/v1',
             'paths' => []
         ];
-        \Cdd\Openapi\emit($openapiBasePath, $outDir, ['subcommand' => 'to_sdk']);
+        \Cdd\Openapi\emit($openapiBasePath, $outDir, ['subcommand' => 'to_sdk', 'tests' => true]);
         $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
         $this->assertTrue(strpos($testCode, "new ApiClient('http://localhost:8080/api/v1')") !== false);
 

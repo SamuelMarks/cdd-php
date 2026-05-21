@@ -512,16 +512,20 @@ Content-Length: " . strlen($resBody) . "
             }
         }
 
-        // If ApiTests.php exists, parse it
-        if (file_exists("$dir/ApiTests.php")) {
+        // If ApiTests.php or ComposableTests.php exists, parse it
+        if (file_exists("$dir/ComposableTests.php")) {
+            $tests = \Cdd\Tests\parse(file_get_contents("$dir/ComposableTests.php"));
+        } elseif (file_exists("$dir/ApiTests.php")) {
             $tests = \Cdd\Tests\parse(file_get_contents("$dir/ApiTests.php"));
-            // Tests mainly validate paths exist, or add extension tests. For now just verify.
         }
 
         // Emitting back to sync the project and OpenAPI json
         $options = [];
         if (in_array("--swagger2", $argv)) {
             $options["target_version"] = "2.0";
+        }
+        if (file_exists("$dir/ComposableTests.php") || file_exists("$dir/ApiTests.php") || file_exists("$dir/mocks.php")) {
+            $options['tests'] = true;
         }
         $json = \Cdd\Openapi\emit($openapi, $dir, $options);
         file_put_contents("$dir/openapi.json", $json);

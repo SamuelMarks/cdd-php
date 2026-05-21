@@ -73,8 +73,10 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             file_put_contents("$srcDir/Models.php", $componentsCode);
         }
 
+        $tests = $options['tests'] ?? false;
+
         // Generate Mocks
-        if (isset($openapi['components']['examples'])) {
+        if ($tests && isset($openapi['components']['examples'])) {
             $mocksCode = \Cdd\Mocks\emit($openapi['components']['examples'], file_exists("$srcDir/mocks.php") ? file_get_contents("$srcDir/mocks.php") : '');
             file_put_contents("$srcDir/mocks.php", $mocksCode);
         }
@@ -87,36 +89,32 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             }
         }
 
-        $tests = $options['tests'] ?? false;
-
         // Generate Tests
-        $testCode = "<?php\n\n// Auto-generated tests\n\n";
         if ($tests) {
-            $testCode .= "return [\n";
-        } else {
-            $testCode .= "use PHPUnit\\Framework\\TestCase;\n\nclass ApiTests extends TestCase {\n";
-        }
+            $phpunitCode = "<?php\n\n// Auto-generated tests\n\nuse PHPUnit\\Framework\\TestCase;\n\nclass ApiTests extends TestCase {\n";
+            $composableCode = "<?php\n\n// Auto-generated tests\n\nreturn [\n";
 
-        if (isset($openapi['paths'])) {
-            foreach ($openapi['paths'] as $path => $methods) {
-                foreach ($methods as $method => $operation) {
-                    if (!is_array($operation) || in_array(strtolower($method), ["parameters", "summary", "description", "servers", "additionaloperations"])) {
-                        continue;
+            if (isset($openapi['paths'])) {
+                foreach ($openapi['paths'] as $path => $methods) {
+                    foreach ($methods as $method => $operation) {
+                        if (!is_array($operation) || in_array(strtolower($method), ["parameters", "summary", "description", "servers", "additionaloperations"])) {
+                            continue;
+                        }
+                        $phpunitCode .= \Cdd\Tests\emit($method, $path, $operation, false) . "\n";
+                        $composableCode .= \Cdd\Tests\emit($method, $path, $operation, true) . "\n";
                     }
-                    $testCode .= \Cdd\Tests\emit($method, $path, $operation, $tests) . "\n";
                 }
             }
-        }
 
-        if ($tests) {
-            $testCode .= "];\n";
-        } else {
-            $testCode .= "}\n";
+            $phpunitCode .= "}\n";
+            $composableCode .= "];\n";
+
+            file_put_contents("$srcDir/ApiTests.php", $phpunitCode);
+            file_put_contents("$srcDir/ComposableTests.php", $composableCode);
         }
-        file_put_contents("$srcDir/ApiTests.php", $testCode);
 
         $subcommand = $options['subcommand'] ?? '';
-        if ($subcommand === 'to_sdk' || $subcommand === 'to_sdk_cli') {
+        if (($subcommand === 'to_sdk' || $subcommand === 'to_sdk_cli') && $tests) {
             $testsDir = "$outDir/tests";
             if (!is_dir($testsDir)) {
                 mkdir($testsDir, 0777, true);

@@ -512,14 +512,19 @@ Content-Length: " . strlen($resBody) . "
             }
         }
 
-        // If ApiTests.php exists, parse it
-        if (file_exists("$dir/src/ApiTests.php")) {
+        // If ApiTests.php or ComposableTests.php exists, parse it
+        if (file_exists("$dir/src/ComposableTests.php")) {
+            $tests = \Cdd\Tests\parse(file_get_contents("$dir/src/ComposableTests.php"));
+        } elseif (file_exists("$dir/src/ApiTests.php")) {
             $tests = \Cdd\Tests\parse(file_get_contents("$dir/src/ApiTests.php"));
-            // Tests mainly validate paths exist, or add extension tests. For now just verify.
         }
 
         // Emitting back to sync the project and OpenAPI json
-        $json = \Cdd\Openapi\emit($openapi, $dir);
+        $options = [];
+        if (file_exists("$dir/src/ComposableTests.php") || file_exists("$dir/src/ApiTests.php") || file_exists("$dir/src/mocks.php")) {
+            $options['tests'] = true;
+        }
+        $json = \Cdd\Openapi\emit($openapi, $dir, $options);
         file_put_contents("$dir/openapi.json", $json);
 
         echo "Synchronized codebase in $dir successfully.\n";
