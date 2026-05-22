@@ -132,3 +132,15 @@ job_log.txt
 # ==========================================
 /temp-php-client-*/
 /cdd-openapi-test-harness/
+
+# Temporary code/docs generation files
+out*.json
+docs.json
+cdd-php*.php
+bin_cdd_php.php
+modify_*.php
+upgrade_*.php
+docs/examples.json
+examples.js
+examples.ts
+prompt.md

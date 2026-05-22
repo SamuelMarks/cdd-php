@@ -292,7 +292,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                 mkdir("$outDir/.github/workflows", 0777, true);
             }
             if (!file_exists("$outDir/.github/workflows/ci.yml")) {
-                file_put_contents("$outDir/.github/workflows/ci.yml", "name: CI\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n    - uses: actions/checkout@v3\n    - name: Use PHP\n      uses: shivammathur/setup-php@v2\n      with:\n        php-version: '8.2'\n    - run: composer install\n    - run: composer test\n");
+                file_put_contents("$outDir/.github/workflows/ci.yml", "name: CI\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n    - uses: actions/checkout@v6\n    - name: Use PHP\n      uses: shivammathur/setup-php@v2\n      with:\n        php-version: '8.2'\n    - run: composer install\n    - run: composer test\n");
             }
         }
     }
