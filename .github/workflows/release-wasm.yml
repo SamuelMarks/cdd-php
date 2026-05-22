@@ -3,9 +3,6 @@ name: Release WASM
 on:
   push:
     branches: ["master", "main"]
-    tags:
-      - "0.0.1"
-      - "v*"
 
 permissions:
   contents: write
