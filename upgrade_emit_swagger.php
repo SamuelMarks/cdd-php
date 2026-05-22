@@ -105,7 +105,7 @@ $replacement = <<<'REPLACEMENT'
         if (isset($openapi['security'])) $swagger['security'] = $openapi['security'];
         if (isset($openapi['tags'])) $swagger['tags'] = $openapi['tags'];
         if (isset($openapi['externalDocs'])) $swagger['externalDocs'] = $openapi['externalDocs'];
-        
+
         $jsonStr = json_encode($swagger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $jsonStr = str_replace('#/components/schemas/', '#/definitions/', $jsonStr);
         $jsonStr = str_replace('#\/components\/schemas\/', '#\/definitions\/', $jsonStr);

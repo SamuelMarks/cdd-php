@@ -16,7 +16,7 @@ foreach ($lines as $i => $line) {
 $replacement = <<<'REPLACEMENT'
     if (isset($data['swagger']) && !isset($data['openapi'])) {
         $data['openapi'] = '3.0.0';
-        
+
         // Host, BasePath, Schemes -> Servers
         if (isset($data['host']) || isset($data['basePath']) || isset($data['schemes'])) {
             $host = $data['host'] ?? 'localhost';
@@ -66,11 +66,11 @@ $replacement = <<<'REPLACEMENT'
             $data['components']['securitySchemes'] = $data['securityDefinitions'];
             unset($data['securityDefinitions']);
         }
-        
+
         $globalConsumes = $data['consumes'] ?? ['application/json'];
         $globalProduces = $data['produces'] ?? ['application/json'];
         unset($data['consumes'], $data['produces']);
-        
+
         if (isset($data['paths'])) {
             foreach ($data['paths'] as $path => &$pathItem) {
                 foreach ($pathItem as $method => &$operation) {
@@ -78,7 +78,7 @@ $replacement = <<<'REPLACEMENT'
                         $opConsumes = $operation['consumes'] ?? $globalConsumes;
                         $opProduces = $operation['produces'] ?? $globalProduces;
                         unset($operation['consumes'], $operation['produces']);
-                        
+
                         if (isset($operation['parameters'])) {
                             $formData = [];
                             foreach ($operation['parameters'] as $i => &$param) {
@@ -186,7 +186,7 @@ $replacement = <<<'REPLACEMENT'
                 }
             }
         }
-        
+
         $json = json_encode($data);
         $json = str_replace('#/definitions/', '#/components/schemas/', $json);
         $json = str_replace('#\/definitions\/', '#\/components\/schemas\/', $json);
