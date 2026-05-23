@@ -84,7 +84,7 @@ jobs:
       run: |
         make build_wasm
     - name: Upload WASM
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: wasm-build
         path: build/wasm/*.wasm
@@ -105,7 +105,7 @@ jobs:
     - run: composer install
     - run: make build
     - name: Download WASM artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: wasm-build
         path: build/wasm-download/
@@ -114,7 +114,7 @@ jobs:
       run: |
         find build/wasm-download -name "*.wasm" -exec cp {} build/ \; || true
     - name: Create Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         files: |
           build/cdd-php
