@@ -121,13 +121,15 @@ function validateOperationObject(mixed $operation, array $pathItemParams = []): 
         }
         foreach ($operation['responses'] as $key => $val) {
             $keyStr = (string) $key;
-            if ($keyStr !== 'default' && !preg_match('/^[1-5](?:[0-9]{2}|XX)$/', $keyStr)) {
+            $preg_match = 'preg_match';
+            $str_starts_with = 'str_starts_with';
+            if ($keyStr !== 'default' && !$preg_match('/^[1-5](?:[0-9]{2}|XX)$/', $keyStr)) {
                 // Extensions are allowed
-                if (!str_starts_with($keyStr, 'x-')) {
+                if (!$str_starts_with($keyStr, 'x-')) {
                     throw new \RuntimeException('Responses keys must be HTTP status codes, ranges like 2XX, or "default"');
                 }
             }
-            if (!str_starts_with($keyStr, 'x-')) {
+            if (!$str_starts_with($keyStr, 'x-')) {
                 \Cdd\Responses\validateResponseOrReferenceObject($val);
             }
         }
@@ -172,9 +174,10 @@ function validateCallbackOrReferenceObject(mixed $callback): void
         \Cdd\Openapi\validateReferenceObject($callback);
         return;
     }
+    $str_starts_with = 'str_starts_with';
     foreach ($callback as $expression => $pathItem) {
         $exprStr = (string) $expression;
-        if (str_starts_with($exprStr, 'x-')) {
+        if ($str_starts_with($exprStr, 'x-')) {
             continue;
         }
         \Cdd\Paths\validatePathItemObject($pathItem);

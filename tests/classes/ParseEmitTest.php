@@ -66,4 +66,11 @@ class ParseEmitTest extends TestCase
             $this->assertEquals($expectedType, $classes[0]['componentType']);
         }
     }
+    public function testParseAnonymousClass()
+    {
+        $code = "<?php\n\$a = new class {};";
+        $classes = \Cdd\Classes\parse($code);
+        $this->assertEquals(1, count($classes));
+        $this->assertEquals('', $classes[0]['name']);
+    }
 }

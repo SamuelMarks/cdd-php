@@ -242,4 +242,46 @@ class Swagger2ParseTest extends \Cdd\Tests\Framework\TestCase
         $this->assertEquals('3.2.0', $parsed['openapi']);
         $this->assertTrue(!isset($parsed['components']));
     }
+
+    public function testParseSwagger2ExtraBranches()
+    {
+        $json = '{
+            "swagger": "2.0",
+            "info": {"title": "Test", "version": "1"},
+            "consumes": [],
+            "produces": [],
+            "paths": {
+                "/test": {
+                    "x-custom-extension": "value",
+                    "get": {
+                        "parameters": [
+                            {
+                                "in": "body",
+                                "name": "body",
+                                "schema": {"type": "string"}
+                            }
+                        ],
+                        "responses": {
+                            "200": {
+                                "description": "ok",
+                                "schema": {"type": "string"}
+                            },
+                            "201": {
+                                "description": "header",
+                                "headers": {
+                                    "X-NoFormat": {"type": "string"}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }';
+        $parsed = \Cdd\Openapi\parse($json);
+        $this->assertEquals("value", $parsed['paths']['/test']['x-custom-extension']);
+        $this->assertTrue(isset($parsed['paths']['/test']['get']['requestBody']['content']['application/json']['schema']));
+        $this->assertTrue(isset($parsed['paths']['/test']['get']['responses']['200']['content']['application/json']['schema']));
+        $this->assertEquals('string', $parsed['paths']['/test']['get']['responses']['201']['headers']['X-NoFormat']['schema']['type']);
+        $this->assertTrue(!isset($parsed['paths']['/test']['get']['responses']['201']['headers']['X-NoFormat']['schema']['format']));
+    }
 }

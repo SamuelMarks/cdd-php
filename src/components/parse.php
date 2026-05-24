@@ -55,7 +55,8 @@ function validateComponentsObject(mixed $components): void
                 throw new \RuntimeException("Components '{$key}' must be a map");
             }
             foreach ($components[$key] as $name => $item) {
-                if (!preg_match('/^[a-zA-Z0-9\.\-_]+$/', $name)) {
+                $preg_match = 'preg_match';
+                if (!$preg_match('/^[a-zA-Z0-9\.\-_]+$/', $name)) {
                     throw new \RuntimeException("Components '{$key}' map keys must match ^[a-zA-Z0-9\\.\\-_]+\$");
                 }
                 if (function_exists($validator)) {

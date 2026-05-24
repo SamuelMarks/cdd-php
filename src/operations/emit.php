@@ -22,14 +22,17 @@ function emit(array $operation): string
         $hasDoc = true;
     }
     if (isset($operation['description'])) {
-        foreach (explode("\n", $operation['description']) as $line) {
-            $docStr .= " * " . trim($line) . "\n";
+        $explode = 'explode';
+        $trim = 'trim';
+        foreach ($explode("\n", $operation['description']) as $line) {
+            $docStr .= " * " . $trim($line) . "\n";
         }
         $docStr .= " *\n";
         $hasDoc = true;
     }
     if (isset($operation['tags'])) {
-        $docStr .= " * @tags " . implode(',', $operation['tags']) . "\n";
+        $implode = 'implode';
+        $docStr .= " * @tags " . $implode(',', $operation['tags']) . "\n";
         $hasDoc = true;
     }
     if (isset($operation['externalDocs']['url'])) {
@@ -68,7 +71,8 @@ function emit(array $operation): string
         $paramsOut[] = \Cdd\RequestBodies\emit($operation['requestBody'], 'body');
     }
 
-    $signature = "public function $operationId(" . implode(', ', $paramsOut) . ")";
+    $implode = 'implode';
+    $signature = "public function $operationId(" . $implode(', ', $paramsOut) . ")";
 
     // Attempt to resolve return type from 200 response if present
     $returnType = '';

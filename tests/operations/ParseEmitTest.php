@@ -22,10 +22,13 @@ class ParseEmitTest extends TestCase
 
     public function testParseAndEmit()
     {
-        $op = \Cdd\Operations\parse('getUser', [], [], null, 'Get a user');
+        $op = \Cdd\Operations\parse('getUser', [], ['201' => ['description' => 'Created']], null, 'Get a user');
         $this->assertEquals('getUser', $op['operationId']);
         $this->assertEquals('Get a user', $op['summary']);
-        $this->assertEquals('Success', $op['responses']['200']['description']);
+        $this->assertEquals('Created', $op['responses']['201']['description']);
+
+        $opDefault = \Cdd\Operations\parse('getUser2');
+        $this->assertEquals('Success', $opDefault['responses']['200']['description']);
 
         $emitted = \Cdd\Operations\emit($op);
         $this->assertTrue(strpos($emitted, 'public function getUser()') !== false);
@@ -191,6 +194,17 @@ class ParseEmitTest extends TestCase
         try {
             \Cdd\Operations\validateOperationObject([
                 'responses' => ['200' => ['description' => 'OK']],
+                'tags' => ['valid']
+            ]);
+        } catch (\RuntimeException $e) {
+            $caught = true;
+        }
+        $this->assertTrue(!$caught);
+
+        $caught = false;
+        try {
+            \Cdd\Operations\validateOperationObject([
+                'responses' => ['200' => ['description' => 'OK']],
                 'servers' => 123
             ]);
         } catch (\RuntimeException $e) {
@@ -233,12 +247,26 @@ class ParseEmitTest extends TestCase
         // cover continue for ref/non-array param
         $op = [
             'operationId' => 'testOp',
-            'responses' => ['200' => ['description' => 'OK']],
+            'responses' => [
+                '200' => ['description' => 'OK'],
+                'x-test' => ['description' => 'Test'],
+                '5XX' => ['description' => 'Server Error']
+            ],
             'parameters' => [
                 ['$ref' => '#/components/parameters/Test']
             ],
             'externalDocs' => ['url' => 'http://example.com'],
-            'servers' => [['url' => 'http://example.com']]
+            'servers' => [['url' => 'http://example.com']],
+            'callbacks' => [
+                'onData' => [
+                    '{$request.query.url}' => [
+                        'post' => ['responses' => ['200' => ['description' => 'OK']]]
+                    ]
+                ]
+            ],
+            'security' => [
+                ['basicAuth' => []]
+            ]
         ];
         // this shouldn't throw
         \Cdd\Operations\validateOperationObject($op);

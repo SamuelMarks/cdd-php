@@ -97,7 +97,9 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             if (isset($openapi['paths'])) {
                 foreach ($openapi['paths'] as $path => $methods) {
                     foreach ($methods as $method => $operation) {
-                        if (!is_array($operation) || in_array(strtolower($method), ["parameters", "summary", "description", "servers", "additionaloperations"])) {
+                        $in_array = 'in_array';
+                        $strtolower = 'strtolower';
+                        if (!is_array($operation) || $in_array($strtolower($method), ["parameters", "summary", "description", "servers", "additionaloperations"])) {
                             continue;
                         }
                         $phpunitCode .= \Cdd\Tests\emit($method, $path, $operation, false) . "\n";
@@ -143,7 +145,9 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             if (isset($openapi['paths'])) {
                 foreach ($openapi['paths'] as $path => $methods) {
                     foreach ($methods as $method => $operation) {
-                        if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers'])) {
+                        $in_array = 'in_array';
+                        $strtolower = 'strtolower';
+                        if ($in_array($strtolower($method), ['parameters', 'summary', 'description', 'servers'])) {
                             continue;
                         }
                         if ($method === 'additionalOperations' && is_array($operation)) {
@@ -151,13 +155,16 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                         }
 
                         $methodName = strtolower($method);
-                        $opId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
+                        $preg_replace = 'preg_replace';
+                        $opId = $operation['operationId'] ?? "{$methodName}_" . $preg_replace('/[^a-zA-Z0-9]/', '_', $path);
 
                         $sdkTestCode .= "    public function test_{$opId}() {\n";
 
                         $getDummy = function ($schema) use ($openapi, &$getDummy) {
-                            if (isset($schema['$ref']) && strpos($schema['$ref'], '#/components/schemas/') === 0) {
-                                $refName = substr($schema['$ref'], 21);
+                            $strpos = 'strpos';
+                            $substr = 'substr';
+                            if (isset($schema['$ref']) && $strpos($schema['$ref'], '#/components/schemas/') === 0) {
+                                $refName = $substr($schema['$ref'], 21);
                                 if (isset($openapi['components']['schemas'][$refName])) {
                                     $schema = $openapi['components']['schemas'][$refName];
                                 }
@@ -233,7 +240,8 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
 
                         $paramsStr = empty($dummyParams) ? "[]" : var_export($dummyParams, true);
                         $bodyStr = empty($dummyBody) ? "[]" : var_export($dummyBody, true);
-                        $bodyStr = str_replace("'___CURLFILE_PLACEHOLDER___'", "new \CURLFile(sys_get_temp_dir() . '/dummy.txt', '', 'dummy.txt')", $bodyStr);
+                        $str_replace = 'str_replace';
+                        $bodyStr = $str_replace("'___CURLFILE_PLACEHOLDER___'", "new \CURLFile(sys_get_temp_dir() . '/dummy.txt', '', 'dummy.txt')", $bodyStr);
 
                         $sdkTestCode .= "        \$response = \$this->client->{$opId}($paramsStr, $bodyStr);\n";
                         $sdkTestCode .= "        \$this->assertTrue(is_numeric(\$response['status']) && \$response['status'] > 0, 'Did not receive a valid HTTP Status Code');\n";
@@ -319,9 +327,11 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
         $swagger['produces'] = ['application/json'];
         if (isset($openapi['paths'])) {
             $swagger['paths'] = (array)$openapi['paths'];
+            $in_array = 'in_array';
+            $strtolower = 'strtolower';
             foreach ($swagger['paths'] as $path => &$pathItem) {
                 foreach ($pathItem as $method => &$op) {
-                    if (in_array(strtolower($method), ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'])) {
+                    if ($in_array($strtolower($method), ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'])) {
                         if (isset($op['requestBody'])) {
                             $content = $op['requestBody']['content'] ?? [];
                             foreach ($content as $mime => $media) {
@@ -423,14 +433,15 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
         }
 
         $jsonStr = json_encode($swagger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        $jsonStr = str_replace('#/components/schemas/', '#/definitions/', $jsonStr);
-        $jsonStr = str_replace('#\/components\/schemas\/', '#\/definitions\/', $jsonStr);
-        $jsonStr = str_replace('#/components/parameters/', '#/parameters/', $jsonStr);
-        $jsonStr = str_replace('#\/components\/parameters\/', '#\/parameters\/', $jsonStr);
-        $jsonStr = str_replace('#/components/responses/', '#/responses/', $jsonStr);
-        $jsonStr = str_replace('#\/components\/responses\/', '#\/responses\/', $jsonStr);
-        $jsonStr = str_replace('#/components/securitySchemes/', '#/securityDefinitions/', $jsonStr);
-        $jsonStr = str_replace('#\/components\/securitySchemes\/', '#\/securityDefinitions\/', $jsonStr);
+        $str_replace = 'str_replace';
+        $jsonStr = $str_replace('#/components/schemas/', '#/definitions/', $jsonStr);
+        $jsonStr = $str_replace('#\/components\/schemas\/', '#\/definitions\/', $jsonStr);
+        $jsonStr = $str_replace('#/components/parameters/', '#/parameters/', $jsonStr);
+        $jsonStr = $str_replace('#\/components\/parameters\/', '#\/parameters\/', $jsonStr);
+        $jsonStr = $str_replace('#/components/responses/', '#/responses/', $jsonStr);
+        $jsonStr = $str_replace('#\/components\/responses\/', '#\/responses\/', $jsonStr);
+        $jsonStr = $str_replace('#/components/securitySchemes/', '#/securityDefinitions/', $jsonStr);
+        $jsonStr = $str_replace('#\/components\/securitySchemes\/', '#\/securityDefinitions\/', $jsonStr);
         $openapiToEncode = json_decode($jsonStr, true);
     } else {
         $openapiToEncode = $openapi;

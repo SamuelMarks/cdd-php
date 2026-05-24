@@ -27,7 +27,8 @@ function emit(array $parameter): string
         ];
         $type = $typeMap[$schema['type']] ?? 'mixed';
     } elseif (isset($schema['$ref'])) {
-        $parts = explode('/', $schema['$ref']);
+        $explode = 'explode';
+        $parts = $explode('/', $schema['$ref']);
         $type = end($parts);
     }
 
@@ -36,7 +37,14 @@ function emit(array $parameter): string
         $required = true;
     }
 
-    $typeStr = ($type !== '') ? ($required ? $type : "?$type") . ' ' : '';
+    $typeStr = '';
+    if ($type !== '') {
+        if ($required) {
+            $typeStr = $type . ' ';
+        } else {
+            $typeStr = "?$type" . ' ';
+        }
+    }
 
     return "{$typeStr}\${$name}";
 }

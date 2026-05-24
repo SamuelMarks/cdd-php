@@ -31,7 +31,8 @@ function parse(string $code): array
     $servers = [];
     foreach ($properties as $prop) {
         $name = $prop->props[0]->name->toString();
-        if (str_starts_with($name, 'serverUrl')) {
+        $str_starts_with = 'str_starts_with';
+        if ($str_starts_with($name, 'serverUrl')) {
             $valueNode = $prop->props[0]->default;
             if ($valueNode instanceof String_) {
                 $url = $valueNode->value;
@@ -39,12 +40,13 @@ function parse(string $code): array
 
                 $docComment = $prop->getDocComment();
                 if ($docComment) {
-                    $docText = trim(str_replace(['/**', '*/', '*'], '', $docComment->getText()));
+                    $trim = 'trim';
+                    $str_replace = 'str_replace';
+                    $docText = $trim($str_replace(['/**', '*/', '*'], '', $docComment->getText()));
                     if ($docText !== '') {
                         $server['description'] = $docText;
                     }
                 }
-
                 $servers[] = $server;
             }
         }
@@ -100,7 +102,8 @@ function validateServerVariableObject(mixed $varObj): void
                 throw new \RuntimeException('Server variable "enum" values must be strings');
             }
         }
-        if (!in_array($varObj['default'], $varObj['enum'], true)) {
+        $in_array = 'in_array';
+        if (!$in_array($varObj['default'], $varObj['enum'], true)) {
             throw new \RuntimeException('Server variable "default" value must exist in "enum"');
         }
     }

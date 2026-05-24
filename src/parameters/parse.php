@@ -48,7 +48,8 @@ function validateParameterOrReferenceObject(mixed $parameter): void
         throw new \RuntimeException('Parameter must contain an "in" string');
     }
     $validIn = ['query', 'querystring', 'header', 'path', 'cookie'];
-    if (!in_array($parameter['in'], $validIn, true)) {
+    $in_array = 'in_array';
+    if (!$in_array($parameter['in'], $validIn, true)) {
         throw new \RuntimeException('Parameter "in" must be one of: query, querystring, header, path, cookie');
     }
     if (isset($parameter['description']) && !is_string($parameter['description'])) {

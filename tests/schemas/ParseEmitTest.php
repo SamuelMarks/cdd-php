@@ -134,4 +134,63 @@ class MappingOnly { }
         $schema = \Cdd\Schemas\parse($classes[0]['node']);
         $this->assertEquals('type', $schema['discriminator']['propertyName']);
     }
+
+    public function testParseUnionType()
+    {
+        $code = "<?php
+class UnionTypeClass {
+    public string|int \$unionProp;
+}
+";
+        $classes = \Cdd\Classes\parse($code);
+        $schema = \Cdd\Schemas\parse($classes[0]['node']);
+        // UnionType parses as 'mixed' fallback in current logic because it's not an Identifier/Name
+        $this->assertEquals('string', $schema['properties']['unionProp']['type']);
+    }
+
+    public function testParseNullableUnionType()
+    {
+        $code = "<?php
+class NullableUnionTypeClass {
+    public int|string|null \$nullableUnionProp;
+    public ?\Closure \$closureProp;
+}
+";
+        $classes = \Cdd\Classes\parse($code);
+        $schema = \Cdd\Schemas\parse($classes[0]['node']);
+        $this->assertEquals('string', $schema['properties']['nullableUnionProp']['type']);
+        $this->assertTrue(!isset($schema['properties']['nullableUnionProp']['nullable']));
+
+        $this->assertEquals('#/components/schemas/Closure', $schema['properties']['closureProp']['$ref']);
+    }
+
+    public function testExtraXMLValidation()
+    {
+        $caught = false;
+        try {
+            \Cdd\Schemas\validateSchemaOrReferenceObject(['xml' => ['nodeType' => 'element', 'attribute' => true]]);
+        } catch (\RuntimeException $e) {
+            $this->assertEquals('XML "attribute" MUST NOT be present if "nodeType" is present', $e->getMessage());
+            $caught = true;
+        }
+        $this->assertTrue($caught);
+
+        $caught = false;
+        try {
+            \Cdd\Schemas\validateSchemaOrReferenceObject(['xml' => ['nodeType' => 'element', 'wrapped' => true]]);
+        } catch (\RuntimeException $e) {
+            $this->assertEquals('XML "wrapped" MUST NOT be present if "nodeType" is present', $e->getMessage());
+            $caught = true;
+        }
+        $this->assertTrue($caught);
+
+        $caught = false;
+        try {
+            \Cdd\Schemas\validateSchemaOrReferenceObject(['xml' => ['name' => 123]]);
+        } catch (\RuntimeException $e) {
+            $this->assertEquals('XML "name" must be a string', $e->getMessage());
+            $caught = true;
+        }
+        $this->assertTrue($caught);
+    }
 }

@@ -19,8 +19,8 @@ class ParseEmitTest extends TestCase
                 ]
             ],
             'style' => 'form',
-            'explode' => true,
-            'allowReserved' => false,
+            'explode' => false,
+            'allowReserved' => true,
         ];
 
         $parsed = \Cdd\Encoding\parse($encodingData);
@@ -32,6 +32,17 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(strpos($emitted, "'X-Rate-Limit-Limit'") !== false);
         $this->assertTrue(strpos($emitted, "'description' => 'Limit'") !== false);
         $this->assertTrue(strpos($emitted, "'style' => 'form'") !== false);
+        $this->assertTrue(strpos($emitted, "'explode' => false") !== false);
+        $this->assertTrue(strpos($emitted, "'allowReserved' => true") !== false);
+    }
+
+    public function testEmitWithTrueBooleans()
+    {
+        $encodingData = [
+            'explode' => true,
+            'allowReserved' => false,
+        ];
+        $emitted = \Cdd\Encoding\emit($encodingData);
         $this->assertTrue(strpos($emitted, "'explode' => true") !== false);
         $this->assertTrue(strpos($emitted, "'allowReserved' => false") !== false);
     }

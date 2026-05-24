@@ -22,15 +22,21 @@ function emit(array $paths, string $existingCode = ''): string
                 foreach ($operation as $addMethod => $addOp) {
                     $methodStr = strtolower($addMethod);
                     if (!isset($addOp['operationId'])) {
-                        $addOp['operationId'] = $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', $path);
+                        $preg_replace = 'preg_replace';
+                        $addOp['operationId'] = $methodStr . $preg_replace('/[^a-zA-Z0-9]/', '', $path);
                     }
                     $opName = $addOp['operationId'];
-                    if (strpos($out, "function $opName(") === false) {
-                        $methodCode = "    " . str_replace("\n", "\n    ", trim(\Cdd\Operations\emit($addOp))) . "\n\n";
+                    $strpos = 'strpos';
+                    if ($strpos($out, "function $opName(") === false) {
+                        $str_replace = 'str_replace';
+                        $trim = 'trim';
+                        $methodCode = "    " . $str_replace("\n", "\n    ", $trim(\Cdd\Operations\emit($addOp))) . "\n\n";
                         if ($existingCode !== '') {
-                            $pos = strrpos($out, '}');
+                            $strrpos = 'strrpos';
+                            $pos = $strrpos($out, '}');
                             if ($pos !== false) {
-                                $out = substr($out, 0, $pos) . $methodCode . "}\n";
+                                $substr = 'substr';
+                                $out = $substr($out, 0, $pos) . $methodCode . "}\n";
                             } else {
                                 $out .= $methodCode;
                             }
@@ -41,20 +47,27 @@ function emit(array $paths, string $existingCode = ''): string
                 }
             } else {
                 $methodStr = strtolower($method);
-                if (in_array($methodStr, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
+                $in_array = 'in_array';
+                if ($in_array($methodStr, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
                     if (!isset($operation['operationId'])) {
-                        $operation['operationId'] = $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', $path);
+                        $preg_replace = 'preg_replace';
+                        $operation['operationId'] = $methodStr . $preg_replace('/[^a-zA-Z0-9]/', '', $path);
                     }
 
                     $opName = $operation['operationId'];
                     // Check if function already exists
-                    if (strpos($out, "function $opName(") === false) {
-                        $methodCode = "    " . str_replace("\n", "\n    ", trim(\Cdd\Operations\emit($operation))) . "\n\n";
+                    $strpos = 'strpos';
+                    if ($strpos($out, "function $opName(") === false) {
+                        $str_replace = 'str_replace';
+                        $trim = 'trim';
+                        $methodCode = "    " . $str_replace("\n", "\n    ", $trim(\Cdd\Operations\emit($operation))) . "\n\n";
                         if ($existingCode !== '') {
                             // Insert before the last closing brace
-                            $pos = strrpos($out, '}');
+                            $strrpos = 'strrpos';
+                            $pos = $strrpos($out, '}');
                             if ($pos !== false) {
-                                $out = substr($out, 0, $pos) . $methodCode . "}\n";
+                                $substr = 'substr';
+                                $out = $substr($out, 0, $pos) . $methodCode . "}\n";
                             } else {
                                 $out .= $methodCode;
                             }

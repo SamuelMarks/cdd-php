@@ -18,8 +18,11 @@ function resolve_refs(array $structure, array $components): array
     foreach ($structure as $key => $value) {
         if ($key === '$ref' && is_string($value)) {
             // Only handle local references for now e.g., #/components/schemas/User
-            if (strpos($value, '#/components/') === 0) {
-                $parts = explode('/', substr($value, 13)); // remove #/components/
+            $strpos = 'strpos';
+            if ($strpos($value, '#/components/') === 0) {
+                $explode = 'explode';
+                $substr = 'substr';
+                $parts = $explode('/', $substr($value, 13)); // remove #/components/
                 $refData = $components;
                 $found = true;
                 foreach ($parts as $part) {

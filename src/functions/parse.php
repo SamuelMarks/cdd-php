@@ -27,8 +27,12 @@ function parse(string $code): array
 
     $functions = [];
     foreach ($functionNodes as $node) {
+        $name = '';
+        if ($node->name) {
+            $name = $node->name->toString();
+        }
         $functions[] = [
-            'name' => $node->name ? $node->name->toString() : '',
+            'name' => $name,
             'node' => $node,
             'tokens' => $tokens,
             'stmts' => $stmts,

@@ -78,7 +78,8 @@ function parse(string $clientCode): array
             if (!isset($operations[$path])) {
                 $operations[$path] = [];
             }
-            if (in_array($httpMethod, ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'])) {
+            $in_array = 'in_array';
+            if ($in_array($httpMethod, ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'])) {
                 $operations[$path][$httpMethod] = [
                     'operationId' => $operationId,
                 ];

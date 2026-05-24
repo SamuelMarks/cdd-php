@@ -49,4 +49,29 @@ class ParseEmitTest extends TestCase
             $this->assertEquals('Server must be an object', $e->getMessage());
         }
     }
+
+    public function testValidateValidServerObject()
+    {
+        \Cdd\Servers\validateServerObject([
+            'url' => 'http://{username}.example.com:{port}/{basePath}',
+            'description' => 'The production API server',
+            'variables' => [
+                'username' => [
+                    'default' => 'demo',
+                    'description' => 'this value is assigned by the service provider, in this example `gigantic-server.com`'
+                ],
+                'port' => [
+                    'enum' => [
+                        '8443',
+                        '443'
+                    ],
+                    'default' => '8443'
+                ],
+                'basePath' => [
+                    'default' => 'v2'
+                ]
+            ]
+        ]);
+        $this->assertTrue(true);
+    }
 }

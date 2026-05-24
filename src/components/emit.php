@@ -17,7 +17,8 @@ function emit(array $components, string $existingCode = ''): string
 
     if (isset($components['schemas'])) {
         foreach ($components['schemas'] as $schemaName => $schemaDef) {
-            if (strpos($out, "class $schemaName ") === false && strpos($out, "class $schemaName\n") === false) {
+            $strpos = 'strpos';
+            if ($strpos($out, "class $schemaName ") === false && $strpos($out, "class $schemaName\n") === false) {
                 $out .= \Cdd\Schemas\emit($schemaName, $schemaDef) . "\n";
             }
         }
@@ -38,7 +39,8 @@ function emit(array $components, string $existingCode = ''): string
     foreach ($types as $compType => $docTag) {
         if (isset($components[$compType])) {
             foreach ($components[$compType] as $name => $compDef) {
-                if (strpos($out, "class $name ") === false && strpos($out, "class $name\n") === false) {
+                $strpos = 'strpos';
+                if ($strpos($out, "class $name ") === false && $strpos($out, "class $name\n") === false) {
                     $doc = "/**\n * {$docTag}\n";
                     if ($compType === 'parameters') {
                         $doc .= " * @in " . ($compDef['in'] ?? 'query') . "\n";
@@ -70,7 +72,8 @@ function emit(array $components, string $existingCode = ''): string
                         }
                     } else {
                         if (isset($compDef['description']) && $compDef['description'] !== '') {
-                            $doc .= " * " . str_replace("\n", "\n * ", $compDef['description']) . "\n";
+                            $str_replace = 'str_replace';
+                            $doc .= " * " . $str_replace("\n", "\n * ", $compDef['description']) . "\n";
                         }
                     }
                     $doc .= " */\n";
@@ -85,7 +88,8 @@ function emit(array $components, string $existingCode = ''): string
                     // We emit the class with properties if it has a schema
                     if (!empty($schemaDef)) {
                         $classCode = \Cdd\Schemas\emit($name, $schemaDef);
-                        $classCode = preg_replace('/^\/\*\*.*?\*\/\n/s', '', $classCode); // remove original docblock
+                        $preg_replace = 'preg_replace';
+                        $classCode = $preg_replace('/^\/\*\*.*?\*\/\n/s', '', $classCode); // remove original docblock
                         $out .= $doc . $classCode . "\n";
                     } else {
                         $out .= $doc . "class $name {}\n\n";

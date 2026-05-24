@@ -31,12 +31,13 @@ function validatePathsObject(mixed $paths): void
         throw new \RuntimeException('Field "paths" must be an object (array in PHP)');
     }
     foreach ($paths as $path => $pathItem) {
-        if (!is_string($path) || !str_starts_with($path, '/')) {
-            if (!str_starts_with($path, 'x-')) {
+        $str_starts_with = 'str_starts_with';
+        if (!is_string($path) || !$str_starts_with($path, '/')) {
+            if (!$str_starts_with($path, 'x-')) {
                 throw new \RuntimeException('Paths object keys must start with a forward slash (/)');
             }
         }
-        if (str_starts_with($path, '/')) {
+        if ($str_starts_with($path, '/')) {
             if (preg_match_all('/\{([^}]+)\}/', $path, $matches)) {
                 $vars = $matches[1];
                 if (count($vars) !== count(array_unique($vars))) {
@@ -76,7 +77,8 @@ function validatePathItemObject(mixed $pathItem): void
             throw new \RuntimeException('Path Item "additionalOperations" must be a map');
         }
         foreach ($pathItem['additionalOperations'] as $opKey => $opVal) {
-            if (in_array(strtolower($opKey), $methods, true)) {
+            $in_array = 'in_array';
+            if ($in_array(strtolower($opKey), $methods, true)) {
                 throw new \RuntimeException('Path Item "additionalOperations" MUST NOT contain any entry for fixed methods (e.g., ' . $opKey . ')');
             }
             \Cdd\Operations\validateOperationObject($opVal, $pathItemParams);

@@ -23,34 +23,36 @@ function parse(Class_ $classNode): array
     $docComment = $classNode->getDocComment();
     if ($docComment !== null) {
         $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+        $trim = 'trim';
+        $explode = 'explode';
         if (!empty($parsedDoc['description'])) {
-            $schema['description'] = trim($parsedDoc['description']);
+            $schema['description'] = $trim($parsedDoc['description']);
         }
         if (isset($parsedDoc['tags']['xml'])) {
             foreach ($parsedDoc['tags']['xml'] as $xmlTag) {
-                $parts = explode(' ', trim($xmlTag), 2);
+                $parts = $explode(' ', $trim($xmlTag), 2);
                 if (count($parts) === 2 && $parts[0] === 'nodeType') {
                     if (!isset($schema['xml'])) {
                         $schema['xml'] = [];
                     }
-                    $schema['xml']['nodeType'] = trim($parts[1]);
+                    $schema['xml']['nodeType'] = $trim($parts[1]);
                 }
             }
         }
         if (isset($parsedDoc['tags']['discriminator'])) {
             foreach ($parsedDoc['tags']['discriminator'] as $discTag) {
-                $parts = explode(' ', trim($discTag), 2);
+                $parts = $explode(' ', $trim($discTag), 2);
                 if (count($parts) === 2 && $parts[0] === 'defaultMapping') {
                     if (!isset($schema['discriminator'])) {
                         $schema['discriminator'] = ['propertyName' => 'type'];
                         // fallback
                     }
-                    $schema['discriminator']['defaultMapping'] = trim($parts[1]);
+                    $schema['discriminator']['defaultMapping'] = $trim($parts[1]);
                 } elseif (count($parts) === 2 && $parts[0] === 'propertyName') {
                     if (!isset($schema['discriminator'])) {
                         $schema['discriminator'] = [];
                     }
-                    $schema['discriminator']['propertyName'] = trim($parts[1]);
+                    $schema['discriminator']['propertyName'] = $trim($parts[1]);
                 } elseif (count($parts) === 2 && $parts[0] === 'mapping') {
                     if (!isset($schema['discriminator'])) {
                         $schema['discriminator'] = ['propertyName' => 'type'];
@@ -58,9 +60,9 @@ function parse(Class_ $classNode): array
                     if (!isset($schema['discriminator']['mapping'])) {
                         $schema['discriminator']['mapping'] = [];
                     }
-                    $mapParts = explode(' ', trim($parts[1]), 2);
+                    $mapParts = $explode(' ', $trim($parts[1]), 2);
                     if (count($mapParts) === 2) {
-                        $schema['discriminator']['mapping'][$mapParts[0]] = trim($mapParts[1]);
+                        $schema['discriminator']['mapping'][$mapParts[0]] = $trim($mapParts[1]);
                     }
                 }
             }
@@ -86,13 +88,15 @@ function parse(Class_ $classNode): array
             }
         }
         $typeMap = ['int' => 'integer', 'float' => 'number', 'bool' => 'boolean', 'string' => 'string', 'array' => 'array', 'object' => 'object', 'mixed' => 'mixed'];
-        $openApiType = $typeMap[strtolower($typeName)] ?? $typeName;
+        $strtolower = 'strtolower';
+        $openApiType = $typeMap[$strtolower($typeName)] ?? $typeName;
         foreach ($prop->props as $p) {
             $propName = $p->name->toString();
             $propSchema = [];
+            $in_array = 'in_array';
             if ($openApiType === 'mixed') {
                 $propSchema['type'] = 'string';
-            } elseif (in_array($openApiType, ['integer', 'number', 'boolean', 'string', 'array', 'object'])) {
+            } elseif ($in_array($openApiType, ['integer', 'number', 'boolean', 'string', 'array', 'object'])) {
                 $propSchema['type'] = $openApiType;
             } else {
                 $propSchema['$ref'] = "#/components/schemas/{$openApiType}";
@@ -225,7 +229,8 @@ function validateXMLObject(mixed $xml): void
             throw new \RuntimeException('XML "nodeType" must be a string');
         }
         $validNodes = ['element', 'attribute', 'text', 'cdata', 'none'];
-        if (!in_array($xml['nodeType'], $validNodes, true)) {
+        $in_array = 'in_array';
+        if (!$in_array($xml['nodeType'], $validNodes, true)) {
             throw new \RuntimeException('XML "nodeType" must be one of: element, attribute, text, cdata, none');
         }
         if (isset($xml['attribute'])) {

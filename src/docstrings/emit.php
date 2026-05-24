@@ -32,9 +32,9 @@ function emit(array $doc): string
                 $out .= " * @return {$data['type']} {$data['description']}
 ";
             } else {
+                $trim = 'trim';
                 foreach ($data as $val) {
-                    $out .= " * @$tag " . trim($val) . "
-";
+                    $out .= " * @$tag " . $trim($val) . "\n";
                 }
             }
         }

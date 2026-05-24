@@ -12,12 +12,20 @@ class ParseTest extends \Cdd\Tests\Framework\TestCase
              * Create a user
              *
              * This operation creates a new user.
+             * It is very useful.
              * @tags Users, Accounts
              * @externalDocs https://docs.example.com/user More details
              * @oas-callback onData {"http://notificationUrl":{"post":{"requestBody":{"description":"Event data"}}}}
              * @oas-link 200 getAccountById {"operationId":"getAccount","parameters":{"accountId":"$response.body#/id"}}
              */
             public function createUser() {
+            }
+
+            /**
+             * Just a summary
+             * @tags Single
+             */
+            public function justSummary() {
             }
         }';
 
@@ -26,7 +34,7 @@ class ParseTest extends \Cdd\Tests\Framework\TestCase
 
         $op = $ops['createUser'];
         $this->assertEquals('Create a user', $op['summary']);
-        $this->assertEquals('This operation creates a new user.', $op['description']);
+        $this->assertEquals("This operation creates a new user.\nIt is very useful.", $op['description']);
         $this->assertEquals(2, count($op['tags']));
         $this->assertEquals('Users', $op['tags'][0]);
         $this->assertEquals('Accounts', $op['tags'][1]);
@@ -38,6 +46,10 @@ class ParseTest extends \Cdd\Tests\Framework\TestCase
 
         $this->assertTrue(isset($op['responses']['200']['links']['getAccountById']));
         $this->assertEquals('getAccount', $op['responses']['200']['links']['getAccountById']['operationId']);
+
+        $this->assertTrue(isset($ops['justSummary']));
+        $this->assertEquals('Just a summary', $ops['justSummary']['summary']);
+        $this->assertTrue(!isset($ops['justSummary']['description']));
     }
 
     public function testParseInvalidCode()

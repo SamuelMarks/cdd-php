@@ -34,7 +34,8 @@ function parse(string $testCode): array
                 if ($call->args[0]->value instanceof String_ && $call->args[1]->value instanceof String_) {
                     $method = strtolower($call->args[0]->value->value);
                     $path = $call->args[1]->value->value;
-                    if (in_array($method, ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'])) {
+                    $in_array = 'in_array';
+                    if ($in_array($method, ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'])) {
                         if (!isset($tested[$method])) {
                             $tested[$method] = [];
                         }

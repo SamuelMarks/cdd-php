@@ -46,4 +46,11 @@ class ParseEmitTest extends TestCase
             $this->assertEquals('Tag "kind" must be a string', $e->getMessage());
         }
     }
+
+    public function testValidContactAndLicense()
+    {
+        \Cdd\Info\validateContactObject(['name' => 'A', 'url' => 'B', 'email' => 'C']);
+        \Cdd\Info\validateLicenseObject(['name' => 'MIT', 'identifier' => 'MIT']);
+        $this->assertTrue(true);
+    }
 }

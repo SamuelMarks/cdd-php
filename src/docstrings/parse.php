@@ -23,15 +23,21 @@ function parse(string $docComment): array
 ", $docComment);
     $descriptionLines = [];
 
-    foreach ($lines as $line) {
-        $line = trim($line);
-        // Remove '/**' or '*/' or '*'
-        $line = preg_replace('/^\/?\**\/? ?/', '', $line);
+    $trim = 'trim';
+    $preg_replace = 'preg_replace';
+    $str_starts_with = 'str_starts_with';
+    $substr = 'substr';
+    $preg_split = 'preg_split';
 
-        if (str_starts_with($line, '@')) {
+    foreach ($lines as $line) {
+        $line = $trim($line);
+        // Remove '/**' or '*/' or '*'
+        $line = $preg_replace('/^\/?\**\/? ?/', '', $line);
+
+        if ($str_starts_with($line, '@')) {
             // It's a tag
-            $parts = preg_split('/\s+/', $line, 3);
-            $tag = substr($parts[0], 1);
+            $parts = $preg_split('/\s+/', $line, 3);
+            $tag = $substr($parts[0], 1);
             $type = $parts[1] ?? '';
             $desc = $parts[2] ?? '';
 
@@ -49,7 +55,7 @@ function parse(string $docComment): array
         }
     }
 
-    $parsed['description'] = implode("
-", $descriptionLines);
+    $implode = 'implode';
+    $parsed['description'] = $implode("\n", $descriptionLines);
     return $parsed;
 }

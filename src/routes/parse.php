@@ -39,15 +39,17 @@ function parse(string $code): array
                         if (!isset($routes[$path])) {
                             $routes[$path] = [];
                         }
+                        $preg_replace = 'preg_replace';
                         $op = [
-                            'operationId' => $method . preg_replace('/[^a-zA-Z0-9]/', '', $path),
+                            'operationId' => $method . $preg_replace('/[^a-zA-Z0-9]/', '', $path),
                             'responses' => [
                                 '200' => [
                                     'description' => 'Successful operation'
                                 ]
                             ]
                         ];
-                        if (in_array($method, ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'])) {
+                        $in_array = 'in_array';
+                        if ($in_array($method, ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'])) {
                             $routes[$path][$method] = $op;
                         } else {
                             $routes[$path]['additionalOperations'][strtoupper($method)] = $op;

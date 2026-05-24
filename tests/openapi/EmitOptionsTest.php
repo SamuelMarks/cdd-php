@@ -50,6 +50,7 @@ class EmitOptionsTest extends TestCase
                             ['name' => 'param6', 'in' => 'query', 'required' => true, 'schema' => ['enum' => ['A', 'B']]],
                             ['name' => 'param7', 'in' => 'query', 'required' => true, 'schema' => ['$ref' => '#/components/schemas/Dummy']],
                             ['name' => 'param8', 'in' => 'query', 'required' => true, 'schema' => ['type' => 'string', 'format' => 'date-time']],
+                            ['name' => 'param9', 'in' => 'query', 'required' => true, 'schema' => ['type' => 'object']],
                         ]
                     ],
                     'post' => [
@@ -135,9 +136,15 @@ class EmitOptionsTest extends TestCase
         ];
 
         // Ensure functions exist to prevent fatal errors, mock them if needed
-        // The script just checks function_exists for \Cdd\Webhooks\emit
-        // Actually, emit is loaded.
+        \Cdd\Openapi\emit($openapi, $outDir, $options);
 
+        // Run a SECOND time to hit the "file_exists" TRUE branches
+        // Also add an operation without operationId to hit the preg_replace fallback
+        $openapi['paths']['/test']['get'] = [
+            'parameters' => []
+        ];
+        // Add a "parameters" method to hit the ignore branch
+        $openapi['paths']['/test']['parameters'] = [];
         \Cdd\Openapi\emit($openapi, $outDir, $options);
 
         $this->assertTrue(is_dir($outDir . '/src'));
@@ -186,7 +193,7 @@ class EmitOptionsTest extends TestCase
         $openapi = [
             'openapi' => '3.2.0',
             'info' => ['title' => 'Test API', 'version' => '1.0.0'],
-            'servers' => [['url' => 'https://api.example.com/v1']],
+            'servers' => [['url' => 'https://api.example.com:8443/v1']],
             'paths' => [
                 '/test' => [
                     'post' => [
@@ -275,7 +282,7 @@ class EmitOptionsTest extends TestCase
         $decoded = json_decode($emitted, true);
 
         $this->assertEquals('2.0', $decoded['swagger']);
-        $this->assertEquals('api.example.com', $decoded['host']);
+        $this->assertEquals('api.example.com:8443', $decoded['host']);
         $this->assertEquals('/v1', $decoded['basePath']);
         $this->assertEquals(['https'], $decoded['schemes']);
         $this->assertTrue(is_array($decoded['paths']['/test']['post']['parameters']));

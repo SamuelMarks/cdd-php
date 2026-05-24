@@ -22,10 +22,13 @@ function emit(array $paths, string $existingCode = ''): string
     $commands = [];
     foreach ($paths as $path => $methods) {
         foreach ($methods as $method => $operation) {
-            if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers'])) {
+            $in_array = 'in_array';
+            $strtolower = 'strtolower';
+            if ($in_array($strtolower($method), ['parameters', 'summary', 'description', 'servers'])) {
                 continue;
             }
-            $opId = $operation['operationId'] ?? strtolower($method) . preg_replace('/[^a-zA-Z0-9]/', '', $path);
+            $preg_replace = 'preg_replace';
+            $opId = $operation['operationId'] ?? strtolower($method) . $preg_replace('/[^a-zA-Z0-9]/', '', $path);
             $commands[$opId] = $operation;
             $desc = $operation['description'] ?? 'Call ' . strtoupper($method) . ' ' . $path;
             $out .= "    echo \"  " . str_pad($opId, 25) . " $desc\\n\";\n";

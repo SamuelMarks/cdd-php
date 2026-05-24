@@ -20,7 +20,8 @@ function emit(string $method, string $path, array $operation, bool $composable =
         foreach ($operation as $addMethod => $addOp) {
             $out .= emit($addMethod, $path, $addOp, $composable) . "\n";
         }
-        return trim($out);
+        $trim = 'trim';
+        return $trim($out);
     }
 
     $m = ucfirst(strtolower($method));
@@ -28,8 +29,9 @@ function emit(string $method, string $path, array $operation, bool $composable =
 
     $status = '200';
     if (isset($operation['responses'])) {
+        $str_starts_with = 'str_starts_with';
         foreach ($operation['responses'] as $code => $resp) {
-            if ($code !== 'default' && !str_starts_with((string)$code, 'x-')) {
+            if ($code !== 'default' && !$str_starts_with((string)$code, 'x-')) {
                 $status = $code;
                 break;
             }

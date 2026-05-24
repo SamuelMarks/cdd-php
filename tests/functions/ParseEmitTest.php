@@ -44,4 +44,12 @@ function my_func(int $a): int {
     {
         $this->assertEquals([], \Cdd\Functions\parse('<?php class { '));
     }
+
+    public function testParseAnonymousFunction()
+    {
+        // Actually, PHP parser uses Closure for anonymous functions, but let's test just in case
+        $code = "<?php \$a = function() {};";
+        $functions = \Cdd\Functions\parse($code);
+        $this->assertEquals(0, count($functions)); // Because it finds Function_ not Closure_
+    }
 }

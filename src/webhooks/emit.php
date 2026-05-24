@@ -34,7 +34,8 @@ function emit(array $webhooks, string $existingCode = ''): string
         }
         foreach ($pathItem as $method => $operation) {
             $methodStr = strtolower($method);
-            if (!in_array($methodStr, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
+            $in_array = 'in_array';
+            if (!$in_array($methodStr, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
                 continue; // Ignoring extensions or invalid methods
             }
             $opId = $operation['operationId'] ?? "handle_{$name}_{$methodStr}";

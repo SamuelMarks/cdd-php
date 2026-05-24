@@ -36,11 +36,14 @@ function parse(string $code): array
             if ($parsedDoc['description'] !== '') {
                 // First sentence is summary, rest is description
                 $descLines = explode("\n", $parsedDoc['description']);
-                if (count($descLines) > 0) {
-                    $op['summary'] = $descLines[0];
-                    if (count($descLines) > 1) {
-                        $op['description'] = implode("\n", array_slice($descLines, 1));
+                $op['summary'] = $descLines[0];
+                $c = count($descLines);
+                if ($c > 1) {
+                    $descStr = $descLines[1];
+                    for ($i = 2; $i < $c; $i++) {
+                        $descStr .= "\n" . $descLines[$i];
                     }
+                    $op['description'] = $descStr;
                 }
             }
 

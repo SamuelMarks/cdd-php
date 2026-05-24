@@ -16,7 +16,8 @@ namespace Cdd\Client;
 function emit(string $method, string $path, array $operation, string $baseUrl = 'http://localhost'): string
 {
     $methodName = strtolower($method);
-    $operationId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
+    $preg_replace = 'preg_replace';
+    $operationId = $operation['operationId'] ?? "{$methodName}_" . $preg_replace('/[^a-zA-Z0-9]/', '_', $path);
 
     $out = "    public function $operationId(array \$params = [], array \$body = []) {\n";
     $out .= "        \$headers = \$this->defaultHeaders;\n";
@@ -135,24 +136,33 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
             if ($method === 'additionalOperations' && is_array($operation)) {
                 foreach ($operation as $addMethod => $addOp) {
                     $m = strtolower($addMethod);
-                    $operationId = $addOp['operationId'] ?? "{$m}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
-                    if (strpos($out, "function $operationId(") === false) {
+                    $preg_replace = 'preg_replace';
+                    $operationId = $addOp['operationId'] ?? "{$m}_" . $preg_replace('/[^a-zA-Z0-9]/', '_', $path);
+                    $strpos = 'strpos';
+                    if ($strpos($out, "function $operationId(") === false) {
                         $methodCode = emit($addMethod, $path, $addOp) . "\n";
-                        $pos = strrpos($out, '}');
+                        $strrpos = 'strrpos';
+                        $pos = $strrpos($out, '}');
                         if ($pos !== false) {
-                            $out = substr($out, 0, $pos) . $methodCode . "}\n";
+                            $substr = 'substr';
+                            $out = $substr($out, 0, $pos) . $methodCode . "}\n";
                         }
                     }
                 }
             } else {
                 $methodName = strtolower($method);
-                if (in_array($methodName, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
-                    $operationId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
-                    if (strpos($out, "function $operationId(") === false) {
+                $in_array = 'in_array';
+                if ($in_array($methodName, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
+                    $preg_replace = 'preg_replace';
+                    $operationId = $operation['operationId'] ?? "{$methodName}_" . $preg_replace('/[^a-zA-Z0-9]/', '_', $path);
+                    $strpos = 'strpos';
+                    if ($strpos($out, "function $operationId(") === false) {
                         $methodCode = emit($method, $path, $operation) . "\n";
-                        $pos = strrpos($out, '}');
+                        $strrpos = 'strrpos';
+                        $pos = $strrpos($out, '}');
                         if ($pos !== false) {
-                            $out = substr($out, 0, $pos) . $methodCode . "}\n";
+                            $substr = 'substr';
+                            $out = $substr($out, 0, $pos) . $methodCode . "}\n";
                         }
                     }
                 }

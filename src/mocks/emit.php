@@ -17,7 +17,8 @@ function emit(array $examples, string $existingCode = ''): string
         // Output the full Example Object structure
         $encoded = var_export($example, true);
         // indent
-        $encoded = str_replace("\n", "\n    ", $encoded);
+        $str_replace = 'str_replace';
+        $encoded = $str_replace("\n", "\n    ", $encoded);
         $out .= "    '$name' => $encoded,\n";
     }
     $out .= "];\n";

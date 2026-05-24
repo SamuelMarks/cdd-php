@@ -21,11 +21,39 @@ class ParseEmitTest extends TestCase
         $this->assertEquals('int $id', $emitted);
 
         // Test coverage for unknown type (triggers $ref)
-        $paramRef = \Cdd\Parameters\parse('userId', 'User', 'query');
+        $paramRef = \Cdd\Parameters\parse('userId', 'User', 'query', false);
         $this->assertEquals('#/components/schemas/User', $paramRef['schema']['$ref']);
 
         $emittedRef = \Cdd\Parameters\emit($paramRef);
-        $this->assertEquals('User $userId', $emittedRef);
+        // It's not required and not in path, so it gets ?
+        $this->assertEquals('?User $userId', $emittedRef);
+
+        // Test coverage for parameter with no schema
+        $paramNoSchema = ['name' => 'noType', 'in' => 'query'];
+        $emittedNoSchema = \Cdd\Parameters\emit($paramNoSchema);
+        $this->assertEquals('$noType', $emittedNoSchema);
+    }
+
+    public function testValidateParameterObjectValidOptionals()
+    {
+        \Cdd\Parameters\validateParameterOrReferenceObject([
+            'name' => 'foo',
+            'in' => 'query',
+            'style' => 'form',
+            'explode' => true,
+            'allowReserved' => true,
+            'schema' => ['type' => 'string']
+        ]);
+        \Cdd\Parameters\validateParameterOrReferenceObject([
+            'name' => 'foo',
+            'in' => 'query',
+            'content' => [
+                'application/json' => [
+                    'schema' => ['type' => 'string']
+                ]
+            ]
+        ]);
+        $this->assertTrue(true);
     }
 
     public function testValidateParameterOrReferenceObjectErrors()
@@ -39,6 +67,12 @@ class ParseEmitTest extends TestCase
             ['input' => ['name' => 'foo', 'in' => 'query', 'deprecated' => 123, 'schema' => []], 'error' => 'Parameter "deprecated" must be a boolean'],
             ['input' => ['name' => 'foo', 'in' => 'query', 'allowEmptyValue' => 123, 'schema' => []], 'error' => 'Parameter "allowEmptyValue" must be a boolean'],
             ['input' => ['name' => 'foo', 'in' => 'header', 'allowEmptyValue' => true, 'schema' => []], 'error' => 'Parameter "allowEmptyValue" is only allowed for in: query'],
+            ['input' => ['name' => 'foo', 'in' => 'path', 'required' => false, 'schema' => []], 'error' => 'Parameter with in: path MUST have required: true'],
+            ['input' => ['name' => 'foo', 'in' => 'query'], 'error' => 'Parameter must contain either "schema" or "content"'],
+            ['input' => ['name' => 'foo', 'in' => 'querystring', 'schema' => []], 'error' => 'Fields schema, style, explode, allowReserved MUST NOT be used with in: querystring'],
+            ['input' => ['name' => 'foo', 'in' => 'querystring', 'schema' => [], 'explode' => true], 'error' => 'Fields schema, style, explode, allowReserved MUST NOT be used with in: querystring'],
+            ['input' => ['name' => 'foo', 'in' => 'querystring', 'schema' => [], 'style' => 'form'], 'error' => 'Fields schema, style, explode, allowReserved MUST NOT be used with in: querystring'],
+            ['input' => ['name' => 'foo', 'in' => 'querystring', 'schema' => [], 'allowReserved' => true], 'error' => 'Fields schema, style, explode, allowReserved MUST NOT be used with in: querystring'],
             ['input' => ['name' => 'foo', 'in' => 'query', 'style' => 123, 'schema' => []], 'error' => 'Parameter "style" must be a string'],
             ['input' => ['name' => 'foo', 'in' => 'query', 'explode' => 123, 'schema' => []], 'error' => 'Parameter "explode" must be a boolean'],
             ['input' => ['name' => 'foo', 'in' => 'query', 'allowReserved' => 123, 'schema' => []], 'error' => 'Parameter "allowReserved" must be a boolean'],

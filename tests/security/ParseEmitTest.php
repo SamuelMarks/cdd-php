@@ -54,6 +54,10 @@ class ParseEmitTest extends TestCase
             $caught = true;
         }
         $this->assertTrue($caught);
+
+        // test valid
+        \Cdd\Security\validateSecurityRequirementObject(['oauth' => [], 'api_key' => []]);
+        \Cdd\Security\validateSecurityRequirementObject(['oauth' => ['read:user']]);
     }
 
     public function testValidateSecuritySchemeOrReferenceObjectErrors()

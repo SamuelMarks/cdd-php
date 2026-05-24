@@ -55,4 +55,10 @@ class ParseEmitTest extends TestCase
         $parsed = \Cdd\Tests\parse($code);
         $this->assertEquals([], $parsed);
     }
+
+    public function testEmitWithDefaultOrXResponse()
+    {
+        $emitted = \Cdd\Tests\emit('get', '/api/users', ['responses' => ['default' => [], 'x-test' => []]]);
+        $this->assertTrue(strpos($emitted, "\$this->assertEquals(200") !== false);
+    }
 }

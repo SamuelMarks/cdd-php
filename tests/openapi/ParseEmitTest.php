@@ -585,4 +585,13 @@ class ParseEmitTest extends TestCase
         }
         $this->assertTrue($threw);
     }
+
+    public function testParseOpenapiVersions()
+    {
+        $parsed = \Cdd\Openapi\parse('{"openapi": "3.0.0", "info": {"title": "A", "version": "1"}, "paths": {}}');
+        $this->assertEquals('3.2.0', $parsed['openapi']);
+
+        $parsed = \Cdd\Openapi\parse('{"openapi": "3.1.0", "info": {"title": "A", "version": "1"}, "paths": {}}');
+        $this->assertEquals('3.2.0', $parsed['openapi']);
+    }
 }

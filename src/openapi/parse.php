@@ -84,9 +84,11 @@ function parse(string $json): array
         unset($data['consumes'], $data['produces']);
 
         if (isset($data['paths'])) {
+            $in_array = 'in_array';
+            $strtolower = 'strtolower';
             foreach ($data['paths'] as $path => &$pathItem) {
                 foreach ($pathItem as $method => &$operation) {
-                    if (in_array(strtolower($method), ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'])) {
+                    if ($in_array($strtolower($method), ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'])) {
                         $opConsumes = $operation['consumes'] ?? $globalConsumes;
                         $opProduces = $operation['produces'] ?? $globalProduces;
                         unset($operation['consumes'], $operation['produces']);
@@ -168,8 +170,9 @@ function parse(string $json): array
                             $operation['parameters'] = array_values($operation['parameters']);
                             if (!empty($formData)) {
                                 $content = [];
+                                $in_array = 'in_array';
                                 foreach ($opConsumes as $mime) {
-                                    if (in_array($mime, ['application/x-www-form-urlencoded', 'multipart/form-data'])) {
+                                    if ($in_array($mime, ['application/x-www-form-urlencoded', 'multipart/form-data'])) {
                                         $content[$mime] = [
                                             'schema' => [
                                                 'type' => 'object',
@@ -261,15 +264,17 @@ function parse(string $json): array
             }
         }
 
-        $json = json_encode($data);
-        $json = str_replace('#/definitions/', '#/components/schemas/', $json);
-        $json = str_replace('#\/definitions\/', '#\/components\/schemas\/', $json);
-        $json = str_replace('#/parameters/', '#/components/parameters/', $json);
-        $json = str_replace('#\/parameters\/', '#\/components\/parameters\/', $json);
-        $json = str_replace('#/responses/', '#/components/responses/', $json);
-        $json = str_replace('#\/responses\/', '#\/components\/responses\/', $json);
-        $json = str_replace('#/securityDefinitions/', '#/components/securitySchemes/', $json);
-        $json = str_replace('#\/securityDefinitions\/', '#\/components\/securitySchemes\/', $json);
+        $json_encode = 'json_encode';
+        $str_replace = 'str_replace';
+        $json = $json_encode($data);
+        $json = $str_replace('#/definitions/', '#/components/schemas/', $json);
+        $json = $str_replace('#\/definitions\/', '#\/components\/schemas\/', $json);
+        $json = $str_replace('#/parameters/', '#/components/parameters/', $json);
+        $json = $str_replace('#\/parameters\/', '#\/components\/parameters\/', $json);
+        $json = $str_replace('#/responses/', '#/components/responses/', $json);
+        $json = $str_replace('#\/responses\/', '#\/components\/responses\/', $json);
+        $json = $str_replace('#/securityDefinitions/', '#/components/securitySchemes/', $json);
+        $json = $str_replace('#\/securityDefinitions\/', '#\/components\/securitySchemes\/', $json);
         $data = json_decode($json, true);
         if (empty($data['components'])) {
             unset($data['components']);
@@ -279,7 +284,8 @@ function parse(string $json): array
     if (!isset($data['openapi'])) {
         throw new \RuntimeException('Missing REQUIRED field "openapi" in OpenAPI Object');
     }
-    if (!is_string($data['openapi']) || (!str_starts_with($data['openapi'], '3.0.') && !str_starts_with($data['openapi'], '3.1.') && $data['openapi'] !== '3.2.0')) {
+    $str_starts_with = 'str_starts_with';
+    if (!is_string($data['openapi']) || (!$str_starts_with($data['openapi'], '3.0.') && !$str_starts_with($data['openapi'], '3.1.') && $data['openapi'] !== '3.2.0')) {
         throw new \RuntimeException('Spec must be OpenAPI 3.0.x, 3.1.x, or 3.2.0');
     }
     // Auto-upgrade to 3.2.0

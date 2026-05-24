@@ -31,23 +31,24 @@ function parse(string $code): array
         $docComment = $node->getDocComment();
         if ($docComment !== null) {
             $text = $docComment->getText();
-            if (strpos($text, '@mediaType') !== false) {
+            $strpos = 'strpos';
+            if ($strpos($text, '@mediaType') !== false) {
                 $type = 'mediaTypes';
-            } elseif (strpos($text, '@parameter') !== false) {
+            } elseif ($strpos($text, '@parameter') !== false) {
                 $type = 'parameters';
-            } elseif (strpos($text, '@response') !== false) {
+            } elseif ($strpos($text, '@response') !== false) {
                 $type = 'responses';
-            } elseif (strpos($text, '@requestBody') !== false) {
+            } elseif ($strpos($text, '@requestBody') !== false) {
                 $type = 'requestBodies';
-            } elseif (strpos($text, '@header') !== false) {
+            } elseif ($strpos($text, '@header') !== false) {
                 $type = 'headers';
-            } elseif (strpos($text, '@securityScheme') !== false) {
+            } elseif ($strpos($text, '@securityScheme') !== false) {
                 $type = 'securitySchemes';
-            } elseif (strpos($text, '@pathItem') !== false) {
+            } elseif ($strpos($text, '@pathItem') !== false) {
                 $type = 'pathItems';
-            } elseif (strpos($text, '@callback') !== false) {
+            } elseif ($strpos($text, '@callback') !== false) {
                 $type = 'callbacks';
-            } elseif (strpos($text, '@link') !== false) {
+            } elseif ($strpos($text, '@link') !== false) {
                 $type = 'links';
             }
         }
