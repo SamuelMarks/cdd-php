@@ -1,4 +1,4 @@
-.PHONY: help install_base install_deps build_docs build test run all build_wasm build_docker run_docker
+.PHONY: help install_base install_deps build_docs docs build test run all build_wasm build_docker run_docker
 
 DOCS_DIR ?= docs
 BIN_DIR ?= bin
@@ -8,6 +8,7 @@ help:
 	@echo "  install_base   Install language runtime and tools"
 	@echo "  install_deps   Install local dependencies"
 	@echo "  build_docs     Build the API docs (override with DOCS_DIR=...)"
+	@echo "  docs           Generate API documentation with Doxygen and symlink to docs/html"
 	@echo "  build	  Build the CLI binary (override with BIN_DIR=...)"
 	@echo "  test	   Run tests locally"
 	@echo "  run	    Run the CLI (builds first if needed). Pass args like: make run ARGS=\"--version\""
@@ -30,6 +31,20 @@ build_docs:
 	@echo "Building API docs in $(DOCS_DIR)..."
 	@mkdir -p $(DOCS_DIR)
 	@php bin/cdd-php to_docs_json -i ./openapi.json -o $(DOCS_DIR)/docs.json || true
+
+docs:
+	@echo "Generating API docs with Doxygen..."
+	@mkdir -p build/api_docs
+	@( echo "PROJECT_NAME = cdd-php" ; \
+	   echo "INPUT = src" ; \
+	   echo "OUTPUT_DIRECTORY = build/api_docs" ; \
+	   echo "RECURSIVE = YES" ; \
+	   echo "GENERATE_LATEX = NO" ; \
+	   echo "GENERATE_HTML = YES" ; \
+	   echo "HTML_OUTPUT = html" ) | doxygen -
+	@mkdir -p docs
+	@rm -rf docs/html
+	@cd docs && ln -s ../build/api_docs/html html
 
 build: install_deps
 	@echo "Building the CLI binary in build/..."

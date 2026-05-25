@@ -16,6 +16,7 @@ if "%~1"=="all" goto help
 if "%~1"=="install_base" goto install_base
 if "%~1"=="install_deps" goto install_deps
 if "%~1"=="build_docs" goto build_docs
+if "%~1"=="docs" goto docs
 if "%~1"=="build" goto build
 if "%~1"=="test" goto test
 if "%~1"=="run" goto run
@@ -31,6 +32,7 @@ echo Available tasks:
 echo   install_base   Install language runtime and tools
 echo   install_deps   Install local dependencies
 echo   build_docs     Build the API docs (override with DOCS_DIR=...)
+echo   docs           Generate API documentation with Doxygen and symlink to docs\html
 echo   build          Build the CLI binary (override with BIN_DIR=...)
 echo   test           Run tests locally
 echo   run            Run the CLI (builds first if needed)
@@ -53,6 +55,25 @@ goto :EOF
 echo Building API docs in %DOCS_DIR%...
 if not exist "%DOCS_DIR%" mkdir "%DOCS_DIR%"
 php bin\cdd-php to_docs_json -i .\openapi.json -o "%DOCS_DIR%\docs.json"
+goto :EOF
+
+:docs
+echo Generating API docs with Doxygen...
+if not exist "build\api_docs" mkdir "build\api_docs"
+(
+echo PROJECT_NAME = cdd-php
+echo INPUT = src
+echo OUTPUT_DIRECTORY = build/api_docs
+echo RECURSIVE = YES
+echo GENERATE_LATEX = NO
+echo GENERATE_HTML = YES
+echo HTML_OUTPUT = html
+) | doxygen -
+if not exist "docs" mkdir "docs"
+if exist "docs\html" rmdir /s /q "docs\html"
+cd docs
+mklink /J html ..\build\api_docs\html
+cd ..
 goto :EOF
 
 :build
