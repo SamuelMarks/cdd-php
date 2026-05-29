@@ -20,6 +20,12 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "    echo \"Usage: php api_cli.php <command> [args]\\n\\n\";\n";
     $out .= "    echo \"Commands:\\n\";\n";
     $commands = [];
+    $to_snake_case = function (string $text): string {
+        $preg_replace = 'preg_replace';
+        $strtolower = 'strtolower';
+        return $strtolower($preg_replace('/(?<!^)[A-Z]/', '_$0', $text));
+    };
+
     foreach ($paths as $path => $methods) {
         foreach ($methods as $method => $operation) {
             $in_array = 'in_array';
@@ -29,6 +35,7 @@ function emit(array $paths, string $existingCode = ''): string
             }
             $preg_replace = 'preg_replace';
             $opId = $operation['operationId'] ?? strtolower($method) . $preg_replace('/[^a-zA-Z0-9]/', '', $path);
+            $opId = $to_snake_case($opId);
             $commands[$opId] = $operation;
             $desc = $operation['description'] ?? 'Call ' . strtoupper($method) . ' ' . $path;
             $out .= "    echo \"  " . str_pad($opId, 25) . " $desc\\n\";\n";

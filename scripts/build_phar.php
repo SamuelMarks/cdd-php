@@ -16,14 +16,11 @@ if (file_exists($finalFile)) {
 }
 
 $baseDir = dirname(__DIR__);
-$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($baseDir, FilesystemIterator::SKIP_DOTS));
-
-$phar = new Phar($pharFile);
-$phar->startBuffering();
-
-foreach ($iterator as $file) {
+$directory = new RecursiveDirectoryIterator($baseDir, FilesystemIterator::SKIP_DOTS);
+$iterator = new RecursiveIteratorIterator($directory);
+$filter = new CallbackFilterIterator($iterator, function ($file, $key, $iterator) use ($baseDir) {
     if ($file->isDir()) {
-        continue;
+        return false;
     }
     $path = $file->getPathname();
     $rel = substr($path, strlen($baseDir) + 1);
@@ -32,12 +29,17 @@ foreach ($iterator as $file) {
     if (preg_match('/^(src|vendor|bin)\//', $rel) && strpos($rel, 'bin/cdd-php.') === false) {
         if (strpos($rel, 'vendor/friendsofphp/') === 0 || strpos($rel, 'vendor/bin/') === 0 || strpos($rel, 'vendor/symfony/') === 0) {
             if (strpos($rel, 'vendor/symfony/console/') !== 0 && strpos($rel, 'vendor/symfony/string/') !== 0 && strpos($rel, 'vendor/symfony/service-contracts/') !== 0 && strpos($rel, 'vendor/symfony/polyfill') !== 0) {
-                continue; // symfony/finder, symfony/process, symfony/filesystem etc are used by php-cs-fixer
+                return false; // symfony/finder, symfony/process, symfony/filesystem etc are used by php-cs-fixer
             }
         }
-        $phar->addFile($path, $rel);
+        return true;
     }
-}
+    return false;
+});
+
+$phar = new Phar($pharFile);
+$phar->startBuffering();
+$phar->buildFromIterator($filter, $baseDir);
 
 $stub = "#!/usr/bin/env php\n<?php\nPhar::mapPhar('cdd-php.phar');\nrequire 'phar://cdd-php.phar/bin/cdd-php';\n__HALT_COMPILER();\n";
 $phar->setStub($stub);

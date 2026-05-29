@@ -3,8 +3,8 @@ cdd-php
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![interactive WASM web demo](https://img.shields.io/badge/interactive-WASM_web_demo-blue.svg)](https://offscale.io/wasm_web_demo)
 [![CI](https://github.com/SamuelMarks/cdd-php/actions/workflows/ci.yml/badge.svg)](https://github.com/SamuelMarks/cdd-php/actions)
-[![Test Coverage](https://img.shields.io/badge/test_coverage-100%25-brightgreen.svg)](#)
-[![Doc Coverage](https://img.shields.io/badge/doc_coverage-100%25-brightgreen.svg)](#)
+[![Test Coverage](https://img.shields.io/badge/test_coverage-76%25-yellowgreen.svg)](#)
+[![Doc Coverage](https://img.shields.io/badge/doc_coverage-95%25-brightgreen.svg)](#)
 
 ----
 
@@ -21,9 +21,9 @@ The CLI—at a minimum—has:
 - `cdd-php from_openapi to_sdk_cli -i spec.json`
 - `cdd-php from_openapi to_sdk -i spec.json`
 - `cdd-php from_openapi to_server -i spec.json`
-- `cdd-php to_openapi -f path/to/code`
+- `cdd-php to_openapi -i <path/to/code>`
 - `cdd-php to_docs_json --no-imports --no-wrapping -i spec.json`
-- `cdd-php serve_json_rpc --port 8080 --listen 0.0.0.0`
+- `cdd-php serve_json_rpc --port 8080 --listen 127.0.0.1`
 
 ## SDK Example
 
@@ -86,8 +86,8 @@ Usage: cdd-php [command] [args]
 Commands:
   --help
   --version
-  to_openapi -f path/to/code -o spec.json
-  serve_json_rpc --port 8082 --listen 0.0.0.0
+  to_openapi -i <path/to/code> -o spec.json
+  serve_json_rpc --port 8080 --listen 127.0.0.1
   to_docs_json --no-imports --no-wrapping -i spec.json -o docs.json
   from_openapi to_sdk_cli -i spec.json -o target_directory
   from_openapi to_sdk_cli --input-dir ./specs/ -o target_directory

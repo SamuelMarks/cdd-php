@@ -43,7 +43,7 @@ class ParseEmitTest extends TestCase
         $emitted = emit($paths);
 
         $this->assertTrue(strpos($emitted, "if (\$command === 'gettestpath')") !== false);
-        $this->assertTrue(strpos($emitted, "if (\$command === 'testPost')") !== false);
+        $this->assertTrue(strpos($emitted, "if (\$command === 'test_post')") !== false);
         $this->assertTrue(strpos($emitted, "A test operation") !== false);
         $this->assertTrue(strpos($emitted, "Call PUT /test-path") !== false);
         $this->assertTrue(strpos($emitted, "--id (required) The ID") !== false);
@@ -60,8 +60,8 @@ class ParseEmitTest extends TestCase
 
         $parsed = parse($emitted);
         $this->assertTrue(isset($parsed['/cli/gettestpath']));
-        $this->assertTrue(isset($parsed['/cli/testPost']));
-        $this->assertTrue(isset($parsed['/cli/testPut']));
+        $this->assertTrue(isset($parsed['/cli/test_post']));
+        $this->assertTrue(isset($parsed['/cli/test_put']));
     }
 
     public function testParseEmpty()
