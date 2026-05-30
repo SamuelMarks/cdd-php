@@ -116,6 +116,10 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v3
       with:
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        draft: false
+        make_latest: true
         files: |
           build/cdd-php
           build/cdd-php.wasm
