@@ -125,3 +125,21 @@ jobs:
           build/cdd-php.wasm
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Update latest tag
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git tag -f latest
+        git push origin -f latest
+    - name: Create Latest Release
+      uses: softprops/action-gh-release@v3
+      with:
+        tag_name: latest
+        name: Release latest
+        draft: false
+        make_latest: false
+        files: |
+          build/cdd-php
+          build/cdd-php.wasm
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
