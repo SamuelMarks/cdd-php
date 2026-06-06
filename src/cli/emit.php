@@ -97,6 +97,7 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "    while ((\$line = fgets(STDIN)) !== false) {\n";
     $out .= "        \$req = json_decode(\$line, true);\n";
     $out .= "        if (!\$req) continue;\n";
+    $out .= "        \$isNotification = !array_key_exists('id', \$req);\n";
     $out .= "        \$res = ['jsonrpc' => '2.0', 'id' => \$req['id'] ?? null];\n";
     $out .= "        if (isset(\$req['method'])) {\n";
     $out .= "            if (\$req['method'] === 'initialize') {\n";
@@ -109,6 +110,18 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "                continue;\n";
     $out .= "            } elseif (\$req['method'] === 'ping') {\n";
     $out .= "                \$res['result'] = [];\n";
+    $out .= "            } elseif (\$req['method'] === 'prompts/list') {\n";
+    $out .= "                \$res['result'] = ['prompts' => []];\n";
+    $out .= "            } elseif (\$req['method'] === 'prompts/get') {\n";
+    $out .= "                \$res['error'] = ['code' => -32602, 'message' => 'Prompt not found'];\n";
+    $out .= "            } elseif (\$req['method'] === 'logging/setLevel') {\n";
+    $out .= "                \$res['result'] = [];\n";
+    $out .= "            } elseif (\$req['method'] === 'resources/templates/list') {\n";
+    $out .= "                \$res['result'] = ['resourceTemplates' => []];\n";
+    $out .= "            } elseif (\$req['method'] === 'completion/complete') {\n";
+    $out .= "                \$res['result'] = ['completion' => ['values' => [], 'hasMore' => false]];\n";
+    $out .= "            } elseif (\$req['method'] === 'notifications/cancelled') {\n";
+    $out .= "                continue;\n";
     $out .= "            } elseif (\$req['method'] === 'tools/list') {\n";
     $out .= "                \$tools = [];\n";
     foreach ($commands as $opId => $operation) {
@@ -213,7 +226,9 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "                \$res['error'] = ['code' => -32601, 'message' => 'Method not found'];\n";
     $out .= "            }\n";
     $out .= "        }\n";
-    $out .= "        echo json_encode(\$res) . \"\\n\";\n";
+    $out .= "        if (!\$isNotification) {\n";
+    $out .= "            echo json_encode(\$res) . \"\\n\";\n";
+    $out .= "        }\n";
     $out .= "    }\n";
     $out .= "    exit(0);\n";
     $out .= "}\n\n";

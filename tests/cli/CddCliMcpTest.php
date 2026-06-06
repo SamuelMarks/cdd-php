@@ -68,6 +68,30 @@ class CddCliMcpTest extends TestCase
         fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 9, 'method' => 'invalid_method']) . "\n");
         $assertOut($pipes, 'Method not found');
 
+        // prompts/list
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 10, 'method' => 'prompts/list', 'params' => []]) . "\n");
+        $assertOut($pipes, 'prompts');
+
+        // prompts/get
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 11, 'method' => 'prompts/get', 'params' => ['name' => 'test']]) . "\n");
+        $assertOut($pipes, 'Prompt not found');
+
+        // logging/setLevel
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 12, 'method' => 'logging/setLevel', 'params' => ['level' => 'debug']]) . "\n");
+        $assertOut($pipes, 'result');
+
+        // resources/templates/list
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 13, 'method' => 'resources/templates/list', 'params' => []]) . "\n");
+        $assertOut($pipes, 'resourceTemplates');
+
+        // completion/complete
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 14, 'method' => 'completion/complete', 'params' => ['ref' => ['type' => 'ref'], 'argument' => ['name' => 'arg', 'value' => 'val']]]) . "\n");
+        $assertOut($pipes, 'completion');
+
+        // notifications/cancelled
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'method' => 'notifications/cancelled', 'params' => ['requestId' => 10, 'reason' => 'test']]) . "\n");
+        // No output expected for notification
+
         fclose($pipes[0]);
         fclose($pipes[1]);
         fclose($pipes[2]);

@@ -117,6 +117,7 @@ class CddCli
                 if (!$req) {
                     continue;
                 }
+                $isNotification = !array_key_exists('id', $req);
                 $res = ['jsonrpc' => '2.0', 'id' => $req['id'] ?? null];
                 if (isset($req['method'])) {
                     if ($req['method'] === 'initialize') {
@@ -129,6 +130,18 @@ class CddCli
                         continue;
                     } elseif ($req['method'] === 'ping') {
                         $res['result'] = [];
+                    } elseif ($req['method'] === 'prompts/list') {
+                        $res['result'] = ['prompts' => []];
+                    } elseif ($req['method'] === 'prompts/get') {
+                        $res['error'] = ['code' => -32602, 'message' => 'Prompt not found'];
+                    } elseif ($req['method'] === 'logging/setLevel') {
+                        $res['result'] = [];
+                    } elseif ($req['method'] === 'resources/templates/list') {
+                        $res['result'] = ['resourceTemplates' => []];
+                    } elseif ($req['method'] === 'completion/complete') {
+                        $res['result'] = ['completion' => ['values' => [], 'hasMore' => false]];
+                    } elseif ($req['method'] === 'notifications/cancelled') {
+                        continue; // Handle cancellation notification silently
                     } elseif ($req['method'] === 'resources/list') {
                         $res['result'] = ['resources' => [
                             ['uri' => 'cdd://ast', 'name' => 'Internal AST Query Resource', 'mimeType' => 'text/plain'],
@@ -183,7 +196,9 @@ class CddCli
                         $res['error'] = ['code' => -32601, 'message' => 'Method not found'];
                     }
                 }
-                echo json_encode($res) . "\n";
+                if (!$isNotification) {
+                    echo json_encode($res) . "\n";
+                }
             }
             return 0;
         }
