@@ -1,0 +1,76 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Cdd\Tests\Cli;
+
+use Cdd\Tests\Framework\TestCase;
+
+class CddCliMcpTest extends TestCase
+{
+    public function testMcp()
+    {
+        $descriptorspec = [
+            0 => ["pipe", "r"],
+            1 => ["pipe", "w"],
+            2 => ["pipe", "w"]
+        ];
+
+        $process = proc_open('php bin/cdd-php mcp', $descriptorspec, $pipes);
+        $this->assertTrue(is_resource($process));
+
+        $assertOut = function ($pipes, $expected) {
+            $out = fgets($pipes[1]);
+            if (strpos($out, $expected) === false) {
+                echo "Expected: $expected, got: $out\n";
+                $this->assertTrue(false);
+            } else {
+                $this->assertTrue(true);
+            }
+        };
+
+        // initialize
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'initialize', 'params' => []]) . "\n");
+        $assertOut($pipes, 'protocolVersion');
+
+        // ping
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'ping', 'params' => []]) . "\n");
+        $assertOut($pipes, 'result');
+
+        // initialized
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'method' => 'initialized', 'params' => []]) . "\n");
+
+        // resources/list
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 3, 'method' => 'resources/list', 'params' => []]) . "\n");
+        $assertOut($pipes, 'cdd:\\/\\/ast');
+
+        // resources/read valid
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 4, 'method' => 'resources/read', 'params' => ['uri' => 'cdd://ast']]) . "\n");
+        $assertOut($pipes, 'contents');
+
+        // resources/read invalid
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 5, 'method' => 'resources/read', 'params' => ['uri' => 'invalid']]) . "\n");
+        $assertOut($pipes, 'Invalid URI');
+
+        // tools/list
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 6, 'method' => 'tools/list', 'params' => []]) . "\n");
+        $assertOut($pipes, 'from_openapi');
+
+        // tools/call valid
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 7, 'method' => 'tools/call', 'params' => ['name' => 'to_openapi', 'arguments' => ['input' => 'tests/cli/ParseEmitTest.php', 'output' => 'php://memory']]]) . "\n");
+        $assertOut($pipes, 'content');
+
+        // tools/call error
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 8, 'method' => 'tools/call', 'params' => ['name' => 'invalid_tool']]) . "\n");
+        $assertOut($pipes, 'isError');
+
+        // invalid method
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 9, 'method' => 'invalid_method']) . "\n");
+        $assertOut($pipes, 'Method not found');
+
+        fclose($pipes[0]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($process);
+    }
+}

@@ -265,8 +265,12 @@ Content-Length: " . strlen($resBody) . "
         }
 
         if ($command === 'test') {
-            require_once "$baseDir/tests/framework/Runner.php";
-            \Cdd\Tests\Framework\Runner::run("$baseDir/tests");
+            require_once dirname($baseDir) . "/tests/framework/Runner.php";
+            $testDir = dirname($baseDir) . "/tests";
+            if (isset($argv[2])) {
+                $testDir = $resolvePath($argv[2]);
+            }
+            \Cdd\Tests\Framework\Runner::run($testDir);
             return 0;
         }
 

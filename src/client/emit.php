@@ -330,6 +330,20 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
         $mcpConnectCode .= "            }\n";
         $mcpConnectCode .= "        };\n";
         $mcpConnectCode .= "    }\n";
+        $mcpConnectCode .= "    public function connect_mcp_sse(string \$url) {\n";
+        $mcpConnectCode .= "        \$ch = curl_init();\n";
+        $mcpConnectCode .= "        curl_setopt(\$ch, CURLOPT_URL, \$url);\n";
+        $mcpConnectCode .= "        curl_setopt(\$ch, CURLOPT_RETURNTRANSFER, true);\n";
+        $mcpConnectCode .= "        \$headers = ['Accept: text/event-stream'];\n";
+        $mcpConnectCode .= "        foreach (\$this->headers as \$k => \$v) \$headers[] = \"\$k: \$v\";\n";
+        $mcpConnectCode .= "        curl_setopt(\$ch, CURLOPT_HTTPHEADER, \$headers);\n";
+        $mcpConnectCode .= "        // Not fully implemented event loop for SSE due to blocking PHP nature, just dummy for now\n";
+        $mcpConnectCode .= "        return new class(\$url) {\n";
+        $mcpConnectCode .= "            private \$url;\n";
+        $mcpConnectCode .= "            public function __construct(\$url) { \$this->url = \$url; }\n";
+        $mcpConnectCode .= "            public function get_tools() { return []; }\n";
+        $mcpConnectCode .= "        };\n";
+        $mcpConnectCode .= "    }\n";
 
         $pos = strrpos($out, '}');
         if ($pos !== false) {

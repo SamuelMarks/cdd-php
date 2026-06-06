@@ -12,13 +12,18 @@ class Runner
      * @param string $dir The target directory to scan.
      * @return void
      */
-    public static function run(string $dir)
+    public static function run(string $dirOrFile)
     {
-        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir));
         $testFiles = [];
-        foreach ($files as $file) {
-            if ($file->isFile() && str_ends_with($file->getFilename(), 'Test.php')) {
-                $testFiles[] = $file->getPathname();
+        
+        if (is_file($dirOrFile)) {
+            $testFiles[] = $dirOrFile;
+        } else {
+            $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dirOrFile));
+            foreach ($files as $file) {
+                if ($file->isFile() && str_ends_with($file->getFilename(), 'Test.php')) {
+                    $testFiles[] = $file->getPathname();
+                }
             }
         }
 
