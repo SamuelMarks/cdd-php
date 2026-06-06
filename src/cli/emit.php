@@ -93,7 +93,7 @@ function emit(array $paths, string $existingCode = ''): string
     }
 
     $out .= "if (\$command === 'mcp') {\n";
-    $out .= "    \$capabilities = ['tools' => ['listChanged' => true]];\n";
+    $out .= "    \$capabilities = ['tools' => ['listChanged' => true], 'resources' => ['listChanged' => true, 'subscribe' => true], 'prompts' => ['listChanged' => true], 'logging' => (object)[]];\n";
     $out .= "    while ((\$line = fgets(STDIN)) !== false) {\n";
     $out .= "        \$req = json_decode(\$line, true);\n";
     $out .= "        if (!\$req) continue;\n";
@@ -112,15 +112,19 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "                \$res['result'] = [];\n";
     $out .= "            } elseif (\$req['method'] === 'prompts/list') {\n";
     $out .= "                \$res['result'] = ['prompts' => []];\n";
+    $out .= "                if (isset(\$req['params']['cursor'])) { \$res['result']['nextCursor'] = null; }\n";
     $out .= "            } elseif (\$req['method'] === 'prompts/get') {\n";
     $out .= "                \$res['error'] = ['code' => -32602, 'message' => 'Prompt not found'];\n";
     $out .= "            } elseif (\$req['method'] === 'logging/setLevel') {\n";
     $out .= "                \$res['result'] = [];\n";
     $out .= "            } elseif (\$req['method'] === 'resources/templates/list') {\n";
     $out .= "                \$res['result'] = ['resourceTemplates' => []];\n";
+    $out .= "                if (isset(\$req['params']['cursor'])) { \$res['result']['nextCursor'] = null; }\n";
     $out .= "            } elseif (\$req['method'] === 'completion/complete') {\n";
     $out .= "                \$res['result'] = ['completion' => ['values' => [], 'hasMore' => false]];\n";
     $out .= "            } elseif (\$req['method'] === 'notifications/cancelled') {\n";
+    $out .= "                continue;\n";
+    $out .= "            } elseif (\$req['method'] === 'notifications/progress') {\n";
     $out .= "                continue;\n";
     $out .= "            } elseif (\$req['method'] === 'tools/list') {\n";
     $out .= "                \$tools = [];\n";
@@ -153,6 +157,7 @@ function emit(array $paths, string $existingCode = ''): string
         $out .= "                ];\n";
     }
     $out .= "                \$res['result'] = ['tools' => \$tools];\n";
+    $out .= "                if (isset(\$req['params']['cursor'])) { \$res['result']['nextCursor'] = null; }\n";
 
     // Add resources/list
     $out .= "            } elseif (\$req['method'] === 'resources/list') {\n";
@@ -163,6 +168,7 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "                        'mimeType' => 'text/plain'\n";
     $out .= "                    ]\n";
     $out .= "                ]];\n";
+    $out .= "                if (isset(\$req['params']['cursor'])) { \$res['result']['nextCursor'] = null; }\n";
 
     // Add resources/read
     $out .= "            } elseif (\$req['method'] === 'resources/read') {\n";

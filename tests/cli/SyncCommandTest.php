@@ -28,10 +28,14 @@ class SyncCommandTest extends TestCase
         $this->assertTrue(isset($json['components']['schemas']['User']));
 
         // cleanup
-        unlink("$dir/src/Models.php");
-        unlink("$dir/src/routes.php");
-        unlink("$dir/openapi.json");
-        rmdir("$dir/src");
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $fileinfo) {
+            $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
+            $todo($fileinfo->getRealPath());
+        }
         rmdir($dir);
     }
 }

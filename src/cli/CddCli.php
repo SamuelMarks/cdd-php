@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace Cdd\Cli;
 
+/**
+ * CddCli
+ *
+ * This class implements the command-line interface for the Cdd framework.
+ * It provides tools to compile OpenAPI specifications to PHP code, extract
+ * OpenAPI specs from PHP code, synchronize a directory bidirectionally,
+ * and expose generator capabilities via the Model Context Protocol (MCP).
+ */
 class CddCli
 {
     /**
@@ -38,6 +46,12 @@ class CddCli
         return self::run(array_merge(['cdd-php', 'serve_json_rpc'], $args));
     }
 
+    /**
+     * Runs the CLI application with the given arguments.
+     *
+     * @param array $argv The command line arguments
+     * @return int The exit status code (0 for success, non-zero for failure)
+     */
     public static function run(array $argv): int
     {
         $argc = count($argv);
@@ -111,8 +125,9 @@ class CddCli
         }
 
         if ($command === "mcp") {
-            $capabilities = ['tools' => ['listChanged' => true], 'resources' => ['listChanged' => true]];
-            while (($line = fgets(STDIN)) !== false) {
+            $capabilities = ['tools' => ['listChanged' => true], 'resources' => ['listChanged' => true, 'subscribe' => true], 'prompts' => ['listChanged' => true], 'logging' => (object)[]];
+            $inStream = defined('CDD_TEST_STDIN') ? CDD_TEST_STDIN : STDIN;
+            while (($line = fgets($inStream)) !== false) {
                 $req = json_decode($line, true);
                 if (!$req) {
                     continue;
@@ -132,25 +147,45 @@ class CddCli
                         $res['result'] = [];
                     } elseif ($req['method'] === 'prompts/list') {
                         $res['result'] = ['prompts' => []];
+                        if (isset($req['params']['cursor'])) {
+                            $res['result']['nextCursor'] = null;
+                        }
                     } elseif ($req['method'] === 'prompts/get') {
                         $res['error'] = ['code' => -32602, 'message' => 'Prompt not found'];
                     } elseif ($req['method'] === 'logging/setLevel') {
                         $res['result'] = [];
                     } elseif ($req['method'] === 'resources/templates/list') {
                         $res['result'] = ['resourceTemplates' => []];
+                        if (isset($req['params']['cursor'])) {
+                            $res['result']['nextCursor'] = null;
+                        }
                     } elseif ($req['method'] === 'completion/complete') {
                         $res['result'] = ['completion' => ['values' => [], 'hasMore' => false]];
                     } elseif ($req['method'] === 'notifications/cancelled') {
                         continue; // Handle cancellation notification silently
+                    } elseif ($req['method'] === 'notifications/progress') {
+                        continue; // Handle progress notification silently
                     } elseif ($req['method'] === 'resources/list') {
                         $res['result'] = ['resources' => [
                             ['uri' => 'cdd://ast', 'name' => 'Internal AST Query Resource', 'mimeType' => 'text/plain'],
                             ['uri' => 'cdd://schema', 'name' => 'Schema Inspection Resource', 'mimeType' => 'application/json']
                         ]];
+                        if (isset($req['params']['cursor'])) {
+                            $res['result']['nextCursor'] = null;
+                        }
                     } elseif ($req['method'] === 'resources/read') {
                         $uri = $req['params']['uri'] ?? '';
                         if ($uri === 'cdd://ast' || $uri === 'cdd://schema') {
                             $res['result'] = ['contents' => [['uri' => $uri, 'mimeType' => 'text/plain', 'text' => '{}']]];
+                        } elseif (strpos($uri, 'file://') === 0) {
+                            $path = substr($uri, 7);
+                            $realPath = realpath($path);
+                            $realCwd = realpath(getcwd());
+                            if ($realPath !== false && strpos($realPath, $realCwd) === 0 && file_exists($realPath) && is_file($realPath)) {
+                                $res['result'] = ['contents' => [['uri' => $uri, 'mimeType' => 'text/plain', 'text' => file_get_contents($realPath)]]];
+                            } else {
+                                $res['error'] = ['code' => -32602, 'message' => 'Access denied: Path is outside root boundary or invalid'];
+                            }
                         } else {
                             $res['error'] = ['code' => -32602, 'message' => 'Invalid URI'];
                         }
@@ -172,6 +207,9 @@ class CddCli
                                 'inputSchema' => ['type' => 'object', 'properties' => ['dir' => ['type' => 'string']], 'required' => ['dir']]
                             ]
                         ]];
+                        if (isset($req['params']['cursor'])) {
+                            $res['result']['nextCursor'] = null;
+                        }
                     } elseif ($req['method'] === 'tools/call') {
                         $name = $req['params']['name'] ?? '';
                         $args = $req['params']['arguments'] ?? [];

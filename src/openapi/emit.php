@@ -75,10 +75,10 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
                         'operationId' => 'mcp_message',
                         'description' => 'MCP Message Endpoint',
                         'requestBody' => [
-                            'content' => ['application/json' => ['schema' => ['type' => 'object']]]
+                            'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/JSONRPCRequest']]]
                         ],
                         'responses' => [
-                            '200' => ['description' => 'Message processed']
+                            '200' => ['description' => 'Message processed', 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/JSONRPCResponse']]]]
                         ]
                     ]
                 ];
@@ -96,6 +96,23 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             $securityDefinitions = $openapi['securityDefinitions'] ?? ($openapi['components']['securitySchemes'] ?? []);
             $clientCode = \Cdd\Client\emit_class($openapi['paths'], file_exists("$srcDir/ApiClient.php") ? file_get_contents("$srcDir/ApiClient.php") : '', $securityDefinitions);
             file_put_contents("$srcDir/ApiClient.php", $clientCode);
+        }
+
+        if ($subcommand === 'to_server' || $subcommand === 'to_sdk' || $subcommand === 'to_sdk_cli') {
+            if (!isset($openapi['components'])) {
+                $openapi['components'] = [];
+            }
+            if (!isset($openapi['components']['schemas'])) {
+                $openapi['components']['schemas'] = [];
+            }
+            if (file_exists(__DIR__ . '/mcp_schema.php')) {
+                $mcpSchemas = include __DIR__ . '/mcp_schema.php';
+                foreach ($mcpSchemas as $name => $schema) {
+                    if (!isset($openapi['components']['schemas'][$name])) {
+                        $openapi['components']['schemas'][$name] = $schema;
+                    }
+                }
+            }
         }
 
         if (isset($openapi['components'])) {

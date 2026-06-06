@@ -87,6 +87,11 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(strpos($emitted, "\$req['method'] === 'tools/call'") !== false);
         $this->assertTrue(strpos($emitted, "\$req['method'] === 'resources/list'") !== false);
         $this->assertTrue(strpos($emitted, "\$req['method'] === 'resources/read'") !== false);
+        $this->assertTrue(strpos($emitted, "\$req['method'] === 'resources/templates/list'") !== false);
+        $this->assertTrue(strpos($emitted, "\$req['method'] === 'prompts/list'") !== false);
+        $this->assertTrue(strpos($emitted, "\$req['method'] === 'prompts/get'") !== false);
+        $this->assertTrue(strpos($emitted, "\$req['method'] === 'ping'") !== false);
+        $this->assertTrue(strpos($emitted, "\$req['method'] === 'completion/complete'") !== false);
     }
 
     public function testParseEmpty()
