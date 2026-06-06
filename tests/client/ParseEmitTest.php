@@ -84,7 +84,7 @@ class ApiClient {
         $this->assertTrue(strpos($emitted, 'public function myCustomMethod() {}') !== false);
         $this->assertTrue(strpos($emitted, 'public function getUsers') !== false);
         $this->assertTrue(strpos($emitted, 'public function customMethod') !== false);
-        $this->assertTrue(strpos($emitted, 'public function connect_mcp(string $command)') !== false);
+        $this->assertTrue(strpos($emitted, 'public function connect_mcp($transport)') !== false);
         $this->assertTrue(strpos($emitted, '$rpcCall(\'initialize\'') !== false);
     }
 }

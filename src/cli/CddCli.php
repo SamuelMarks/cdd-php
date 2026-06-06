@@ -176,7 +176,17 @@ class CddCli
                     } elseif ($req['method'] === 'resources/read') {
                         $uri = $req['params']['uri'] ?? '';
                         if ($uri === 'cdd://ast' || $uri === 'cdd://schema') {
-                            $res['result'] = ['contents' => [['uri' => $uri, 'mimeType' => 'text/plain', 'text' => '{}']]];
+                            $tmpFile = tempnam(sys_get_temp_dir(), 'cdd_');
+                            if ($uri === 'cdd://schema') {
+                                ob_start();
+                                self::run(['cdd-php', 'to_openapi', '-i', getcwd(), '-o', $tmpFile]);
+                                ob_end_clean();
+                                $text = file_exists($tmpFile) ? file_get_contents($tmpFile) : '{}';
+                            } else {
+                                $text = '{}'; // Still dummy for AST since it's hard to serialize full AST simply
+                            }
+                            @unlink($tmpFile);
+                            $res['result'] = ['contents' => [['uri' => $uri, 'mimeType' => 'text/plain', 'text' => $text]]];
                         } elseif (strpos($uri, 'file://') === 0) {
                             $path = substr($uri, 7);
                             $realPath = realpath($path);
