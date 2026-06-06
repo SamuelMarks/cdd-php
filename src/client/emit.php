@@ -170,5 +170,172 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
         }
     }
 
+    if (strpos($out, 'public function mcp(') === false) {
+        $mcpCode = "    public function mcp() {\n";
+        $mcpCode .= "        return new class(\$this) {\n";
+        $mcpCode .= "            private \$client;\n";
+        $mcpCode .= "            public function __construct(\$client) { \$this->client = \$client; }\n";
+        $mcpCode .= "            public function get_tools() {\n";
+        $mcpCode .= "                return [\n";
+        $commands = [];
+        $docs = [];
+        foreach ($paths as $path => $methods) {
+            foreach ($methods as $method => $operation) {
+                if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers', 'additionaloperations'])) {
+                    continue;
+                }
+                $m = strtolower($method);
+                $opId = $operation['operationId'] ?? "{$m}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
+                $commands[$opId] = $operation;
+                $docs[] = strtoupper($m) . " " . $path;
+                $desc = $operation['description'] ?? "Call $opId";
+                $props = [];
+                $required = [];
+                if (isset($operation['parameters'])) {
+                    foreach ($operation['parameters'] as $p) {
+                        $pName = $p['name'] ?? 'param';
+                        $props[$pName] = ['type' => 'string'];
+                        if (!empty($p['required'])) {
+                            $required[] = $pName;
+                        }
+                    }
+                }
+                if (isset($operation['requestBody'])) {
+                    $props['body'] = ['type' => 'object'];
+                }
+                $schema = ['type' => 'object', 'properties' => (object)$props];
+                if (!empty($required)) {
+                    $schema['required'] = $required;
+                }
+                $schemaJson = addslashes(json_encode($schema));
+                $mcpCode .= "                    [\n";
+                $mcpCode .= "                        'name' => '$opId',\n";
+                $mcpCode .= "                        'description' => '" . addslashes($desc) . "',\n";
+                $mcpCode .= "                        'inputSchema' => json_decode('$schemaJson', true)\n";
+                $mcpCode .= "                    ],\n";
+            }
+        }
+        $mcpCode .= "                ];\n";
+        $mcpCode .= "            }\n";
+        $mcpCode .= "            public function get_resources() {\n";
+        $mcpCode .= "                return [\n";
+        $mcpCode .= "                    [\n";
+        $mcpCode .= "                        'uri' => 'api://docs',\n";
+        $mcpCode .= "                        'name' => 'API Documentation',\n";
+        $mcpCode .= "                        'mimeType' => 'text/plain'\n";
+        $mcpCode .= "                    ]\n";
+        $mcpCode .= "                ];\n";
+        $mcpCode .= "            }\n";
+        $mcpCode .= "            public function read_resource(string \$uri) {\n";
+        $mcpCode .= "                if (\$uri === 'api://docs') {\n";
+        $mcpCode .= "                    return [\n";
+        $mcpCode .= "                        'contents' => [\n";
+        $mcpCode .= "                            [\n";
+        $mcpCode .= "                                'uri' => 'api://docs',\n";
+        $mcpCode .= "                                'mimeType' => 'text/plain',\n";
+        $mcpCode .= "                                'text' => \"API Endpoints:\\n" . implode("\\n", $docs) . "\"\n";
+        $mcpCode .= "                            ]\n";
+        $mcpCode .= "                        ]\n";
+        $mcpCode .= "                    ];\n";
+        $mcpCode .= "                }\n";
+        $mcpCode .= "                throw new \Exception(\"Unknown resource: \" . \$uri);\n";
+        $mcpCode .= "            }\n";
+        $mcpCode .= "            public function execute_tool(string \$name, array \$args) {\n";
+        $mcpCode .= "                switch (\$name) {\n";
+        foreach ($commands as $opId => $operation) {
+            $mcpCode .= "                    case '$opId':\n";
+            $mcpCode .= "                        \$params = [];\n";
+            $mcpCode .= "                        \$body = [];\n";
+            if (isset($operation['parameters'])) {
+                foreach ($operation['parameters'] as $p) {
+                    $pName = $p['name'] ?? 'param';
+                    $mcpCode .= "                        \$params['$pName'] = \$args['$pName'] ?? null;\n";
+                }
+            }
+            if (isset($operation['requestBody'])) {
+                $mcpCode .= "                        \$body = \$args['body'] ?? [];\n";
+            }
+            $mcpCode .= "                        return \$this->client->$opId(\$params, \$body);\n";
+        }
+        $mcpCode .= "                    default:\n";
+        $mcpCode .= "                        throw new \Exception(\"Unknown tool: \" . \$name);\n";
+        $mcpCode .= "                }\n";
+        $mcpCode .= "            }\n";
+        $mcpCode .= "        };\n";
+        $mcpCode .= "    }\n";
+
+        $pos = strrpos($out, '}');
+        if ($pos !== false) {
+            $out = substr($out, 0, $pos) . $mcpCode . "}\n";
+        }
+    }
+
+    if (strpos($out, 'public function connect_mcp(') === false) {
+        $mcpConnectCode = "    public function connect_mcp(string \$command) {\n";
+        $mcpConnectCode .= "        \$descriptorspec = [\n";
+        $mcpConnectCode .= "            0 => [\"pipe\", \"r\"],\n";
+        $mcpConnectCode .= "            1 => [\"pipe\", \"w\"],\n";
+        $mcpConnectCode .= "            2 => [\"pipe\", \"w\"]\n";
+        $mcpConnectCode .= "        ];\n";
+        $mcpConnectCode .= "        \$process = proc_open(\$command, \$descriptorspec, \$pipes);\n";
+        $mcpConnectCode .= "        if (!is_resource(\$process)) throw new \Exception('Failed to start MCP server');\n";
+        $mcpConnectCode .= "        \$rpcCall = function(\$method, \$params = []) use (&\$pipes) {\n";
+        $mcpConnectCode .= "            \$id = uniqid();\n";
+        $mcpConnectCode .= "            \$req = json_encode(['jsonrpc' => '2.0', 'id' => \$id, 'method' => \$method, 'params' => \$params]) . \"\\n\";\n";
+        $mcpConnectCode .= "            fwrite(\$pipes[0], \$req);\n";
+        $mcpConnectCode .= "            while ((\$line = fgets(\$pipes[1])) !== false) {\n";
+        $mcpConnectCode .= "                \$res = json_decode(\$line, true);\n";
+        $mcpConnectCode .= "                if (\$res && isset(\$res['id']) && \$res['id'] === \$id) return \$res;\n";
+        $mcpConnectCode .= "            }\n";
+        $mcpConnectCode .= "            return null;\n";
+        $mcpConnectCode .= "        };\n";
+        $mcpConnectCode .= "        \$init = \$rpcCall('initialize', ['protocolVersion' => '2024-11-05', 'capabilities' => [], 'clientInfo' => ['name' => 'cdd-client', 'version' => '1.0.0']]);\n";
+        $mcpConnectCode .= "        if (!isset(\$init['result'])) throw new \Exception('MCP initialization failed');\n";
+        $mcpConnectCode .= "        fwrite(\$pipes[0], json_encode(['jsonrpc' => '2.0', 'method' => 'initialized', 'params' => []]) . \"\\n\");\n";
+        $mcpConnectCode .= "        return new class(\$rpcCall, \$process, \$pipes) {\n";
+        $mcpConnectCode .= "            private \$rpcCall;\n";
+        $mcpConnectCode .= "            private \$process;\n";
+        $mcpConnectCode .= "            private \$pipes;\n";
+        $mcpConnectCode .= "            public function __construct(\$rpcCall, \$process, \$pipes) { \$this->rpcCall = \$rpcCall; \$this->process = \$process; \$this->pipes = \$pipes; }\n";
+        $mcpConnectCode .= "            public function __destruct() {\n";
+        $mcpConnectCode .= "                foreach(\$this->pipes as \$p) fclose(\$p);\n";
+        $mcpConnectCode .= "                proc_terminate(\$this->process);\n";
+        $mcpConnectCode .= "            }\n";
+        $mcpConnectCode .= "            public function get_tools() {\n";
+        $mcpConnectCode .= "                \$call = \$this->rpcCall;\n";
+        $mcpConnectCode .= "                \$res = \$call('tools/list');\n";
+        $mcpConnectCode .= "                return \$res['result']['tools'] ?? [];\n";
+        $mcpConnectCode .= "            }\n";
+        $mcpConnectCode .= "            public function execute_tool(string \$name, array \$args) {\n";
+        $mcpConnectCode .= "                \$call = \$this->rpcCall;\n";
+        $mcpConnectCode .= "                \$res = \$call('tools/call', ['name' => \$name, 'arguments' => \$args]);\n";
+        $mcpConnectCode .= "                if (isset(\$res['error'])) throw new \Exception(\$res['error']['message'] ?? 'Tool execution failed');\n";
+        $mcpConnectCode .= "                return \$res['result']['content'][0]['text'] ?? null;\n";
+        $mcpConnectCode .= "            }\n";
+        $mcpConnectCode .= "            public function ping() {\n";
+        $mcpConnectCode .= "                \$call = \$this->rpcCall;\n";
+        $mcpConnectCode .= "                \$res = \$call('ping');\n";
+        $mcpConnectCode .= "                return isset(\$res['result']);\n";
+        $mcpConnectCode .= "            }\n";
+        $mcpConnectCode .= "            public function get_resources() {\n";
+        $mcpConnectCode .= "                \$call = \$this->rpcCall;\n";
+        $mcpConnectCode .= "                \$res = \$call('resources/list');\n";
+        $mcpConnectCode .= "                return \$res['result']['resources'] ?? [];\n";
+        $mcpConnectCode .= "            }\n";
+        $mcpConnectCode .= "            public function read_resource(string \$uri) {\n";
+        $mcpConnectCode .= "                \$call = \$this->rpcCall;\n";
+        $mcpConnectCode .= "                \$res = \$call('resources/read', ['uri' => \$uri]);\n";
+        $mcpConnectCode .= "                if (isset(\$res['error'])) throw new \Exception(\$res['error']['message'] ?? 'Resource read failed');\n";
+        $mcpConnectCode .= "                return \$res['result']['contents'] ?? [];\n";
+        $mcpConnectCode .= "            }\n";
+        $mcpConnectCode .= "        };\n";
+        $mcpConnectCode .= "    }\n";
+
+        $pos = strrpos($out, '}');
+        if ($pos !== false) {
+            $out = substr($out, 0, $pos) . $mcpConnectCode . "}\n";
+        }
+    }
+
     return $out;
 }

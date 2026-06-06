@@ -98,8 +98,31 @@ function emit(array $operation): string
         $signature .= ": $returnType";
     }
 
-    return $docBlock . $signature . " {
-    // Implementation
-}
-";
+    $implementation = "    // Implementation\n";
+    if ($operationId === 'mcp_sse') {
+        $implementation = "    header('Content-Type: text/event-stream');\n";
+        $implementation .= "    header('Cache-Control: no-cache');\n";
+        $implementation .= "    header('Connection: keep-alive');\n";
+        $implementation .= "    echo \"event: endpoint\\ndata: /mcp/message\\n\\n\";\n";
+        $implementation .= "    flush();\n";
+    } elseif ($operationId === 'mcp_message') {
+        $implementation = "    // Parse incoming MCP JSON-RPC message and proxy to local controllers\n";
+        $implementation .= "    \$req = json_decode(file_get_contents('php://input'), true);\n";
+        $implementation .= "    if (!\$req) return ['error' => ['code' => -32700, 'message' => 'Parse error']];\n";
+        $implementation .= "    if (isset(\$req['method']) && \$req['method'] === 'tools/call') {\n";
+        $implementation .= "        \$toolName = \$req['params']['name'] ?? '';\n";
+        $implementation .= "        if (method_exists(\$this, \$toolName)) {\n";
+        $implementation .= "            \$args = \$req['params']['arguments'] ?? [];\n";
+        $implementation .= "            try {\n";
+        $implementation .= "                \$res = \$this->\$toolName(\$args);\n";
+        $implementation .= "                return ['jsonrpc' => '2.0', 'id' => \$req['id'], 'result' => ['content' => [['type' => 'text', 'text' => json_encode(\$res)]]]];\n";
+        $implementation .= "            } catch (\\Throwable \$e) {\n";
+        $implementation .= "                return ['jsonrpc' => '2.0', 'id' => \$req['id'], 'error' => ['code' => -32000, 'message' => \$e->getMessage()]];\n";
+        $implementation .= "            }\n";
+        $implementation .= "        }\n";
+        $implementation .= "    }\n";
+        $implementation .= "    return ['jsonrpc' => '2.0', 'id' => \$req['id'] ?? null, 'error' => ['code' => -32601, 'message' => 'Method not found']];\n";
+    }
+
+    return $docBlock . $signature . " {\n" . $implementation . "}\n";
 }

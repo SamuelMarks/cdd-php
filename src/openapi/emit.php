@@ -55,6 +55,36 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             file_put_contents("$srcDir/api_metadata.php", $metadataCode);
         }
 
+        $subcommand = $options['subcommand'] ?? '';
+
+        if ($subcommand === 'to_server') {
+            if (!isset($openapi['paths']['/mcp/sse'])) {
+                $openapi['paths']['/mcp/sse'] = [
+                    'get' => [
+                        'operationId' => 'mcp_sse',
+                        'description' => 'MCP SSE Endpoint',
+                        'responses' => [
+                            '200' => ['description' => 'SSE stream']
+                        ]
+                    ]
+                ];
+            }
+            if (!isset($openapi['paths']['/mcp/message'])) {
+                $openapi['paths']['/mcp/message'] = [
+                    'post' => [
+                        'operationId' => 'mcp_message',
+                        'description' => 'MCP Message Endpoint',
+                        'requestBody' => [
+                            'content' => ['application/json' => ['schema' => ['type' => 'object']]]
+                        ],
+                        'responses' => [
+                            '200' => ['description' => 'Message processed']
+                        ]
+                    ]
+                ];
+            }
+        }
+
         if (isset($openapi['paths'])) {
             $controllerCode = \Cdd\Paths\emit($openapi['paths'], file_exists("$srcDir/ApiController.php") ? file_get_contents("$srcDir/ApiController.php") : '');
             file_put_contents("$srcDir/ApiController.php", $controllerCode);

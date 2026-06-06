@@ -64,6 +64,31 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(isset($parsed['/cli/test_put']));
     }
 
+    public function testEmitMcpServer()
+    {
+        $paths = [
+            '/test' => [
+                'post' => [
+                    'operationId' => 'testPost',
+                    'parameters' => [
+                        ['name' => 'id', 'required' => true]
+                    ],
+                    'requestBody' => ['content' => ['application/json' => []]]
+                ]
+            ]
+        ];
+
+        $emitted = emit($paths);
+
+        $this->assertTrue(strpos($emitted, "if (\$command === 'mcp') {") !== false);
+        $this->assertTrue(strpos($emitted, "\$req['method'] === 'initialize'") !== false);
+        $this->assertTrue(strpos($emitted, "\$req['method'] === 'tools/list'") !== false);
+        $this->assertTrue(strpos($emitted, "'name' => 'testPost'") !== false || strpos($emitted, "'name' => 'test_post'") !== false);
+        $this->assertTrue(strpos($emitted, "\$req['method'] === 'tools/call'") !== false);
+        $this->assertTrue(strpos($emitted, "\$req['method'] === 'resources/list'") !== false);
+        $this->assertTrue(strpos($emitted, "\$req['method'] === 'resources/read'") !== false);
+    }
+
     public function testParseEmpty()
     {
         $parsed = parse("no commands here");

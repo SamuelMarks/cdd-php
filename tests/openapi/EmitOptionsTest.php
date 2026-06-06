@@ -188,6 +188,31 @@ class EmitOptionsTest extends TestCase
         system("rm -rf " . escapeshellarg($outDir));
     }
 
+    public function testEmitWithSubcommandToServer()
+    {
+        $outDir = sys_get_temp_dir() . '/cdd_test_emit_outdir_server_' . uniqid();
+
+        $openapi = ['openapi' => '3.2.0', 'info' => ['title' => 'A', 'version' => '1'], 'paths' => []];
+        $options = [
+            'subcommand' => 'to_server'
+        ];
+
+        \Cdd\Openapi\emit($openapi, $outDir, $options);
+
+        // Check if /mcp/sse and /mcp/message routes were generated
+        $this->assertTrue(file_exists($outDir . '/src/ApiController.php'));
+        $controllerCode = file_get_contents($outDir . '/src/ApiController.php');
+        $this->assertStringContainsString('function mcp_sse', $controllerCode);
+        $this->assertStringContainsString('function mcp_message', $controllerCode);
+
+        $this->assertTrue(file_exists($outDir . '/src/routes.php'));
+        $routeCode = file_get_contents($outDir . '/src/routes.php');
+        $this->assertStringContainsString('/mcp/sse', $routeCode);
+        $this->assertStringContainsString('/mcp/message', $routeCode);
+
+        system("rm -rf " . escapeshellarg($outDir));
+    }
+
     public function testEmitTargetVersion20()
     {
         $openapi = [

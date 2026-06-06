@@ -92,6 +92,132 @@ function emit(array $paths, string $existingCode = ''): string
         $out .= "}\n\n";
     }
 
+    $out .= "if (\$command === 'mcp') {\n";
+    $out .= "    \$capabilities = ['tools' => ['listChanged' => true]];\n";
+    $out .= "    while ((\$line = fgets(STDIN)) !== false) {\n";
+    $out .= "        \$req = json_decode(\$line, true);\n";
+    $out .= "        if (!\$req) continue;\n";
+    $out .= "        \$res = ['jsonrpc' => '2.0', 'id' => \$req['id'] ?? null];\n";
+    $out .= "        if (isset(\$req['method'])) {\n";
+    $out .= "            if (\$req['method'] === 'initialize') {\n";
+    $out .= "                \$res['result'] = [\n";
+    $out .= "                    'protocolVersion' => '2024-11-05',\n";
+    $out .= "                    'capabilities' => \$capabilities,\n";
+    $out .= "                    'serverInfo' => ['name' => 'generated-api-mcp', 'version' => '1.0.0']\n";
+    $out .= "                ];\n";
+    $out .= "            } elseif (\$req['method'] === 'initialized') {\n";
+    $out .= "                continue;\n";
+    $out .= "            } elseif (\$req['method'] === 'ping') {\n";
+    $out .= "                \$res['result'] = [];\n";
+    $out .= "            } elseif (\$req['method'] === 'tools/list') {\n";
+    $out .= "                \$tools = [];\n";
+    foreach ($commands as $opId => $operation) {
+        $desc = $operation['description'] ?? "Call $opId";
+        $props = [];
+        $required = [];
+        if (isset($operation['parameters'])) {
+            foreach ($operation['parameters'] as $p) {
+                $pName = $p['name'] ?? 'param';
+                $props[$pName] = ['type' => 'string'];
+                if (!empty($p['required'])) {
+                    $required[] = $pName;
+                }
+            }
+        }
+        if (isset($operation['requestBody'])) {
+            $props['body'] = ['type' => 'object'];
+        }
+        $schema = ['type' => 'object', 'properties' => (object)$props];
+        if (!empty($required)) {
+            $schema['required'] = $required;
+        }
+
+        $schemaJson = addslashes(json_encode($schema));
+        $out .= "                \$tools[] = [\n";
+        $out .= "                    'name' => '$opId',\n";
+        $out .= "                    'description' => '" . addslashes($desc) . "',\n";
+        $out .= "                    'inputSchema' => json_decode('$schemaJson', true)\n";
+        $out .= "                ];\n";
+    }
+    $out .= "                \$res['result'] = ['tools' => \$tools];\n";
+
+    // Add resources/list
+    $out .= "            } elseif (\$req['method'] === 'resources/list') {\n";
+    $out .= "                \$res['result'] = ['resources' => [\n";
+    $out .= "                    [\n";
+    $out .= "                        'uri' => 'api://docs',\n";
+    $out .= "                        'name' => 'API Documentation',\n";
+    $out .= "                        'mimeType' => 'text/plain'\n";
+    $out .= "                    ]\n";
+    $out .= "                ]];\n";
+
+    // Add resources/read
+    $out .= "            } elseif (\$req['method'] === 'resources/read') {\n";
+    $out .= "                \$uri = \$req['params']['uri'] ?? '';\n";
+    $out .= "                if (\$uri === 'api://docs') {\n";
+    $out .= "                    \$res['result'] = ['contents' => [\n";
+    $out .= "                        [\n";
+    $out .= "                            'uri' => 'api://docs',\n";
+    $out .= "                            'mimeType' => 'text/plain',\n";
+    $docs = [];
+    foreach ($paths as $path => $methods) {
+        foreach ($methods as $m => $op) {
+            if (in_array(strtolower($m), ['parameters', 'summary', 'description', 'servers', 'additionaloperations'])) {
+                continue;
+            }
+            $docs[] = strtoupper($m) . " " . $path;
+        }
+    }
+    $out .= "                            'text' => \"API Endpoints:\\n" . implode("\\n", $docs) . "\"\n";
+    $out .= "                        ]\n";
+    $out .= "                    ]];\n";
+    $out .= "                } else {\n";
+    $out .= "                    \$res['error'] = ['code' => -32602, 'message' => 'Invalid URI'];\n";
+    $out .= "                }\n";
+
+    $out .= "            } elseif (\$req['method'] === 'tools/call') {\n";
+    $out .= "                \$name = \$req['params']['name'] ?? '';\n";
+    $out .= "                \$args = \$req['params']['arguments'] ?? [];\n";
+    $out .= "                try {\n";
+    $out .= "                    \$callRes = null;\n";
+    $out .= "                    switch (\$name) {\n";
+    foreach ($commands as $opId => $operation) {
+        $out .= "                        case '$opId':\n";
+        $out .= "                            \$params = [];\n";
+        $out .= "                            \$body = [];\n";
+        if (isset($operation['parameters'])) {
+            foreach ($operation['parameters'] as $p) {
+                $pName = $p['name'] ?? 'param';
+                $out .= "                            \$params['$pName'] = \$args['$pName'] ?? null;\n";
+            }
+        }
+        if (isset($operation['requestBody'])) {
+            $out .= "                            \$body = \$args['body'] ?? [];\n";
+        }
+        $out .= "                            \$callRes = \$client->$opId(\$params, \$body);\n";
+        $out .= "                            break;\n";
+    }
+    $out .= "                        default:\n";
+    $out .= "                            throw new \Exception(\"Unknown tool: \" . \$name);\n";
+    $out .= "                    }\n";
+    $out .= "                    \$res['result'] = [\n";
+    $out .= "                        'content' => [['type' => 'text', 'text' => is_string(\$callRes) ? \$callRes : json_encode(\$callRes)]]\n";
+    $out .= "                    ];\n";
+    $out .= "                } catch (\Throwable \$e) {\n";
+    $out .= "                    \$res['result'] = [\n";
+    $out .= "                        'content' => [['type' => 'text', 'text' => 'Error: ' . \$e->getMessage()]],\n";
+    $out .= "                        'isError' => true\n";
+    $out .= "                    ];\n";
+    $out .= "                }\n";
+    $out .= "            } else {\n";
+    $out .= "                \$res['error'] = ['code' => -32601, 'message' => 'Method not found'];\n";
+    $out .= "            }\n";
+    $out .= "        }\n";
+    $out .= "        echo json_encode(\$res) . \"\\n\";\n";
+    $out .= "    }\n";
+    $out .= "    exit(0);\n";
+    $out .= "}\n\n";
+
     $out .= "echo \"Unknown command: \$command\\n\";\nexit(1);\n";
 
     return $out;

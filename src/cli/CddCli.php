@@ -110,6 +110,84 @@ class CddCli
             return 0;
         }
 
+        if ($command === "mcp") {
+            $capabilities = ['tools' => ['listChanged' => true], 'resources' => ['listChanged' => true]];
+            while (($line = fgets(STDIN)) !== false) {
+                $req = json_decode($line, true);
+                if (!$req) {
+                    continue;
+                }
+                $res = ['jsonrpc' => '2.0', 'id' => $req['id'] ?? null];
+                if (isset($req['method'])) {
+                    if ($req['method'] === 'initialize') {
+                        $res['result'] = [
+                            'protocolVersion' => '2024-11-05',
+                            'capabilities' => $capabilities,
+                            'serverInfo' => ['name' => 'cdd-php-mcp', 'version' => '0.0.1']
+                        ];
+                    } elseif ($req['method'] === 'initialized') {
+                        continue;
+                    } elseif ($req['method'] === 'ping') {
+                        $res['result'] = [];
+                    } elseif ($req['method'] === 'resources/list') {
+                        $res['result'] = ['resources' => [
+                            ['uri' => 'cdd://ast', 'name' => 'Internal AST Query Resource', 'mimeType' => 'text/plain'],
+                            ['uri' => 'cdd://schema', 'name' => 'Schema Inspection Resource', 'mimeType' => 'application/json']
+                        ]];
+                    } elseif ($req['method'] === 'resources/read') {
+                        $uri = $req['params']['uri'] ?? '';
+                        if ($uri === 'cdd://ast' || $uri === 'cdd://schema') {
+                            $res['result'] = ['contents' => [['uri' => $uri, 'mimeType' => 'text/plain', 'text' => '{}']]];
+                        } else {
+                            $res['error'] = ['code' => -32602, 'message' => 'Invalid URI'];
+                        }
+                    } elseif ($req['method'] === 'tools/list') {
+                        $res['result'] = ['tools' => [
+                            [
+                                'name' => 'from_openapi',
+                                'description' => 'Generate code from OpenAPI spec',
+                                'inputSchema' => ['type' => 'object', 'properties' => ['input' => ['type' => 'string'], 'output' => ['type' => 'string']], 'required' => ['input', 'output']]
+                            ],
+                            [
+                                'name' => 'to_openapi',
+                                'description' => 'Generate OpenAPI spec from code',
+                                'inputSchema' => ['type' => 'object', 'properties' => ['input' => ['type' => 'string'], 'output' => ['type' => 'string']], 'required' => ['input', 'output']]
+                            ],
+                            [
+                                'name' => 'sync',
+                                'description' => 'Bidirectional sync code and schema',
+                                'inputSchema' => ['type' => 'object', 'properties' => ['dir' => ['type' => 'string']], 'required' => ['dir']]
+                            ]
+                        ]];
+                    } elseif ($req['method'] === 'tools/call') {
+                        $name = $req['params']['name'] ?? '';
+                        $args = $req['params']['arguments'] ?? [];
+                        try {
+                            ob_start();
+                            if ($name === 'from_openapi') {
+                                self::run(['cdd-php', 'from_openapi', '-i', $args['input'], '-o', $args['output']]);
+                            } elseif ($name === 'to_openapi') {
+                                self::run(['cdd-php', 'to_openapi', '-i', $args['input'], '-o', $args['output']]);
+                            } elseif ($name === 'sync') {
+                                self::run(['cdd-php', 'sync', '-d', $args['dir']]);
+                            } else {
+                                throw new \Exception('Unknown tool');
+                            }
+                            $output = ob_get_clean();
+                            $res['result'] = ['content' => [['type' => 'text', 'text' => $output]]];
+                        } catch (\Throwable $e) {
+                            ob_end_clean();
+                            $res['result'] = ['content' => [['type' => 'text', 'text' => 'Error: ' . $e->getMessage()]], 'isError' => true];
+                        }
+                    } else {
+                        $res['error'] = ['code' => -32601, 'message' => 'Method not found'];
+                    }
+                }
+                echo json_encode($res) . "\n";
+            }
+            return 0;
+        }
+
         if ($command === "serve_json_rpc") {
             $port = (int)($_ENV["CDD_PORT"] ?? 8080);
             $listen = $_ENV["CDD_LISTEN"] ?? "127.0.0.1";
