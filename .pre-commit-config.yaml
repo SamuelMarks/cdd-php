@@ -47,20 +47,20 @@ repos:
       - id: test-swagger-2
         name: Swagger 2.0 Petstore test
         entry: >-
-          bash -c 'rm -rf ../temp-php-client-swagger2 &&
+          bash -c 'python3 cdd-openapi-test-harness/saboteur_server.py >/dev/null 2>&1 & sleep 1 && rm -rf ../temp-php-client-swagger2 &&
           php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore.json -o ../temp-php-client-swagger2 >/dev/null 2>&1 &&
           cd ../temp-php-client-swagger2 && composer install -q && (composer test >/dev/null 2>&1 || true) &&
-          cd ../cdd-php && rm -rf ../temp-php-client-swagger2'
+          cd ../cdd-php && rm -rf ../temp-php-client-swagger2 ; kill %1 || true'
         language: system
         pass_filenames: false
 
       - id: test-openapi-3-2-0
         name: OpenAPI 3.2.0 Petstore test
         entry: >-
-          bash -c 'rm -rf ../temp-php-client-openapi3 &&
+          bash -c 'python3 cdd-openapi-test-harness/saboteur_server.py >/dev/null 2>&1 & sleep 1 && rm -rf ../temp-php-client-openapi3 &&
           php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore_oas3.json -o ../temp-php-client-openapi3 >/dev/null 2>&1 &&
           cd ../temp-php-client-openapi3 && composer install -q && (composer test >/dev/null 2>&1 || true) &&
-          cd ../cdd-php && rm -rf ../temp-php-client-openapi3'
+          cd ../cdd-php && rm -rf ../temp-php-client-openapi3 ; kill %1 || true'
         language: system
         pass_filenames: false
 
