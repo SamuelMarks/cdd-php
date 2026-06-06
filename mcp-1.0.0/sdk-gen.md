@@ -76,8 +76,8 @@ Exposing the `cdd` bidirectional code generator itself to MCP allows AI models t
 | **Behavioral & Security** | | | | |
 | Pagination Cursor Management | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Handling nextCursor fetch loops |
 | Progress Tracking (progress) | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Emitting/handling progress events |
-| Human-in-the-loop (Sampling) | `[ ]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Prompting user before LLM generation |
-| Human-in-the-loop (Tools) | `[ ]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Security approvals/denials for tool calls |
+| Human-in-the-loop (Sampling) | `[ ]` , `[ ]` | `[ ]` , `[ ]` | `[x]` , `[x]` | Prompting user before LLM generation |
+| Human-in-the-loop (Tools) | `[ ]` , `[ ]` | `[ ]` , `[ ]` | `[x]` , `[x]` | Security approvals/denials for tool calls |
 | Root Boundary Enforcement | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Preventing traversal outside allowed directories |
 | URI Protocol Handling | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Resolving custom URI schemes |
 
