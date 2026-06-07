@@ -17,7 +17,7 @@ class EmitOptionsTest extends TestCase
 
         $this->assertEquals('3.2.0', $decoded['openapi']);
         $this->assertEquals('Default API', $decoded['info']['title']);
-        $this->assertEquals('0.0.1', $decoded['info']['version']);
+        $this->assertEquals('0.0.2', $decoded['info']['version']);
         $this->assertTrue(is_array($decoded['paths'])); // wait, it's emitted as (object)[], which becomes empty object in JSON, so array in json_decode assoc=true
     }
 

@@ -93,6 +93,24 @@ function emit(array $paths, string $existingCode = ''): string
     }
 
     $out .= "if (\$command === 'mcp') {\n";
+    $out .= "    // Global helper for tools to initiate LLM sampling\n";
+    $out .= "    if (!function_exists('sample_llm')) {\n";
+    $out .= "        function sample_llm(array \$messages, int \$maxTokens = 100, string \$systemPrompt = '') {\n";
+    $out .= "            \$id = uniqid();\n";
+    $out .= "            \$req = ['jsonrpc' => '2.0', 'id' => \$id, 'method' => 'sampling/createMessage', 'params' => ['messages' => \$messages, 'maxTokens' => \$maxTokens]];\n";
+    $out .= "            if (\$systemPrompt !== '') \$req['params']['systemPrompt'] = \$systemPrompt;\n";
+    $out .= "            fwrite(STDOUT, json_encode(\$req) . \"\\n\");\n";
+    $out .= "            fflush(STDOUT);\n";
+    $out .= "            while ((\$line = fgets(STDIN)) !== false) {\n";
+    $out .= "                \$res = json_decode(\$line, true);\n";
+    $out .= "                if (\$res && isset(\$res['id']) && \$res['id'] === \$id) {\n";
+    $out .= "                    if (isset(\$res['error'])) throw new \Exception(\$res['error']['message'] ?? 'Sampling failed');\n";
+    $out .= "                    return \$res['result'] ?? null;\n";
+    $out .= "                }\n";
+    $out .= "            }\n";
+    $out .= "            return null;\n";
+    $out .= "        }\n";
+    $out .= "    }\n";
     $out .= "    \$capabilities = ['tools' => ['listChanged' => true], 'resources' => ['listChanged' => true, 'subscribe' => true], 'prompts' => ['listChanged' => true], 'logging' => (object)[]];\n";
     $out .= "    while ((\$line = fgets(STDIN)) !== false) {\n";
     $out .= "        \$req = json_decode(\$line, true);\n";
@@ -123,6 +141,7 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "            } elseif (\$req['method'] === 'completion/complete') {\n";
     $out .= "                \$res['result'] = ['completion' => ['values' => [], 'hasMore' => false]];\n";
     $out .= "            } elseif (\$req['method'] === 'notifications/cancelled') {\n";
+    $out .= "                // In a true async worker, cancel the pending job for \$req['params']['requestId'] here.\n";
     $out .= "                continue;\n";
     $out .= "            } elseif (\$req['method'] === 'notifications/progress') {\n";
     $out .= "                continue;\n";
@@ -157,18 +176,43 @@ function emit(array $paths, string $existingCode = ''): string
         $out .= "                ];\n";
     }
     $out .= "                \$res['result'] = ['tools' => \$tools];\n";
-    $out .= "                if (isset(\$req['params']['cursor'])) { \$res['result']['nextCursor'] = null; }\n";
+    $out .= "                if (isset(\$req['params']['cursor'])) {\n";
+    $out .= "                    \$cursor = (int)\$req['params']['cursor'];\n";
+    $out .= "                    \$limit = 50;\n";
+    $out .= "                    \$sliced = array_slice(\$tools, \$cursor, \$limit);\n";
+    $out .= "                    \$nextOffset = \$cursor + \$limit;\n";
+    $out .= "                    \$nextCursor = \$nextOffset < count(\$tools) ? (string)\$nextOffset : null;\n";
+    $out .= "                    \$res['result']['tools'] = \$sliced;\n";
+    $out .= "                    if (\$nextCursor) \$res['result']['nextCursor'] = \$nextCursor;\n";
+    $out .= "                } else {\n";
+    $out .= "                    \$limit = 50;\n";
+    $out .= "                    \$res['result']['tools'] = array_slice(\$tools, 0, \$limit);\n";
+    $out .= "                    if (count(\$tools) > \$limit) \$res['result']['nextCursor'] = (string)\$limit;\n";
+    $out .= "                }\n";
 
     // Add resources/list
     $out .= "            } elseif (\$req['method'] === 'resources/list') {\n";
-    $out .= "                \$res['result'] = ['resources' => [\n";
+    $out .= "                \$resources = [\n";
     $out .= "                    [\n";
     $out .= "                        'uri' => 'api://docs',\n";
     $out .= "                        'name' => 'API Documentation',\n";
     $out .= "                        'mimeType' => 'text/plain'\n";
     $out .= "                    ]\n";
-    $out .= "                ]];\n";
-    $out .= "                if (isset(\$req['params']['cursor'])) { \$res['result']['nextCursor'] = null; }\n";
+    $out .= "                ];\n";
+    $out .= "                \$res['result'] = ['resources' => \$resources];\n";
+    $out .= "                if (isset(\$req['params']['cursor'])) {\n";
+    $out .= "                    \$cursor = (int)\$req['params']['cursor'];\n";
+    $out .= "                    \$limit = 50;\n";
+    $out .= "                    \$sliced = array_slice(\$resources, \$cursor, \$limit);\n";
+    $out .= "                    \$nextOffset = \$cursor + \$limit;\n";
+    $out .= "                    \$nextCursor = \$nextOffset < count(\$resources) ? (string)\$nextOffset : null;\n";
+    $out .= "                    \$res['result']['resources'] = \$sliced;\n";
+    $out .= "                    if (\$nextCursor) \$res['result']['nextCursor'] = \$nextCursor;\n";
+    $out .= "                } else {\n";
+    $out .= "                    \$limit = 50;\n";
+    $out .= "                    \$res['result']['resources'] = array_slice(\$resources, 0, \$limit);\n";
+    $out .= "                    if (count(\$resources) > \$limit) \$res['result']['nextCursor'] = (string)\$limit;\n";
+    $out .= "                }\n";
 
     // Add resources/read
     $out .= "            } elseif (\$req['method'] === 'resources/read') {\n";
@@ -197,7 +241,14 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "            } elseif (\$req['method'] === 'tools/call') {\n";
     $out .= "                \$name = \$req['params']['name'] ?? '';\n";
     $out .= "                \$args = \$req['params']['arguments'] ?? [];\n";
-    $out .= "                try {\n";
+    $out .= "                if (function_exists('cdd_mcp_tool_approval_hook')) {\n";
+    $out .= "                    if (!cdd_mcp_tool_approval_hook(\$name, \$args)) {\n";
+    $out .= "                        \$res['result'] = ['isError' => true, 'content' => [['type' => 'text', 'text' => 'User denied execution of tool: ' . \$name]]];\n";
+    $out .= "                        fwrite(STDOUT, json_encode(\$res) . \"\\n\");\n";
+    $out .= "                        continue;\n";
+    $out .= "                    }\n";
+    $out .= "                }\n";
+    $out .= "                switch (\$name) {\n";
     $out .= "                    \$callRes = null;\n";
     $out .= "                    switch (\$name) {\n";
     foreach ($commands as $opId => $operation) {

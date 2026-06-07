@@ -15,7 +15,7 @@ class Runner
     public static function run(string $dirOrFile)
     {
         $testFiles = [];
-        
+
         if (is_file($dirOrFile)) {
             $testFiles[] = $dirOrFile;
         } else {

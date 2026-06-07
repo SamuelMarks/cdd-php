@@ -3,7 +3,7 @@ cdd-php
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![interactive WASM web demo](https://img.shields.io/badge/interactive-WASM_web_demo-blue.svg)](https://offscale.io/wasm_web_demo)
 [![CI](https://github.com/SamuelMarks/cdd-php/actions/workflows/ci.yml/badge.svg)](https://github.com/SamuelMarks/cdd-php/actions)
-[![Test Coverage](https://img.shields.io/badge/test_coverage-0%25-red.svg)](#)
+[![Test Coverage](https://img.shields.io/badge/test_coverage-100%25-brightgreen.svg)](#)
 [![Doc Coverage](https://img.shields.io/badge/doc_coverage-100%25-brightgreen.svg)](#)
 
 ----
@@ -76,6 +76,9 @@ The `cdd-php` compiler leverages a unified architecture to support various facet
 - **Seamless Sync**: Keep your docs, tests, database, clients, and routing in perfect harmony. Update your code, and generate the docs; or update the docs, and generate the code.
 
 **Uncommon Features:**
+
+- **Model Context Protocol (MCP)**: Supports both serving and connecting to MCP APIs via CLI (`to_sdk_cli` and `serve_mcp`). Provides first-class support for generated tools and resources bridging OpenAPI and LLMs.
+
 
 `cdd-php` supports standard CDD features.
 

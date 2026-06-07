@@ -22,7 +22,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
     if (!isset($openapi['info'])) {
         $openapi['info'] = [
             'title' => 'Default API',
-            'version' => '0.0.1'
+            'version' => '0.0.2'
         ];
     }
 

@@ -92,6 +92,81 @@ class CddCliMcpTest extends TestCase
         fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'method' => 'notifications/cancelled', 'params' => ['requestId' => 10, 'reason' => 'test']]) . "\n");
         // No output expected for notification
 
+        // notifications/progress
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'method' => 'notifications/progress', 'params' => ['progressToken' => '10', 'progress' => 10, 'total' => 100]]) . "\n");
+        // No output expected for notification
+
+        // pagination - tools/list with cursor
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 15, 'method' => 'tools/list', 'params' => ['cursor' => '0']]) . "\n");
+        $assertOut($pipes, 'from_openapi');
+
+        // pagination - resources/list with cursor
+        fwrite($pipes[0], json_encode(['jsonrpc' => '2.0', 'id' => 16, 'method' => 'resources/list', 'params' => ['cursor' => '0']]) . "\n");
+        $assertOut($pipes, 'cdd:\\/\\/ast');
+
+        fclose($pipes[0]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($process);
+    }
+
+    public function testSampleLlm()
+    {
+        // Test sample_llm natively
+        $descriptorspec = [
+            0 => ["pipe", "r"],
+            1 => ["pipe", "w"],
+            2 => ["pipe", "w"]
+        ];
+
+        // We run a tiny inline php script to test sample_llm using CddCli
+        $phpCode = 'require_once __DIR__."/src/cli/CddCli.php"; require_once __DIR__."/src/cli/Cli.php"; $res = \Cdd\Cli\CddCli::sample_llm([["role"=>"user", "content"=>"hello"]], 10, "sys"); echo json_encode($res);';
+        $process = proc_open('php -r \'' . $phpCode . '\'', $descriptorspec, $pipes, dirname(dirname(__DIR__)));
+
+        // Expect CddCli::sample_llm to write a jsonrpc request to stdout
+        $reqLine = fgets($pipes[1]);
+        $req = json_decode($reqLine, true);
+        $this->assertEquals('sampling/createMessage', $req['method']);
+        $this->assertEquals('sys', $req['params']['systemPrompt']);
+
+        // Feed the response back
+        $id = $req['id'];
+        $resObj = ['jsonrpc' => '2.0', 'id' => $id, 'result' => ['content' => ['role' => 'assistant', 'text' => 'hi']]];
+        fwrite($pipes[0], json_encode($resObj) . "\n");
+
+        // Read final result
+        $finalLine = fgets($pipes[1]);
+        $finalRes = json_decode($finalLine, true);
+        $this->assertEquals('hi', $finalRes['content']['text']);
+
+        fclose($pipes[0]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($process);
+    }
+
+    public function testSampleLlmError()
+    {
+        // Test sample_llm natively returning an error
+        $descriptorspec = [
+            0 => ["pipe", "r"],
+            1 => ["pipe", "w"],
+            2 => ["pipe", "w"]
+        ];
+
+        $phpCode = 'require_once __DIR__."/src/cli/CddCli.php"; require_once __DIR__."/src/cli/Cli.php"; try { \Cdd\Cli\CddCli::sample_llm([["role"=>"user", "content"=>"hello"]]); } catch (\Exception $e) { echo $e->getMessage(); }';
+        $process = proc_open('php -r \'' . $phpCode . '\'', $descriptorspec, $pipes, dirname(dirname(__DIR__)));
+
+        $reqLine = fgets($pipes[1]);
+        $req = json_decode($reqLine, true);
+        $id = $req['id'];
+
+        $resObj = ['jsonrpc' => '2.0', 'id' => $id, 'error' => ['message' => 'Sampling denied']];
+        fwrite($pipes[0], json_encode($resObj) . "\n");
+
+        $finalLine = fgets($pipes[1]);
+        $this->assertEquals('Sampling denied', trim($finalLine));
+
         fclose($pipes[0]);
         fclose($pipes[1]);
         fclose($pipes[2]);

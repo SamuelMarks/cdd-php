@@ -72,7 +72,7 @@ Exposing the `cdd` bidirectional code generator itself to MCP allows AI models t
 | initialized Acknowledgment | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Sent by client after successful initialization |
 | Graceful Disconnect / Close | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | |
 | Liveness (ping) | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Periodic connection checks |
-| Request Cancellation (cancelled)| `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Thread/Task abortion mechanics |
+| Request Cancellation (cancelled) | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Thread/Task abortion mechanics |
 | **Behavioral & Security** | | | | |
 | Pagination Cursor Management | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Handling nextCursor fetch loops |
 | Progress Tracking (progress) | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Emitting/handling progress events |

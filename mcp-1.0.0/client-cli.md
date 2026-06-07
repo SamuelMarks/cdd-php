@@ -36,7 +36,7 @@ Implementing MCP across the generated output ensures maximum flexibility for the
 | **Server Integration (Remote / SSE)** | | | | |
 | SSE Endpoint Generation | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Wires MCP endpoints (e.g. `/mcp/sse`, `/mcp/message`) |
 | HTTP Request/Auth Bridging | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Passes standard API auth into the MCP context |
-| Dynamic API-to-Tool Proxy | `[x]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Resolves incoming tool calls to backend route handlers |
+| Dynamic API-to-Tool Proxy | `[x]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[x]` | Resolves incoming tool calls to backend route handlers |
 
 ### 1B. Generator/Tooling Artifacts (Meta-MCP)
 Exposing the `cdd` bidirectional code generator itself to MCP allows AI models to natively orchestrate code generation, schema manipulation, and code-to-schema extraction.
@@ -47,12 +47,12 @@ Exposing the `cdd` bidirectional code generator itself to MCP allows AI models t
 | Generator Boundary | Presence `[To, From]` | Absence `[To, From]` | Skipped `[To, From]` | Notes / Implementation Strategy |
 | :--- | :---: | :---: | :---: | :--- |
 | **Generator CLI (`stdio`)** | | | | |
-| Code Scaffold / Generate Tools | `[x]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | AI can invoke standard generator CLI commands via MCP |
+| Code Scaffold / Generate Tools | `[x]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[x]` | AI can invoke standard generator CLI commands via MCP |
 | Schema Inspection Tools | `[x]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | AI can query loaded OpenAPI/AsyncAPI schemas |
-| Bidirectional Sync Tools | `[x]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | AI can trigger code-to-schema extraction natively |
+| Bidirectional Sync Tools | `[x]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[x]` | AI can trigger code-to-schema extraction natively |
 | **Generator SDK / Core** | | | | |
-| AST / Type Query Resources | `[x]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | AI can read internal AST structures as MCP resources |
-| In-Memory Generation Router | `[x]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Native bindings to run the generator core directly via MCP |
+| AST / Type Query Resources | `[x]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[x]` | AI can read internal AST structures as MCP resources |
+| In-Memory Generation Router | `[x]` , `[ ]` | `[ ]` , `[ ]` | `[ ]` , `[x]` | Native bindings to run the generator core directly via MCP |
 
 ## 2. Semantic & Conceptual Features
 
@@ -72,7 +72,7 @@ Exposing the `cdd` bidirectional code generator itself to MCP allows AI models t
 | initialized Acknowledgment | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Sent by client after successful initialization |
 | Graceful Disconnect / Close | `[ ]` , `[ ]` | `[ ]` , `[ ]` | `[x]` , `[x]` | |
 | Liveness (ping) | `[x]` , `[x]` | `[ ]` , `[ ]` | `[ ]` , `[ ]` | Periodic connection checks |
-| Request Cancellation (cancelled)| `[x]` , `[x]` | `[ ]` , `[ ]` | `[-]` , `[-]` | Thread/Task abortion mechanics |
+| Request Cancellation (cancelled) | `[x]` , `[x]` | `[ ]` , `[ ]` | `[-]` , `[-]` | Thread/Task abortion mechanics |
 | **Behavioral & Security** | | | | |
 | Pagination Cursor Management | `[ ]` , `[ ]` | `[ ]` , `[ ]` | `[x]` , `[x]` | Handling nextCursor fetch loops |
 | Progress Tracking (progress) | `[ ]` , `[ ]` | `[ ]` , `[ ]` | `[x]` , `[x]` | Emitting/handling progress events |
