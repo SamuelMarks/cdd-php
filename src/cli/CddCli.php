@@ -749,7 +749,7 @@ Content-Type: application/json
                 echo "Error: File not found.\n";
                 return 1;
             }
-            $code = file_get_contents($file);
+            $code = is_dir($file) ? '' : file_get_contents($file);
 
             $openapi = [
                 'openapi' => '3.2.0',

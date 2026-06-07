@@ -45,7 +45,7 @@ jobs:
     - name: Start Petstore Server (Swagger 2.0)
       run: |
         docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/v2" --name petstore_server swaggerapi/petstore
-        sleep 5
+        for i in {1..30}; do curl -s http://localhost:8080 > /dev/null && break || sleep 1; done
 
     - name: Swagger 2.0 Petstore test
       run: |
@@ -61,7 +61,7 @@ jobs:
     - name: Start Petstore Server (OpenAPI 3)
       run: |
         docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/api/v3" --name petstore_server swaggerapi/petstore
-        sleep 5
+        for i in {1..30}; do curl -s http://localhost:8080 > /dev/null && break || sleep 1; done
 
     - name: OpenAPI 3.2.0 Petstore test
       run: |
