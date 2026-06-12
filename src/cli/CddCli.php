@@ -148,8 +148,10 @@ class CddCli
             echo "\nExamples:\n";
             echo "  cdd-php serve_json_rpc [--port 8080] [--listen 127.0.0.1]\n";
             echo "  cdd-php to_docs_json --no-imports --no-wrapping -i spec.json -o docs.json\n";
-            echo "  cdd-php from_openapi to_sdk_cli -i spec.json -o target_directory [--no-github-actions] [--no-installable-package] [--tests]\n";
-            echo "  cdd-php from_openapi to_sdk -i spec.json -o target_directory [--no-github-actions] [--no-installable-package] [--tests]\n";
+            echo "  cdd-php from_openapi to_sdk_cli -i spec.json -o target_directory [--no-github-actions] [--no-installable-package] [--tests
+] [--mcp]\n";
+            echo "  cdd-php from_openapi to_sdk -i spec.json -o target_directory [--no-github-actions] [--no-installable-package] [--tests
+] [--mcp]\n";
             echo "  cdd-php from_openapi to_server -i spec.json -o target_directory\n";
             echo "  cdd-php sync -d directory\n";
             return 0;
@@ -1026,6 +1028,7 @@ Content-Type: application/json
             $noGithubActions = false;
             $noInstallablePackage = false;
             $tests = false;
+            $mcp = false;
 
             $newArgv = [];
             for ($k = 0; $k < $argc; $k++) {
@@ -1033,8 +1036,10 @@ Content-Type: application/json
                     /*cov_ignore*/                     $noGithubActions = true;
                 } elseif ($argv[$k] === '--no-installable-package') {
                     /*cov_ignore*/                     $noInstallablePackage = true;
-                } elseif ($argv[$k] === '--tests') {
+                } elseif ($argv[$k] === '--tests
+  --mcp                   Generate Model Context Protocol (MCP) server and adapter.') {
                     /*cov_ignore*/                     $tests = true;
+                    $mcp = true;
                 } else {
                     $newArgv[] = $argv[$k];
                 }
