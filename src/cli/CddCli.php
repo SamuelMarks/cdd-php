@@ -1036,9 +1036,9 @@ Content-Type: application/json
                     /*cov_ignore*/                     $noGithubActions = true;
                 } elseif ($argv[$k] === '--no-installable-package') {
                     /*cov_ignore*/                     $noInstallablePackage = true;
-                } elseif ($argv[$k] === '--tests
-  --mcp                   Generate Model Context Protocol (MCP) server and adapter.') {
-                    /*cov_ignore*/                     $tests = true;
+                } elseif ($argv[$k] === '--tests') {
+                    $tests = true;
+                } elseif ($argv[$k] === '--mcp') {
                     $mcp = true;
                 } else {
                     $newArgv[] = $argv[$k];

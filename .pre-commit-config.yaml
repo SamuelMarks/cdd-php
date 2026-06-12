@@ -47,20 +47,36 @@ repos:
       - id: test-swagger-2
         name: Swagger 2.0 Petstore test
         entry: >-
-          bash -c 'python3 cdd-openapi-test-harness/saboteur_server.py >/dev/null 2>&1 & sleep 1 && rm -rf ../temp-php-client-swagger2 &&
+          bash -c '
+          if command -v docker >/dev/null 2>&1; then
+            docker rm -f petstore_swagger_2 >/dev/null 2>&1 || true;
+            docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/v2" --name petstore_swagger_2 swaggerapi/petstore >/dev/null 2>&1 || docker run -d -p 8080:8080 --name petstore_swagger_2 swaggerapi/swagger-petstore-node >/dev/null 2>&1;
+            sleep 5;
+          fi;
+          rm -rf ../temp-php-client-swagger2 &&
           php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore.json -o ../temp-php-client-swagger2 >/dev/null 2>&1 &&
-          cd ../temp-php-client-swagger2 && composer install -q && (composer test >/dev/null 2>&1 || true) &&
-          cd ../cdd-php && rm -rf ../temp-php-client-swagger2 ; kill %1 || true'
+          cd ../temp-php-client-swagger2 && composer install -q && composer test >/dev/null 2>&1 &&
+          cd ../cdd-php && rm -rf ../temp-php-client-swagger2 ;
+          if command -v docker >/dev/null 2>&1; then docker rm -f petstore_swagger_2 >/dev/null 2>&1 || true; fi
+          '
         language: system
         pass_filenames: false
 
       - id: test-openapi-3-2-0
         name: OpenAPI 3.2.0 Petstore test
         entry: >-
-          bash -c 'python3 cdd-openapi-test-harness/saboteur_server.py >/dev/null 2>&1 & sleep 1 && rm -rf ../temp-php-client-openapi3 &&
+          bash -c '
+          if command -v docker >/dev/null 2>&1; then
+            docker rm -f petstore_openapi_3 >/dev/null 2>&1 || true;
+            docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/api/v3" --name petstore_openapi_3 swaggerapi/petstore >/dev/null 2>&1 || docker run -d -p 8080:8080 --name petstore_openapi_3 swaggerapi/swagger-petstore-node >/dev/null 2>&1;
+            sleep 5;
+          fi;
+          rm -rf ../temp-php-client-openapi3 &&
           php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore_oas3.json -o ../temp-php-client-openapi3 >/dev/null 2>&1 &&
-          cd ../temp-php-client-openapi3 && composer install -q && (composer test >/dev/null 2>&1 || true) &&
-          cd ../cdd-php && rm -rf ../temp-php-client-openapi3 ; kill %1 || true'
+          cd ../temp-php-client-openapi3 && composer install -q && composer test >/dev/null 2>&1 &&
+          cd ../cdd-php && rm -rf ../temp-php-client-openapi3 ;
+          if command -v docker >/dev/null 2>&1; then docker rm -f petstore_openapi_3 >/dev/null 2>&1 || true; fi
+          '
         language: system
         pass_filenames: false
 
