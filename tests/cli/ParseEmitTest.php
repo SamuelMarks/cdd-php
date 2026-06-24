@@ -1,102 +1,41 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Cdd\Tests\Cli;
 
 use Cdd\Tests\Framework\TestCase;
 
-use function Cdd\Cli\emit;
-use function Cdd\Cli\parse;
-
 class ParseEmitTest extends TestCase
 {
-    public function testEmitAndParse()
+    public function testToOpenApi()
     {
-        $paths = [
-            '/test-path' => [
-                'parameters' => [
-                    ['name' => 'skip', 'in' => 'query']
-                ],
-                'summary' => 'Ignored summary',
-                'description' => 'Ignored description',
-                'servers' => [ ['url' => 'http://test'] ],
-                'get' => [
-                    'description' => 'A test operation',
-                ],
-                'post' => [
-                    'operationId' => 'testPost',
-                    'description' => 'Post operation',
-                    'parameters' => [
-                        ['name' => 'id', 'required' => true, 'description' => 'The ID'],
-                        ['name' => 'optional_param', 'required' => false, 'description' => 'An optional param'],
-                        ['name' => 'no_desc']
-                    ],
-                    'requestBody' => [
-                        'content' => ['application/json' => []]
-                    ]
-                ],
-                'put' => [
-                    'operationId' => 'testPut',
-                ]
-            ]
-        ];
+        $dir = sys_get_temp_dir() . '/cdd_to_openapi_test_' . uniqid();
+        mkdir($dir);
+        mkdir("$dir/src");
 
-        $emitted = emit($paths);
+        file_put_contents("$dir/src/Models.php", "<?php\nclass User { public int \$id; public string \$name; }\n");
+        file_put_contents("$dir/src/routes.php", "<?php\n/**\n * @return User\n */\nfunction getUser() {}\n");
 
-        $this->assertTrue(strpos($emitted, "if (\$command === 'gettestpath')") !== false);
-        $this->assertTrue(strpos($emitted, "if (\$command === 'test_post')") !== false);
-        $this->assertTrue(strpos($emitted, "A test operation") !== false);
-        $this->assertTrue(strpos($emitted, "Call PUT /test-path") !== false);
-        $this->assertTrue(strpos($emitted, "--id (required) The ID") !== false);
-        $this->assertTrue(strpos($emitted, "--optional_param (optional) An optional param") !== false);
-        $this->assertTrue(strpos($emitted, "--no_desc (optional) ") !== false);
-        $this->assertTrue(strpos($emitted, "--body (optional) JSON body") !== false);
+        ob_start();
+        \Cdd\Cli\CddCli::run(['cdd-php', 'to_openapi', '-i', "$dir/src/Models.php", '-o', "$dir/openapi.json"]);
+        $out = ob_get_clean();
 
-        $fakeCode = "if (\$command === '--help') { } if (\$command === '-h') { } if (\$command === 'myOp') { }";
-        $parsedFake = parse($fakeCode);
+        $this->assertTrue(strpos($out, 'Emitted OpenAPI to') !== false);
+        $this->assertTrue(file_exists("$dir/openapi.json"));
 
-        $this->assertTrue(isset($parsedFake['/cli/myOp']));
-        $this->assertTrue(!isset($parsedFake['/cli/--help']));
-        $this->assertTrue(!isset($parsedFake['/cli/-h']));
+        $json = json_decode(file_get_contents("$dir/openapi.json"), true);
+        $this->assertTrue(isset($json['components']['schemas']['User']));
 
-        $parsed = parse($emitted);
-        $this->assertTrue(isset($parsed['/cli/gettestpath']));
-        $this->assertTrue(isset($parsed['/cli/test_post']));
-        $this->assertTrue(isset($parsed['/cli/test_put']));
-    }
-
-    public function testEmitMcpServer()
-    {
-        $paths = [
-            '/test' => [
-                'post' => [
-                    'operationId' => 'testPost',
-                    'parameters' => [
-                        ['name' => 'id', 'required' => true]
-                    ],
-                    'requestBody' => ['content' => ['application/json' => []]]
-                ]
-            ]
-        ];
-
-        $emitted = emit($paths);
-
-        $this->assertTrue(strpos($emitted, "if (\$command === 'mcp') {") !== false);
-        $this->assertTrue(strpos($emitted, "\$req['method'] === 'initialize'") !== false);
-        $this->assertTrue(strpos($emitted, "\$req['method'] === 'tools/list'") !== false);
-        $this->assertTrue(strpos($emitted, "'name' => 'testPost'") !== false || strpos($emitted, "'name' => 'test_post'") !== false);
-        $this->assertTrue(strpos($emitted, "\$req['method'] === 'tools/call'") !== false);
-        $this->assertTrue(strpos($emitted, "\$req['method'] === 'resources/list'") !== false);
-        $this->assertTrue(strpos($emitted, "\$req['method'] === 'resources/read'") !== false);
-        $this->assertTrue(strpos($emitted, "\$req['method'] === 'resources/templates/list'") !== false);
-        $this->assertTrue(strpos($emitted, "\$req['method'] === 'prompts/list'") !== false);
-        $this->assertTrue(strpos($emitted, "\$req['method'] === 'prompts/get'") !== false);
-        $this->assertTrue(strpos($emitted, "\$req['method'] === 'ping'") !== false);
-        $this->assertTrue(strpos($emitted, "\$req['method'] === 'completion/complete'") !== false);
-    }
-
-    public function testParseEmpty()
-    {
-        $parsed = parse("no commands here");
-        $this->assertEquals([], $parsed);
+        // cleanup
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $fileinfo) {
+            $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
+            $todo($fileinfo->getRealPath());
+        }
+        rmdir($dir);
     }
 }

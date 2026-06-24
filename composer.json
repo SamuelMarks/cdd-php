@@ -1,6 +1,6 @@
 {
   "name": "offscale/cdd-php",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Zero-dependency OpenAPI bidirectional compiler for PHP.",
   "type": "library",
   "license": "Apache-2.0",
@@ -10,14 +10,24 @@
   "autoload": {
     "files": [
       "src/openapi/parse.php",
-      "src/openapi/emit.php"
+      "src/openapi/emit.php",
+      "src/readme/emit.php",
+      "src/standalone_server/emit.php",
+      "src/tests/emit_mock_tests.php",
+      "src/daos/emit.php",
+      "src/database/emit.php",
+      "src/seeder/emit.php",
+      "src/server_cli/emit.php"
     ]
   },
   "require": {
     "nikic/php-parser": "^5.7",
     "illuminate/database": "^10.0 || ^11.0",
     "illuminate/routing": "^10.0 || ^11.0",
-    "illuminate/events": "^10.0 || ^11.0"
+    "illuminate/events": "^10.0 || ^11.0",
+    "fakerphp/faker": "^1.24",
+    "ext-pdo": "*",
+    "ext-pdo_sqlite": "*"
   },
   "scripts": {
     "test": "php tests/test_runner.php"

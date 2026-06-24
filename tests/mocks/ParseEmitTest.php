@@ -18,6 +18,15 @@ class ParseEmitTest extends TestCase
         $emitted = \Cdd\Mocks\emit($examples);
         $this->assertTrue(strpos($emitted, "'dataValue' =>") !== false);
     }
+
+    public function testEmitModular()
+    {
+        $examples = ['example1' => ['dataValue' => ['test' => 123]]];
+        $files = \Cdd\Mocks\emit_modular($examples);
+
+        $this->assertTrue(isset($files['example1Mock.php']));
+        $this->assertStringContainsString("'dataValue' =>", $files['example1Mock.php']);
+    }
     public function testParseJSONMocks()
     {
         $code = "<?php\nreturn [\n    'example1' => ['dataValue' => ['test'=>123]]\n];";

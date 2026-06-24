@@ -24,3 +24,18 @@ function emit(array $examples, string $existingCode = ''): string
     $out .= "];\n";
     return $out;
 }
+
+/**
+ * Emits modular PHP mock files for the given OpenAPI Example Objects.
+ * @param array $examples The examples to emit.
+ * @return array The emitted PHP files.
+ */
+function emit_modular(array $examples): array
+{
+    $files = [];
+    foreach ($examples as $name => $example) {
+        $encoded = var_export($example, true);
+        $files["{$name}Mock.php"] = "<?php\n\n// Auto-generated mock\n\nreturn $encoded;\n";
+    }
+    return $files;
+}

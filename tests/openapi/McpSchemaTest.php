@@ -26,9 +26,10 @@ class McpSchemaTest extends TestCase
         $this->assertTrue(isset($decoded['components']['schemas']['JSONRPCResponse']));
         $this->assertTrue(isset($decoded['components']['schemas']['CallToolRequest']));
 
-        $modelsCode = file_get_contents("$outDir/src/Models.php");
+        $this->assertTrue(file_exists("$outDir/src/Models/JSONRPCRequest.php"));
+        $this->assertTrue(file_exists("$outDir/src/Models/CallToolRequest.php"));
+        $modelsCode = file_get_contents("$outDir/src/Models/JSONRPCRequest.php");
         $this->assertTrue(strpos($modelsCode, 'class JSONRPCRequest') !== false);
-        $this->assertTrue(strpos($modelsCode, 'class CallToolRequest') !== false);
 
         // cleanup
         $files = new \RecursiveIteratorIterator(

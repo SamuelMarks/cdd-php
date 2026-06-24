@@ -17,7 +17,7 @@ class EmitOptionsTest extends TestCase
 
         $this->assertEquals('3.2.0', $decoded['openapi']);
         $this->assertEquals('Default API', $decoded['info']['title']);
-        $this->assertEquals('0.0.2', $decoded['info']['version']);
+        $this->assertEquals('0.0.3', $decoded['info']['version']);
         $this->assertTrue(is_array($decoded['paths'])); // wait, it's emitted as (object)[], which becomes empty object in JSON, so array in json_decode assoc=true
     }
 
@@ -151,17 +151,37 @@ class EmitOptionsTest extends TestCase
         $this->assertTrue(is_dir($outDir . '/tests'));
         $this->assertTrue(file_exists($outDir . '/src/ApiServers.php'));
         $this->assertTrue(file_exists($outDir . '/src/api_metadata.php'));
-        $this->assertTrue(file_exists($outDir . '/src/ApiController.php'));
+        if ($options['subcommand'] === 'to_server') {
+            $this->assertTrue(is_dir($outDir . '/src/Controllers'));
+        } else {
+            $this->assertTrue(file_exists($outDir . "/src/ApiController.php"));
+        }
         $this->assertTrue(file_exists($outDir . '/src/routes.php'));
         $this->assertTrue(file_exists($outDir . '/src/ApiClient.php'));
         $this->assertTrue(file_exists($outDir . '/src/Models.php'));
         $this->assertTrue(file_exists($outDir . '/src/mocks.php'));
         $this->assertTrue(file_exists($outDir . '/src/Webhooks.php'));
-        $this->assertTrue(file_exists($outDir . '/src/ApiTests.php'));
-        $this->assertTrue(file_exists($outDir . '/src/ComposableTests.php'));
+        if ($options['subcommand'] === 'to_server') {
+            $this->assertTrue(is_dir($outDir . '/tests/Routes'));
+        } else {
+            $this->assertTrue(file_exists($outDir . '/tests/ApiTests.php'));
+        }
+        if ($options['subcommand'] !== 'to_server') {
+            $this->assertTrue(file_exists($outDir . '/tests/ComposableTests.php'));
+        }
         $this->assertTrue(file_exists($outDir . '/tests/SdkIntegrationTest.php'));
         $this->assertTrue(file_exists($outDir . '/composer.json'));
         $this->assertTrue(file_exists($outDir . '/.github/workflows/ci.yml'));
+
+        // Check conditional dependencies for to_sdk
+        $this->assertTrue(file_exists($outDir . '/composer.json'));
+        $composerJson = json_decode(file_get_contents($outDir . '/composer.json'), true);
+        $this->assertTrue(isset($composerJson['require']));
+        $this->assertTrue(!isset($composerJson['require']['illuminate/database']));
+        $this->assertTrue(!isset($composerJson['require']['fakerphp/faker']));
+
+        // Check README is NOT generated for to_sdk
+        $this->assertTrue(!file_exists($outDir . '/README.md'));
 
         // Cleanup
         system("rm -rf " . escapeshellarg($outDir));
@@ -200,15 +220,38 @@ class EmitOptionsTest extends TestCase
         \Cdd\Openapi\emit($openapi, $outDir, $options);
 
         // Check if /mcp/sse and /mcp/message routes were generated
-        $this->assertTrue(file_exists($outDir . '/src/ApiController.php'));
-        $controllerCode = file_get_contents($outDir . '/src/ApiController.php');
-        $this->assertStringContainsString('function mcp_sse', $controllerCode);
-        $this->assertStringContainsString('function mcp_message', $controllerCode);
+        if ($options['subcommand'] === 'to_server') {
+            $this->assertTrue(is_dir($outDir . '/src/Controllers'));
+        } else {
+            $this->assertTrue(file_exists($outDir . "/src/ApiController.php"));
+        }
+        $this->assertTrue(file_exists($outDir . '/src/Controllers/Mcp_sseController.php'));
+        $this->assertTrue(file_exists($outDir . '/src/Controllers/Mcp_messageController.php'));
 
         $this->assertTrue(file_exists($outDir . '/src/routes.php'));
-        $routeCode = file_get_contents($outDir . '/src/routes.php');
-        $this->assertStringContainsString('/mcp/sse', $routeCode);
-        $this->assertStringContainsString('/mcp/message', $routeCode);
+        $this->assertTrue(file_exists($outDir . '/src/Routes/McpRoutes.php'));
+        $mcpRouteCode = file_get_contents($outDir . '/src/Routes/McpRoutes.php');
+        $this->assertStringContainsString('/mcp/sse', $mcpRouteCode);
+        $this->assertStringContainsString('/mcp/message', $mcpRouteCode);
+
+        // Check conditional dependencies for to_server
+        $this->assertTrue(file_exists($outDir . '/composer.json'));
+        $composerJson = json_decode(file_get_contents($outDir . '/composer.json'), true);
+        $this->assertTrue(isset($composerJson['require']));
+        $this->assertTrue(isset($composerJson['require']['illuminate/database']));
+        $this->assertTrue(isset($composerJson['require']['fakerphp/faker']));
+        $this->assertTrue(isset($composerJson['require']['ext-pdo']));
+        $this->assertTrue(isset($composerJson['require']['ext-pdo_sqlite']));
+
+        // Check README generation
+        $this->assertTrue(file_exists($outDir . '/README.md'));
+        $readmeContents = file_get_contents($outDir . '/README.md');
+        $this->assertStringContainsString('# A Server', $readmeContents);
+        $this->assertStringContainsString('--ephemeral --seed', $readmeContents);
+
+        // Check standalone server generation
+        $this->assertTrue(file_exists($outDir . '/server.php'));
+        $this->assertStringContainsString('php -S localhost:8080 server.php', file_get_contents($outDir . '/server.php'));
 
         system("rm -rf " . escapeshellarg($outDir));
     }

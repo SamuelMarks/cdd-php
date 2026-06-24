@@ -69,4 +69,24 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(true);
         $this->assertTrue(strpos($emittedExisting, "Route::get('/api/users', 'UserController@index');") !== false);
     }
+
+    public function testEmitModular()
+    {
+        $paths = [
+            '/api/users' => ['get' => ['operationId' => 'getUsers']],
+            '/api/posts' => ['post' => ['operationId' => 'createPost']],
+            '/api/custom' => ['additionalOperations' => ['FOO' => ['operationId' => 'fooAction']]]
+        ];
+
+        $files = \Cdd\Routes\emit_modular($paths);
+
+        $this->assertTrue(isset($files['ApiRoutes.php']));
+
+        $content = $files['ApiRoutes.php'];
+        $this->assertStringContainsString("Route::get('/api/users', [\\Api\\Controllers\\GetUsersController::class, '__invoke']);", $content);
+        $this->assertStringContainsString("Route::post('/api/posts', [\\Api\\Controllers\\CreatePostController::class, '__invoke']);", $content);
+
+        // FOO is not a standard HTTP method, emit_modular_single_route ignores it.
+        $this->assertTrue(strpos($content, 'FOO') === false);
+    }
 }

@@ -61,4 +61,20 @@ class ParseEmitTest extends TestCase
         $emitted = \Cdd\Tests\emit('get', '/api/users', ['responses' => ['default' => [], 'x-test' => []]]);
         $this->assertTrue(strpos($emitted, "\$this->assertEquals(200") !== false);
     }
+
+    public function testEmitModular()
+    {
+        $paths = [
+            '/test' => [
+                'get' => ['operationId' => 'testGetRoute', 'responses' => ['200' => []]],
+                'additionalOperations' => ['post' => ['operationId' => 'testPostRoute', 'responses' => ['201' => []]]]
+            ]
+        ];
+        $files = \Cdd\Tests\emit_modular($paths);
+        $this->assertTrue(isset($files['TestGetRouteTest.php']));
+        $this->assertTrue(isset($files['TestPostRouteTest.php']));
+
+        $this->assertStringContainsString('class TestGetRouteTest extends TestCase', $files['TestGetRouteTest.php']);
+        $this->assertStringContainsString('class TestPostRouteTest extends TestCase', $files['TestPostRouteTest.php']);
+    }
 }

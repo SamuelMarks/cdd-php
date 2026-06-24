@@ -22,7 +22,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
     if (!isset($openapi['info'])) {
         $openapi['info'] = [
             'title' => 'Default API',
-            'version' => '0.0.2'
+            'version' => '0.0.3'
         ];
     }
 
@@ -86,11 +86,34 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
         }
 
         if (isset($openapi['paths'])) {
-            $controllerCode = \Cdd\Paths\emit($openapi['paths'], file_exists("$srcDir/ApiController.php") ? file_get_contents("$srcDir/ApiController.php") : '');
-            file_put_contents("$srcDir/ApiController.php", $controllerCode);
+            if ($subcommand === 'to_server') {
+                $controllersDir = "$srcDir/Controllers";
+                if (!is_dir($controllersDir)) {
+                    mkdir($controllersDir, 0777, true);
+                }
+                $controllers = \Cdd\Paths\emit_modular($openapi['paths']);
+                foreach ($controllers as $filename => $code) {
+                    file_put_contents("$controllersDir/$filename", $code);
+                }
 
-            $routeCode = \Cdd\Routes\emit($openapi['paths'], file_exists("$srcDir/routes.php") ? file_get_contents("$srcDir/routes.php") : '');
-            file_put_contents("$srcDir/routes.php", $routeCode);
+                $routeFiles = \Cdd\Routes\emit_modular($openapi['paths']);
+                $routesDir = "$srcDir/Routes";
+                if (!is_dir($routesDir)) {
+                    mkdir($routesDir, 0777, true);
+                }
+                foreach ($routeFiles as $filename => $code) {
+                    file_put_contents("$routesDir/$filename", $code);
+                }
+
+                $mainRouteCode = "<?php\n\nforeach (glob(__DIR__ . '/Routes/*.php') as \$file) {\n    require_once \$file;\n}\n";
+                file_put_contents("$srcDir/routes.php", $mainRouteCode);
+            } else {
+                $controllerCode = \Cdd\Paths\emit($openapi['paths'], file_exists("$srcDir/ApiController.php") ? file_get_contents("$srcDir/ApiController.php") : '');
+                file_put_contents("$srcDir/ApiController.php", $controllerCode);
+
+                $routeCode = \Cdd\Routes\emit($openapi['paths'], file_exists("$srcDir/routes.php") ? file_get_contents("$srcDir/routes.php") : '');
+                file_put_contents("$srcDir/routes.php", $routeCode);
+            }
 
             // Client generation
             $securityDefinitions = $openapi['securityDefinitions'] ?? ($openapi['components']['securitySchemes'] ?? []);
@@ -116,16 +139,96 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
         }
 
         if (isset($openapi['components'])) {
-            $componentsCode = \Cdd\Components\emit($openapi['components'], file_exists("$srcDir/Models.php") ? file_get_contents("$srcDir/Models.php") : '');
-            file_put_contents("$srcDir/Models.php", $componentsCode);
+            if ($subcommand === 'to_server') {
+                $modelsDir = "$srcDir/Models";
+                if (!is_dir($modelsDir)) {
+                    mkdir($modelsDir, 0777, true);
+                }
+                foreach ($openapi['components']['schemas'] ?? [] as $schemaName => $schemaDef) {
+                    $code = "<?php\n\nnamespace Api\\Models;\n\n";
+                    $code .= \Cdd\Schemas\emit($schemaName, $schemaDef) . "\n";
+                    $code = str_replace("class $schemaName", "use Illuminate\\Database\\Eloquent\\Model;\n\nclass $schemaName extends Model", $code);
+                    $code = str_replace("public function toArray()", "public \$timestamps = false;\n    protected \$guarded = [];\n\n    public function toArray()", $code);
+                    file_put_contents("$modelsDir/$schemaName.php", $code);
+                }
+
+                $daosDir = "$srcDir/Daos";
+                if (!is_dir($daosDir)) {
+                    mkdir($daosDir, 0777, true);
+                }
+                if (isset($openapi['components']['schemas'])) {
+                    $daosCodeArray = \Cdd\Daos\emit_modular($openapi['components']['schemas']);
+                    foreach ($daosCodeArray as $filename => $code) {
+                        file_put_contents("$daosDir/$filename", $code);
+                    }
+                }
+
+                $dbCode = "<?php\n\nnamespace Api\\Database;\n\n" . str_replace("<?php\n\n", "", \Cdd\Database\emit($openapi['components']['schemas'] ?? []));
+                $dbDir = "$srcDir/Database";
+                if (!is_dir($dbDir)) {
+                    mkdir($dbDir, 0777, true);
+                }
+                file_put_contents("$dbDir/DatabaseConnection.php", $dbCode);
+
+                $seederCode = "<?php\n\nnamespace Api\\Seeder;\n\nuse Api\\Database\\DatabaseConnection;\n" . str_replace("<?php\n\n", "", \Cdd\Seeder\emit($openapi['components']['schemas'] ?? []));
+                $seederDir = "$srcDir/Seeder";
+                if (!is_dir($seederDir)) {
+                    mkdir($seederDir, 0777, true);
+                }
+                file_put_contents("$seederDir/DatabaseSeeder.php", $seederCode);
+
+                $excDir = "$srcDir/Exceptions";
+                if (!is_dir($excDir)) {
+                    mkdir($excDir, 0777, true);
+                }
+                file_put_contents("$excDir/MockServerError.php", "<?php\n\nnamespace Api\\Exceptions;\n\nclass MockServerError extends \\Exception {}\n");
+            } else {
+                $componentsCode = \Cdd\Components\emit($openapi['components'], file_exists("$srcDir/Models.php") ? file_get_contents("$srcDir/Models.php") : '');
+                file_put_contents("$srcDir/Models.php", $componentsCode);
+            }
+
+            if ($subcommand === 'to_server') {
+                if (!file_exists(__DIR__ . '/../server_cli/emit.php')) {
+                }
+                $serverRunnerCode = \Cdd\ServerCli\emit();
+                file_put_contents("$srcDir/ServerRunner.php", $serverRunnerCode);
+            }
+
+            if ($subcommand === 'to_server') {
+                if (!file_exists(__DIR__ . '/../readme/emit.php')) {
+                }
+                require_once __DIR__ . '/../readme/emit.php';
+                $title = $openapi['info']['title'] ?? 'Generated API';
+                $readmeCode = \Cdd\Readme\emit($title);
+                file_put_contents("$outDir/README.md", $readmeCode);
+
+                if (!file_exists(__DIR__ . '/../standalone_server/emit.php')) {
+                }
+                require_once __DIR__ . '/../standalone_server/emit.php';
+                $serverPhpCode = \Cdd\StandaloneServer\emit();
+                file_put_contents("$outDir/server.php", $serverPhpCode);
+            }
         }
 
         $tests = $options['tests'] ?? false;
 
         // Generate Mocks
         if ($tests && isset($openapi['components']['examples'])) {
-            $mocksCode = \Cdd\Mocks\emit($openapi['components']['examples'], file_exists("$srcDir/mocks.php") ? file_get_contents("$srcDir/mocks.php") : '');
-            file_put_contents("$srcDir/mocks.php", $mocksCode);
+            if ($subcommand === 'to_server') {
+                $mockFiles = \Cdd\Mocks\emit_modular($openapi['components']['examples']);
+                $mocksDir = "$srcDir/Mocks";
+                if (!is_dir($mocksDir)) {
+                    mkdir($mocksDir, 0777, true);
+                }
+                foreach ($mockFiles as $filename => $code) {
+                    file_put_contents("$mocksDir/$filename", $code);
+                }
+                $mainMockCode = "<?php\n\n\$mocks = [];\nforeach (glob(__DIR__ . '/Mocks/*Mock.php') as \$file) {\n    \$name = basename(\$file, 'Mock.php');\n    \$mocks[\$name] = require \$file;\n}\nreturn \$mocks;\n";
+                file_put_contents("$srcDir/mocks.php", $mainMockCode);
+            } else {
+                $mocksCode = \Cdd\Mocks\emit($openapi['components']['examples'], file_exists("$srcDir/mocks.php") ? file_get_contents("$srcDir/mocks.php") : '');
+                file_put_contents("$srcDir/mocks.php", $mocksCode);
+            }
         }
 
         // Generate Webhooks
@@ -138,28 +241,59 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
 
         // Generate Tests
         if ($tests) {
-            $phpunitCode = "<?php\n\n// Auto-generated tests\n\nuse PHPUnit\\Framework\\TestCase;\n\nclass ApiTests extends TestCase {\n";
-            $composableCode = "<?php\n\n// Auto-generated tests\n\nreturn [\n";
-
-            if (isset($openapi['paths'])) {
-                foreach ($openapi['paths'] as $path => $methods) {
-                    foreach ($methods as $method => $operation) {
-                        $in_array = 'in_array';
-                        $strtolower = 'strtolower';
-                        if (!is_array($operation) || $in_array($strtolower($method), ["parameters", "summary", "description", "servers", "additionaloperations"])) {
-                            continue;
-                        }
-                        $phpunitCode .= \Cdd\Tests\emit($method, $path, $operation, false) . "\n";
-                        $composableCode .= \Cdd\Tests\emit($method, $path, $operation, true) . "\n";
-                    }
-                }
+            $testsDir = "$outDir/tests";
+            if (!is_dir($testsDir)) {
+                mkdir($testsDir, 0777, true);
             }
 
-            $phpunitCode .= "}\n";
-            $composableCode .= "];\n";
+            if ($subcommand === 'to_server') {
+                $routeTestsDir = "$testsDir/Routes";
+                if (!is_dir($routeTestsDir)) {
+                    mkdir($routeTestsDir, 0777, true);
+                }
+                $routeTests = \Cdd\Tests\emit_modular($openapi['paths'] ?? []);
+                foreach ($routeTests as $filename => $code) {
+                    file_put_contents("$routeTestsDir/$filename", $code);
+                }
+            } else {
+                $phpunitCode = "<?php\n\n// Auto-generated tests\n\nuse PHPUnit\\Framework\\TestCase;\n\nclass ApiTests extends TestCase {\n";
+                $composableCode = "<?php\n\n// Auto-generated tests\n\nreturn [\n";
 
-            file_put_contents("$srcDir/ApiTests.php", $phpunitCode);
-            file_put_contents("$srcDir/ComposableTests.php", $composableCode);
+                if (isset($openapi['paths'])) {
+                    foreach ($openapi['paths'] as $path => $methods) {
+                        foreach ($methods as $method => $operation) {
+                            $in_array = 'in_array';
+                            $strtolower = 'strtolower';
+                            if (!is_array($operation) || $in_array($strtolower($method), ["parameters", "summary", "description", "servers", "additionaloperations"])) {
+                                continue;
+                            }
+                            $phpunitCode .= \Cdd\Tests\emit($method, $path, $operation, false) . "\n";
+                            $composableCode .= \Cdd\Tests\emit($method, $path, $operation, true) . "\n";
+                        }
+                    }
+                }
+
+                $phpunitCode .= "}\n";
+                $composableCode .= "];\n";
+
+                file_put_contents("$testsDir/ApiTests.php", $phpunitCode);
+                file_put_contents("$testsDir/ComposableTests.php", $composableCode);
+            }
+
+            if ($subcommand === 'to_server' && isset($openapi['components']['schemas'])) {
+                if (!file_exists(__DIR__ . '/../tests/emit_mock_tests.php')) {
+                }
+                require_once __DIR__ . '/../tests/emit_mock_tests.php';
+                $mockTests = \Cdd\Tests\emit_mock_tests($openapi['components']['schemas']);
+                foreach ($mockTests as $filename => $content) {
+                    $targetPath = "$testsDir/$filename";
+                    $targetDir = dirname($targetPath);
+                    if (!is_dir($targetDir)) {
+                        mkdir($targetDir, 0777, true);
+                    }
+                    file_put_contents($targetPath, $content);
+                }
+            }
         }
 
         $subcommand = $options['subcommand'] ?? '';
@@ -315,30 +449,33 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
 
         if (!$noInstallablePackage) {
             if (!file_exists("$outDir/composer.json")) {
-                file_put_contents("$outDir/composer.json", json_encode([
+                $composerData = [
                     "name" => "offscale/generated-api",
                     "description" => "Generated API client/server",
-                    "require-dev" => [
-                        "phpunit/phpunit" => "^10.0"
-                    ],
-                    "scripts" => [
-                        "test" => "vendor/bin/phpunit tests"
-                    ],
-                    "require-dev" => [
-                        "phpunit/phpunit" => "^10.0"
-                    ],
-                    "scripts" => [
-                        "test" => "vendor/bin/phpunit tests"
-                    ],
                     "require" => [
                         "php" => ">=8.0"
+                    ],
+                    "require-dev" => [
+                        "phpunit/phpunit" => "^10.0"
+                    ],
+                    "scripts" => [
+                        "test" => "vendor/bin/phpunit tests"
                     ],
                     "autoload" => [
                         "psr-4" => [
                             "Api\\" => "src/"
                         ]
                     ]
-                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+                ];
+                if ($subcommand === 'to_server') {
+                    $composerData['require']['illuminate/database'] = '^10.0 || ^11.0';
+                    $composerData['require']['illuminate/routing'] = '^10.0 || ^11.0';
+                    $composerData['require']['illuminate/events'] = '^10.0 || ^11.0';
+                    $composerData['require']['fakerphp/faker'] = '^1.24';
+                    $composerData['require']['ext-pdo'] = '*';
+                    $composerData['require']['ext-pdo_sqlite'] = '*';
+                }
+                file_put_contents("$outDir/composer.json", json_encode($composerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
             }
         }
 

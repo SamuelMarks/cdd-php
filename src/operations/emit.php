@@ -4,15 +4,10 @@ declare(strict_types=1);
 
 namespace Cdd\Operations;
 
-/**
- * Emits a PHP method signature from an OpenAPI Operation Object.
- *
- * @param array $operation The OpenAPI Operation Object
- * @return string The generated PHP method signature
- */
-function emit(array $operation): string
+function emit(array $operation, string $path = '', string $method = '', bool $asInvokable = false): string
 {
     $operationId = $operation['operationId'] ?? 'unnamedOperation';
+    $methodName = $asInvokable ? '__invoke' : $operationId;
 
     $docBlock = '';
     $hasDoc = false;
@@ -72,10 +67,10 @@ function emit(array $operation): string
     }
 
     $implode = 'implode';
-    $signature = "public function $operationId(" . $implode(', ', $paramsOut) . ")";
+    $signature = "public function $methodName(" . $implode(', ', $paramsOut) . ")";
 
-    // Attempt to resolve return type from 200 response if present
     $returnType = '';
+    $primarySchema = null;
     if (isset($operation['responses']['200']['content']['application/json']['schema'])) {
         $schema = $operation['responses']['200']['content']['application/json']['schema'];
         if (isset($schema['type'])) {
@@ -91,10 +86,14 @@ function emit(array $operation): string
         } elseif (isset($schema['$ref'])) {
             $parts = explode('/', $schema['$ref']);
             $returnType = end($parts);
+            $primarySchema = $returnType;
+        } elseif (isset($schema['type']) && $schema['type'] === 'array' && isset($schema['items']['$ref'])) {
+            $parts = explode('/', $schema['items']['$ref']);
+            $primarySchema = end($parts);
         }
     }
 
-    if ($returnType !== '') {
+    if ($returnType !== '' && !$asInvokable) {
         $signature .= ": $returnType";
     }
 
@@ -122,6 +121,50 @@ function emit(array $operation): string
         $implementation .= "        }\n";
         $implementation .= "    }\n";
         $implementation .= "    return ['jsonrpc' => '2.0', 'id' => \$req['id'] ?? null, 'error' => ['code' => -32601, 'message' => 'Method not found']];\n";
+    } elseif ($primarySchema) {
+        if (strtolower($method) === 'get') {
+            if (strpos($path, '{') !== false) {
+                // it's a getById
+                $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
+                $idVar = 'id';
+                if (preg_match('/\{([^}]+)\}/', $path, $matches)) {
+                    $idVar = $matches[1];
+                }
+                $implementation .= "    \$record = \$dao->getById(\${$idVar});\n";
+                $implementation .= "    if (!\$record) {\n";
+                $implementation .= "        header('HTTP/1.1 404 Not Found');\n";
+                $implementation .= "        echo json_encode(['error' => 'Not found']);\n";
+                $implementation .= "        return;\n";
+                $implementation .= "    }\n";
+                $implementation .= "    header('Content-Type: application/json');\n";
+                $implementation .= "    echo json_encode(\$record->toArray());\n";
+            } else {
+                // it's a getAll
+                $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
+                $implementation .= "    \$records = \$dao->getAll();\n";
+                $implementation .= "    header('Content-Type: application/json');\n";
+                $implementation .= "    echo json_encode(array_map(fn(\$r) => \$r->toArray(), \$records));\n";
+            }
+        } elseif (strtolower($method) === 'post') {
+            $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
+            $implementation .= "    \$record = \$dao->create(json_decode(file_get_contents('php://input'), true) ?? []);\n";
+            $implementation .= "    header('Content-Type: application/json');\n";
+            $implementation .= "    echo json_encode(\$record->toArray());\n";
+        } elseif (strtolower($method) === 'delete') {
+            $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
+            $idVar = 'id';
+            if (preg_match('/\{([^}]+)\}/', $path, $matches)) {
+                $idVar = $matches[1];
+            }
+            $implementation .= "    \$success = \$dao->delete(\${$idVar});\n";
+            $implementation .= "    if (!\$success) {\n";
+            $implementation .= "        header('HTTP/1.1 404 Not Found');\n";
+            $implementation .= "        echo json_encode(['error' => 'Not found']);\n";
+            $implementation .= "        return;\n";
+            $implementation .= "    }\n";
+            $implementation .= "    header('Content-Type: application/json');\n";
+            $implementation .= "    echo json_encode(['success' => true]);\n";
+        }
     }
 
     return $docBlock . $signature . " {\n" . $implementation . "}\n";

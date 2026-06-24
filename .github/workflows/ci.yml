@@ -11,9 +11,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Checkout parent repo for test schemas
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         repository: SamuelMarks/cdd-openapi-test-harness
         path: cdd-openapi-test-harness
@@ -71,10 +71,49 @@ jobs:
         composer install -q
         composer test
 
+    - name: Stop Petstore Server
+      run: docker rm -f petstore_server || true
+
+    - name: Start PHP Server (Swagger 2.0)
+      run: |
+        mkdir -p temp-php-server-swagger2
+        php bin/cdd-php from_openapi to_server -i cdd-openapi-test-harness/petstore.json -o temp-php-server-swagger2
+        cd temp-php-server-swagger2
+        composer install -q
+        php -S localhost:8080 server.php &
+        sleep 2
+
+    - name: PHP Server Swagger 2.0 test
+      run: |
+        mkdir -p temp-php-client-swagger2-php
+        php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore.json -o temp-php-client-swagger2-php
+        cd temp-php-client-swagger2-php
+        composer install -q
+        composer test
+        pkill -f 'php -S localhost:8080' || true
+
+    - name: Start PHP Server (OpenAPI 3)
+      run: |
+        mkdir -p temp-php-server-openapi3
+        php bin/cdd-php from_openapi to_server -i cdd-openapi-test-harness/petstore_oas3.json -o temp-php-server-openapi3
+        cd temp-php-server-openapi3
+        composer install -q
+        php -S localhost:8080 server.php &
+        sleep 2
+
+    - name: PHP Server OpenAPI 3.2.0 test
+      run: |
+        mkdir -p temp-php-client-openapi3-php
+        php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore_oas3.json -o temp-php-client-openapi3-php
+        cd temp-php-client-openapi3-php
+        composer install -q
+        composer test
+        pkill -f 'php -S localhost:8080' || true
+
   build_wasm:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Use PHP
       uses: shivammathur/setup-php@v2
       with:
@@ -97,7 +136,7 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Use PHP
       uses: shivammathur/setup-php@v2
       with:

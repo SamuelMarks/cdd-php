@@ -128,7 +128,7 @@ class CddCli
         $command = $argv[1] ?? '';
 
         if ($command === '--version' || $command === '-v') {
-            echo "0.0.2\n";
+            echo "0.0.3\n";
             return 0;
         }
 
@@ -172,7 +172,7 @@ class CddCli
                         $res['result'] = [
                             'protocolVersion' => '2024-11-05',
                             'capabilities' => $capabilities,
-                            'serverInfo' => ['name' => 'cdd-php-mcp', 'version' => '0.0.2']
+                            'serverInfo' => ['name' => 'cdd-php-mcp', 'version' => '0.0.3']
                         ];
                     } elseif ($req['method'] === 'initialized') {
                         continue;
@@ -409,7 +409,7 @@ Content-Type: application/json
             // Core syncing logic: read the whole out directory, parse components, merge, and re-emit.
             $openapi = [
                 'openapi' => '3.2.0',
-                'info' => ['title' => 'Synced API', 'version' => '0.0.2'],
+                'info' => ['title' => 'Synced API', 'version' => '0.0.3'],
                 'paths' => [],
                 'components' => ['schemas' => []]
             ];
@@ -757,7 +757,7 @@ Content-Type: application/json
                 'openapi' => '3.2.0',
                 'info' => [
                     'title' => 'Parsed API',
-                    'version' => '0.0.2',
+                    'version' => '0.0.3',
                 ],
                 'paths' => [],
                 'components' => ['schemas' => []]

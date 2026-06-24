@@ -85,3 +85,37 @@ function emit(array $paths, string $existingCode = ''): string
     }
     return $out;
 }
+
+function emit_modular(array $paths): array
+{
+    $files = [];
+    foreach ($paths as $path => $pathItem) {
+        foreach ($pathItem as $method => $operation) {
+            if ($method === 'parameters' || $method === 'summary' || $method === 'description' || $method === 'servers') {
+                continue;
+            }
+            if ($method === 'additionalOperations') {
+                foreach ($operation as $addMethod => $addOp) {
+                    $files = array_merge($files, emit_modular_single($addMethod, $path, $addOp));
+                }
+            } else {
+                $files = array_merge($files, emit_modular_single($method, $path, $operation));
+            }
+        }
+    }
+    return $files;
+}
+
+function emit_modular_single(string $method, string $path, array $operation): array
+{
+    $methodStr = strtolower($method);
+    if (!in_array($methodStr, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
+        return [];
+    }
+    $opId = $operation['operationId'] ?? $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', $path);
+    $className = ucfirst($opId) . 'Controller';
+    $code = "<?php\n\nnamespace Api\\Controllers;\n\n";
+    $methodCode = \Cdd\Operations\emit($operation, $path, $method, true);
+    $code .= "class $className\n{\n" . preg_replace('/^/m', '    ', $methodCode) . "}\n";
+    return ["{$className}.php" => $code];
+}

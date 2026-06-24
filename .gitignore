@@ -144,3 +144,7 @@ docs/examples.json
 examples.js
 examples.ts
 prompt.md
+temp-php*
+mock-check.sh
+mock-server-spec/
+test-php-server-swagger2.sh
