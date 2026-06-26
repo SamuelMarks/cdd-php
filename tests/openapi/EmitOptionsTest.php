@@ -251,7 +251,7 @@ class EmitOptionsTest extends TestCase
 
         // Check standalone server generation
         $this->assertTrue(file_exists($outDir . '/server.php'));
-        $this->assertStringContainsString('php -S localhost:8080 server.php', file_get_contents($outDir . '/server.php'));
+        $this->assertStringContainsString('php -S 127.0.0.1:8080 server.php', file_get_contents($outDir . '/server.php'));
 
         system("rm -rf " . escapeshellarg($outDir));
     }
@@ -368,23 +368,23 @@ class EmitOptionsTest extends TestCase
         $openapiNoPath = [
             'openapi' => '3.2.0',
             'info' => ['title' => 'Test', 'version' => '1'],
-            'servers' => [['url' => 'http://localhost:8080']], // No path here
+            'servers' => [['url' => 'http://127.0.0.1:8080']], // No path here
             'paths' => []
         ];
         \Cdd\Openapi\emit($openapiNoPath, $outDir, ['subcommand' => 'to_sdk', 'tests' => true]);
         $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
-        $this->assertTrue(strpos($testCode, "new ApiClient('http://localhost:8080')") !== false);
+        $this->assertTrue(strpos($testCode, "new ApiClient('http://127.0.0.1:8080')") !== false);
 
         // Test with URL with a path
         $openapiWithPath = [
             'openapi' => '3.2.0',
             'info' => ['title' => 'Test', 'version' => '1'],
-            'servers' => [['url' => 'http://localhost:8080/api/v2']],
+            'servers' => [['url' => 'http://127.0.0.1:8080/api/v2']],
             'paths' => []
         ];
         \Cdd\Openapi\emit($openapiWithPath, $outDir, ['subcommand' => 'to_sdk', 'tests' => true]);
         $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
-        $this->assertTrue(strpos($testCode, "new ApiClient('http://localhost:8080/api/v2')") !== false);
+        $this->assertTrue(strpos($testCode, "new ApiClient('http://127.0.0.1:8080/api/v2')") !== false);
 
         // Test with Swagger 2.0 basePath
         $openapiBasePath = [
@@ -395,7 +395,7 @@ class EmitOptionsTest extends TestCase
         ];
         \Cdd\Openapi\emit($openapiBasePath, $outDir, ['subcommand' => 'to_sdk', 'tests' => true]);
         $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
-        $this->assertTrue(strpos($testCode, "new ApiClient('http://localhost:8080/api/v1')") !== false);
+        $this->assertTrue(strpos($testCode, "new ApiClient('http://127.0.0.1:8080/api/v1')") !== false);
 
         system("rm -rf " . escapeshellarg($outDir));
     }

@@ -54,10 +54,11 @@ repos:
             SPEC_FILE="../petstore.json"
             MOCK_FILE="../mock_nginx.py"
           fi
+          pkill -9 -f mock_nginx.py >/dev/null 2>&1 || true;
           if command -v python3 >/dev/null 2>&1 && [ -f "$MOCK_FILE" ]; then
-            python3 "$MOCK_FILE" >/dev/null 2>&1 &
+            python3 -c "import socket; socket.getfqdn = lambda x: \"localhost\"; exec(open(\"$MOCK_FILE\").read())" >/dev/null 2>python3 "$MOCK_FILE" >/dev/null 2>&1 &1 &
             SERVER_PID=$!
-            sleep 2
+            sleep 0.5
           elif command -v docker >/dev/null 2>&1; then
             docker rm -f petstore_swagger_2 >/dev/null 2>&1 || true;
             docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/v2" --name petstore_swagger_2 swaggerapi/petstore >/dev/null 2>&1 || docker run -d -p 8080:8080 --name petstore_swagger_2 swaggerapi/swagger-petstore-node >/dev/null 2>&1;
@@ -66,10 +67,10 @@ repos:
           fi;
           rm -rf temp-php-client-swagger2 &&
           php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-swagger2 >/dev/null 2>&1 &&
-          cd temp-php-client-swagger2 && composer install -q && composer test >/dev/null 2>&1;
+          cd temp-php-client-swagger2 && composer dump-autoload -q && ../vendor/bin/phpunit --bootstrap vendor/autoload.php tests >/dev/null 2>&1;
           TEST_EXIT_CODE=$? ;
           cd .. && rm -rf temp-php-client-swagger2 ;
-          if [ -n "$SERVER_PID" ]; then kill $SERVER_PID >/dev/null 2>&1 || true; fi;
+          if [ -n "$SERVER_PID" ]; then kill -9 $SERVER_PID >/dev/null 2>&1 || true; sleep 0.2; fi;
           if [ -n "$DOCKER_USED" ]; then docker rm -f petstore_swagger_2 >/dev/null 2>&1 || true; fi;
           exit $TEST_EXIT_CODE
           '
@@ -86,10 +87,11 @@ repos:
             SPEC_FILE="../petstore_oas3.json"
             MOCK_FILE="../mock_nginx.py"
           fi
+          pkill -9 -f mock_nginx.py >/dev/null 2>&1 || true;
           if command -v python3 >/dev/null 2>&1 && [ -f "$MOCK_FILE" ]; then
-            python3 "$MOCK_FILE" >/dev/null 2>&1 &
+            python3 -c "import socket; socket.getfqdn = lambda x: \"localhost\"; exec(open(\"$MOCK_FILE\").read())" >/dev/null 2>python3 "$MOCK_FILE" >/dev/null 2>&1 &1 &
             SERVER_PID=$!
-            sleep 2
+            sleep 0.5
           elif command -v docker >/dev/null 2>&1; then
             docker rm -f petstore_openapi_3 >/dev/null 2>&1 || true;
             docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/api/v3" --name petstore_openapi_3 swaggerapi/petstore >/dev/null 2>&1 || docker run -d -p 8080:8080 --name petstore_openapi_3 swaggerapi/swagger-petstore-node >/dev/null 2>&1;
@@ -98,10 +100,10 @@ repos:
           fi;
           rm -rf temp-php-client-openapi3 &&
           php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-openapi3 >/dev/null 2>&1 &&
-          cd temp-php-client-openapi3 && composer install -q && composer test >/dev/null 2>&1;
+          cd temp-php-client-openapi3 && composer dump-autoload -q && ../vendor/bin/phpunit --bootstrap vendor/autoload.php tests >/dev/null 2>&1;
           TEST_EXIT_CODE=$? ;
           cd .. && rm -rf temp-php-client-openapi3 ;
-          if [ -n "$SERVER_PID" ]; then kill $SERVER_PID >/dev/null 2>&1 || true; fi;
+          if [ -n "$SERVER_PID" ]; then kill -9 $SERVER_PID >/dev/null 2>&1 || true; sleep 0.2; fi;
           if [ -n "$DOCKER_USED" ]; then docker rm -f petstore_openapi_3 >/dev/null 2>&1 || true; fi;
           exit $TEST_EXIT_CODE
           '
@@ -116,17 +118,18 @@ repos:
           if [ ! -f "$SPEC_FILE" ]; then
             SPEC_FILE="../petstore.json"
           fi
+          pkill -9 -f "php -S 127.0.0.1:8080" >/dev/null 2>&1 || true;
           rm -rf temp-php-server-swagger2 temp-php-client-swagger2-php &&
           php bin/cdd-php from_openapi to_server -i "$SPEC_FILE" -o temp-php-server-swagger2 >/dev/null 2>&1 &&
           php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-swagger2-php >/dev/null 2>&1 &&
-          cd temp-php-server-swagger2 && composer install -q || exit 1;
-          php -S localhost:8080 server.php >/dev/null 2>&1 &
+          (cd temp-php-server-swagger2 && composer dump-autoload -q && echo "<?php require __DIR__ . \"/../vendor/autoload.php\"; require __DIR__ . \"/server.php\";" > wrapper.php && exec php -S 127.0.0.1:8080 wrapper.php > server.log 2>&1) &
           SERVER_PID=$! ;
-          sleep 2 &&
-          cd ../temp-php-client-swagger2-php && composer install -q && composer test >/dev/null 2>&1;
+          sleep 1 &&
+          cd temp-php-client-swagger2-php && composer dump-autoload -q && ../vendor/bin/phpunit --bootstrap vendor/autoload.php tests >/dev/null 2>&1;
           TEST_EXIT_CODE=$? ;
-          kill $SERVER_PID >/dev/null 2>&1 || true;
-          cd .. && rm -rf temp-php-server-swagger2 temp-php-client-swagger2-php;
+          kill -9 $SERVER_PID >/dev/null 2>&1 || true;
+          sleep 0.2;
+          cd .. && if [ $TEST_EXIT_CODE -eq 0 ]; then rm -rf temp-php-server-swagger2 temp-php-client-swagger2-php; fi;
           exit $TEST_EXIT_CODE
           '
         language: system
@@ -140,17 +143,18 @@ repos:
           if [ ! -f "$SPEC_FILE" ]; then
             SPEC_FILE="../petstore_oas3.json"
           fi
+          pkill -9 -f "php -S 127.0.0.1:8080" >/dev/null 2>&1 || true;
           rm -rf temp-php-server-openapi3 temp-php-client-openapi3-php &&
           php bin/cdd-php from_openapi to_server -i "$SPEC_FILE" -o temp-php-server-openapi3 >/dev/null 2>&1 &&
           php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-openapi3-php >/dev/null 2>&1 &&
-          cd temp-php-server-openapi3 && composer install -q || exit 1;
-          php -S localhost:8080 server.php >/dev/null 2>&1 &
+          (cd temp-php-server-openapi3 && composer dump-autoload -q && echo "<?php require __DIR__ . \"/../vendor/autoload.php\"; require __DIR__ . \"/server.php\";" > wrapper.php && exec php -S 127.0.0.1:8080 wrapper.php > server.log 2>&1) &
           SERVER_PID=$! ;
-          sleep 2 &&
-          cd ../temp-php-client-openapi3-php && composer install -q && composer test >/dev/null 2>&1;
+          sleep 1 &&
+          cd temp-php-client-openapi3-php && composer dump-autoload -q && ../vendor/bin/phpunit --bootstrap vendor/autoload.php tests >/dev/null 2>&1;
           TEST_EXIT_CODE=$? ;
-          kill $SERVER_PID >/dev/null 2>&1 || true;
-          cd .. && rm -rf temp-php-server-openapi3 temp-php-client-openapi3-php;
+          kill -9 $SERVER_PID >/dev/null 2>&1 || true;
+          sleep 0.2;
+          cd .. && if [ $TEST_EXIT_CODE -eq 0 ]; then rm -rf temp-php-server-openapi3 temp-php-client-openapi3-php; fi;
           exit $TEST_EXIT_CODE
           '
         language: system

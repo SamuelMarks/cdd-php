@@ -13,7 +13,7 @@ function emit(): string
 <?php
 /**
  * Standalone development server for testing.
- * Run with: php -S localhost:8080 server.php
+ * Run with: php -S 127.0.0.1:8080 server.php
  */
 
 require __DIR__ . '/vendor/autoload.php';

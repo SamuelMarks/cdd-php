@@ -12,6 +12,6 @@ class EmitTest extends TestCase
     {
         $code = emit();
         $this->assertTrue(strpos($code, 'class MockRoute') !== false);
-        $this->assertTrue(strpos($code, 'php -S localhost:8080') !== false);
+        $this->assertTrue(strpos($code, 'php -S 127.0.0.1:8080') !== false);
     }
 }

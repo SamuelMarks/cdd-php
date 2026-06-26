@@ -316,7 +316,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             } elseif (isset($openapi['basePath'])) {
                 $basePath = rtrim($openapi['basePath'], '/');
             }
-            $baseUrl = 'http://localhost:8080' . $basePath;
+            $baseUrl = 'http://127.0.0.1:8080' . $basePath;
             $sdkTestCode .= "        \$this->client = new ApiClient('$baseUrl');\n";
             $sdkTestCode .= "        \$this->client->setApiKey('api_key', 'special-key');\n";
             $sdkTestCode .= "        \$this->client->setBearerToken('petstore_auth', 'special-key');\n";

@@ -44,7 +44,7 @@ jobs:
 
     - name: Start Petstore Server (Swagger 2.0)
       run: |
-        docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/v2" --name petstore_server swaggerapi/petstore
+        docker run -d -p 8080:8080 -e SWAGGER_HOST="http://127.0.0.1:8080" -e SWAGGER_BASE_PATH="/v2" --name petstore_server swaggerapi/petstore
         for i in {1..30}; do curl -s http://localhost:8080 > /dev/null && break || sleep 1; done
 
     - name: Swagger 2.0 Petstore test
@@ -60,7 +60,7 @@ jobs:
 
     - name: Start Petstore Server (OpenAPI 3)
       run: |
-        docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/api/v3" --name petstore_server swaggerapi/petstore
+        docker run -d -p 8080:8080 -e SWAGGER_HOST="http://127.0.0.1:8080" -e SWAGGER_BASE_PATH="/api/v3" --name petstore_server swaggerapi/petstore
         for i in {1..30}; do curl -s http://localhost:8080 > /dev/null && break || sleep 1; done
 
     - name: OpenAPI 3.2.0 Petstore test
@@ -74,41 +74,39 @@ jobs:
     - name: Stop Petstore Server
       run: docker rm -f petstore_server || true
 
-    - name: Start PHP Server (Swagger 2.0)
+    - name: PHP Server Swagger 2.0 test
       run: |
         mkdir -p temp-php-server-swagger2
         php bin/cdd-php from_openapi to_server -i cdd-openapi-test-harness/petstore.json -o temp-php-server-swagger2
         cd temp-php-server-swagger2
         composer install -q
-        php -S localhost:8080 server.php &
+        php -S 127.0.0.1:8080 server.php &
+        SERVER_PID=$!
         sleep 2
-
-    - name: PHP Server Swagger 2.0 test
-      run: |
+        cd ..
         mkdir -p temp-php-client-swagger2-php
         php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore.json -o temp-php-client-swagger2-php
         cd temp-php-client-swagger2-php
         composer install -q
         composer test
-        pkill -f 'php -S localhost:8080' || true
+        kill $SERVER_PID || true
 
-    - name: Start PHP Server (OpenAPI 3)
+    - name: PHP Server OpenAPI 3.2.0 test
       run: |
         mkdir -p temp-php-server-openapi3
         php bin/cdd-php from_openapi to_server -i cdd-openapi-test-harness/petstore_oas3.json -o temp-php-server-openapi3
         cd temp-php-server-openapi3
         composer install -q
-        php -S localhost:8080 server.php &
+        php -S 127.0.0.1:8080 server.php &
+        SERVER_PID=$!
         sleep 2
-
-    - name: PHP Server OpenAPI 3.2.0 test
-      run: |
+        cd ..
         mkdir -p temp-php-client-openapi3-php
         php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore_oas3.json -o temp-php-client-openapi3-php
         cd temp-php-client-openapi3-php
         composer install -q
         composer test
-        pkill -f 'php -S localhost:8080' || true
+        kill $SERVER_PID || true
 
   build_wasm:
     runs-on: ubuntu-latest
