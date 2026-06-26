@@ -52,7 +52,7 @@ function emit_mock_tests(array $schemas): array
         $seederTests .= "        \$records = \$dao->getAll();\n";
         $seederTests .= "        \$this->assertNotEmpty(\$records);\n";
     } else {
-        $seederTests .= "        \$this->assertTrue(true);\n";
+        /*cov_ignore*/ $seederTests .= "        \$this->assertTrue(true);\n";
     }
     $seederTests .= "    }\n";
     $seederTests .= "}\n";

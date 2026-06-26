@@ -46,47 +46,79 @@ repos:
 
       - id: test-swagger-2
         name: Swagger 2.0 Petstore test
-        entry: >-
+        entry: |-
           bash -c '
-          if command -v docker >/dev/null 2>&1; then
+          SPEC_FILE="cdd-openapi-test-harness/petstore.json"
+          MOCK_FILE="cdd-openapi-test-harness/mock_nginx.py"
+          if [ ! -f "$SPEC_FILE" ]; then
+            SPEC_FILE="../petstore.json"
+            MOCK_FILE="../mock_nginx.py"
+          fi
+          if command -v python3 >/dev/null 2>&1 && [ -f "$MOCK_FILE" ]; then
+            python3 "$MOCK_FILE" >/dev/null 2>&1 &
+            SERVER_PID=$!
+            sleep 2
+          elif command -v docker >/dev/null 2>&1; then
             docker rm -f petstore_swagger_2 >/dev/null 2>&1 || true;
             docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/v2" --name petstore_swagger_2 swaggerapi/petstore >/dev/null 2>&1 || docker run -d -p 8080:8080 --name petstore_swagger_2 swaggerapi/swagger-petstore-node >/dev/null 2>&1;
             sleep 5;
+            DOCKER_USED=1
           fi;
           rm -rf temp-php-client-swagger2 &&
-          php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore.json -o temp-php-client-swagger2 >/dev/null 2>&1 &&
-          cd temp-php-client-swagger2 && composer install -q && composer test >/dev/null 2>&1 &&
+          php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-swagger2 >/dev/null 2>&1 &&
+          cd temp-php-client-swagger2 && composer install -q && composer test >/dev/null 2>&1;
+          TEST_EXIT_CODE=$? ;
           cd .. && rm -rf temp-php-client-swagger2 ;
-          if command -v docker >/dev/null 2>&1; then docker rm -f petstore_swagger_2 >/dev/null 2>&1 || true; fi
+          if [ -n "$SERVER_PID" ]; then kill $SERVER_PID >/dev/null 2>&1 || true; fi;
+          if [ -n "$DOCKER_USED" ]; then docker rm -f petstore_swagger_2 >/dev/null 2>&1 || true; fi;
+          exit $TEST_EXIT_CODE
           '
         language: system
         pass_filenames: false
 
       - id: test-openapi-3-2-0
         name: OpenAPI 3.2.0 Petstore test
-        entry: >-
+        entry: |-
           bash -c '
-          if command -v docker >/dev/null 2>&1; then
+          SPEC_FILE="cdd-openapi-test-harness/petstore_oas3.json"
+          MOCK_FILE="cdd-openapi-test-harness/mock_nginx.py"
+          if [ ! -f "$SPEC_FILE" ]; then
+            SPEC_FILE="../petstore_oas3.json"
+            MOCK_FILE="../mock_nginx.py"
+          fi
+          if command -v python3 >/dev/null 2>&1 && [ -f "$MOCK_FILE" ]; then
+            python3 "$MOCK_FILE" >/dev/null 2>&1 &
+            SERVER_PID=$!
+            sleep 2
+          elif command -v docker >/dev/null 2>&1; then
             docker rm -f petstore_openapi_3 >/dev/null 2>&1 || true;
             docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/api/v3" --name petstore_openapi_3 swaggerapi/petstore >/dev/null 2>&1 || docker run -d -p 8080:8080 --name petstore_openapi_3 swaggerapi/swagger-petstore-node >/dev/null 2>&1;
             sleep 5;
+            DOCKER_USED=1
           fi;
           rm -rf temp-php-client-openapi3 &&
-          php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore_oas3.json -o temp-php-client-openapi3 >/dev/null 2>&1 &&
-          cd temp-php-client-openapi3 && composer install -q && composer test >/dev/null 2>&1 &&
+          php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-openapi3 >/dev/null 2>&1 &&
+          cd temp-php-client-openapi3 && composer install -q && composer test >/dev/null 2>&1;
+          TEST_EXIT_CODE=$? ;
           cd .. && rm -rf temp-php-client-openapi3 ;
-          if command -v docker >/dev/null 2>&1; then docker rm -f petstore_openapi_3 >/dev/null 2>&1 || true; fi
+          if [ -n "$SERVER_PID" ]; then kill $SERVER_PID >/dev/null 2>&1 || true; fi;
+          if [ -n "$DOCKER_USED" ]; then docker rm -f petstore_openapi_3 >/dev/null 2>&1 || true; fi;
+          exit $TEST_EXIT_CODE
           '
         language: system
         pass_filenames: false
 
       - id: test-php-server-swagger2
         name: PHP Server Swagger 2.0 test
-        entry: >-
+        entry: |-
           bash -c '
+          SPEC_FILE="cdd-openapi-test-harness/petstore.json"
+          if [ ! -f "$SPEC_FILE" ]; then
+            SPEC_FILE="../petstore.json"
+          fi
           rm -rf temp-php-server-swagger2 temp-php-client-swagger2-php &&
-          php bin/cdd-php from_openapi to_server -i cdd-openapi-test-harness/petstore.json -o temp-php-server-swagger2 >/dev/null 2>&1 &&
-          php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore.json -o temp-php-client-swagger2-php >/dev/null 2>&1 &&
+          php bin/cdd-php from_openapi to_server -i "$SPEC_FILE" -o temp-php-server-swagger2 >/dev/null 2>&1 &&
+          php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-swagger2-php >/dev/null 2>&1 &&
           cd temp-php-server-swagger2 && composer install -q || exit 1;
           php -S localhost:8080 server.php >/dev/null 2>&1 &
           SERVER_PID=$! ;
@@ -102,11 +134,15 @@ repos:
 
       - id: test-php-server-openapi-3
         name: PHP Server OpenAPI 3.2.0 test
-        entry: >-
+        entry: |-
           bash -c '
+          SPEC_FILE="cdd-openapi-test-harness/petstore_oas3.json"
+          if [ ! -f "$SPEC_FILE" ]; then
+            SPEC_FILE="../petstore_oas3.json"
+          fi
           rm -rf temp-php-server-openapi3 temp-php-client-openapi3-php &&
-          php bin/cdd-php from_openapi to_server -i cdd-openapi-test-harness/petstore_oas3.json -o temp-php-server-openapi3 >/dev/null 2>&1 &&
-          php bin/cdd-php from_openapi to_sdk --tests -i cdd-openapi-test-harness/petstore_oas3.json -o temp-php-client-openapi3-php >/dev/null 2>&1 &&
+          php bin/cdd-php from_openapi to_server -i "$SPEC_FILE" -o temp-php-server-openapi3 >/dev/null 2>&1 &&
+          php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-openapi3-php >/dev/null 2>&1 &&
           cd temp-php-server-openapi3 && composer install -q || exit 1;
           php -S localhost:8080 server.php >/dev/null 2>&1 &
           SERVER_PID=$! ;

@@ -79,6 +79,9 @@ function emit(string $method, string $path, array $operation, bool $composable =
     return $out;
 }
 
+/**
+ * emit_modular
+ */
 function emit_modular(array $paths): array
 {
     $files = [];
@@ -96,6 +99,9 @@ function emit_modular(array $paths): array
     return $files;
 }
 
+/**
+ * emit_modular_single_test
+ */
 function emit_modular_single_test(string $method, string $path, array $operation): array
 {
     $opId = $operation['operationId'] ?? strtolower($method) . preg_replace('/[^a-zA-Z0-9]/', '', $path);

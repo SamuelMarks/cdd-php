@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Cdd\Daos;
 
+/**
+ * emit_modular
+ */
 function emit_modular(array $schemas): array
 {
     $files = [];
@@ -29,6 +32,9 @@ function emit_modular(array $schemas): array
     return $files;
 }
 
+/**
+ * emit
+ */
 function emit(array $schemas): string
 {
     $out = "<?php\n\n/**\n * Auto-generated DAOs\n */\n\n";

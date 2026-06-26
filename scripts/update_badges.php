@@ -28,9 +28,11 @@ function getColor($pct)
 }
 
 // Test coverage
-$testOutput = shell_exec("phpdbg -qrr bin/check_coverage.php 2>/dev/null");
+$testOutput = shell_exec("phpdbg -qrr -d memory_limit=512M bin/check_coverage.php 2>/dev/null");
 $testCov = 0;
-if (preg_match('/([0-9.]+)/', $testOutput, $matches)) {
+if (preg_match('/^100$/m', trim($testOutput))) {
+    $testCov = 100;
+} elseif (preg_match('/Coverage is ([0-9.]+)/', $testOutput, $matches)) {
     $testCov = (int) $matches[1];
 }
 

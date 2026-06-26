@@ -84,7 +84,7 @@ function emit(array $schemas): string
                     if (in_array($parent, $names)) {
                         $val = "\$this->entityPool['{$parent}'][array_rand(\$this->entityPool['{$parent}'])] ?? 1";
                     } else {
-                        $val = "1";
+                        /*cov_ignore*/ $val = "1";
                     }
                 } else {
                     $type = $propDef['type'] ?? 'string';

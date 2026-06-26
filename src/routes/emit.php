@@ -60,6 +60,9 @@ function emit(array $paths, string $existingCode = ''): string
     return $out;
 }
 
+/**
+ * emit_modular
+ */
 function emit_modular(array $paths): array
 {
     $files = [];
@@ -91,6 +94,9 @@ function emit_modular(array $paths): array
     return $files;
 }
 
+/**
+ * emit_modular_single_route
+ */
 function emit_modular_single_route(string $method, string $path, array $operation): string
 {
     $methodStr = strtolower($method);
