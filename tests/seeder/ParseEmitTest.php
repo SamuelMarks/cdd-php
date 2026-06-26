@@ -16,7 +16,11 @@ class ParseEmitTest extends TestCase
                 'properties' => [
                     'id' => ['type' => 'integer'],
                     'name' => ['type' => 'string'],
-                    'email' => ['type' => 'string']
+                    'email' => ['type' => 'string'],
+                    'is_active' => ['type' => 'boolean'],
+                    'score' => ['type' => 'number'],
+                    'phone' => ['type' => 'string'],
+                    'other' => ['type' => 'string']
                 ]
             ],
             'Post' => [

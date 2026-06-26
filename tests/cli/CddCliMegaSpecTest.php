@@ -24,7 +24,29 @@ class CddCliMegaSpecTest extends TestCase
                     ]
                 ]
             ],
-            'paths' => []
+            'paths' => [
+                '/test' => [
+                    'post' => [
+                        'operationId' => 'testId',
+                        'description' => 'A test operation',
+                        'parameters' => [
+                            ['name' => 'myParam', 'in' => 'query', 'required' => true, 'description' => 'A param', 'schema' => ['type' => 'string']]
+                        ],
+                        'requestBody' => [
+                            'content' => [
+                                'application/json' => [
+                                    'schema' => [
+                                        '$ref' => '#/components/schemas/Obj'
+                                    ]
+                                ]
+                            ]
+                        ],
+                        'responses' => [
+                            '200' => ['description' => 'ok']
+                        ]
+                    ]
+                ]
+            ]
         ];
         file_put_contents('mega.json', json_encode($spec));
 

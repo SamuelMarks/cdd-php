@@ -9,7 +9,10 @@ class MegaCoverageTest extends TestCase
 {
     public function testCoverageBoost()
     {
-        $spec = __DIR__ . '/../../cdd-openapi-test-harness/petstore.json';
+        $spec = __DIR__ . '/../cdd-openapi-test-harness/petstore.json';
+        if (!file_exists($spec)) {
+            $spec = __DIR__ . '/../../cdd-openapi-test-harness/petstore.json';
+        }
         if (!file_exists($spec)) {
             $spec = __DIR__ . '/../../petstore.json';
         }

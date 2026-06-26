@@ -96,6 +96,28 @@ class ParseEmitTest extends TestCase
         $this->assertStringContainsString('public function refOp(): User', $emittedRef);
     }
 
+    public function testEmitPostWithSchema()
+    {
+        $op = [
+            'operationId' => 'createItem',
+            'responses' => [
+                '200' => [
+                    'description' => 'Created',
+                    'content' => [
+                        'application/json' => [
+                            'schema' => [
+                                '$ref' => '#/components/schemas/MyItem'
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+        $emitted = \Cdd\Operations\emit($op, '/items', 'post');
+        $this->assertStringContainsString('\Api\Daos\DaoFactory::create(\'MyItem\')', $emitted);
+        $this->assertStringContainsString('$dao->create(', $emitted);
+    }
+
     public function testValidateOperationObjectErrors()
     {
         $tests = [

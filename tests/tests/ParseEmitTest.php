@@ -62,6 +62,27 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(strpos($emitted, "\$this->assertEquals(200") !== false);
     }
 
+    public function testEmitWithRequestBody()
+    {
+        $operation = [
+            'requestBody' => [
+                'content' => [
+                    'application/json' => [
+                        'schema' => [
+                            '$ref' => '#/components/schemas/User'
+                        ]
+                    ]
+                ]
+            ],
+            'responses' => ['200' => []]
+        ];
+        $emitted = \Cdd\Tests\emit('post', '/api/users', $operation, true);
+        $this->assertStringContainsString('$mocks[\'User\'] ?? []', $emitted);
+
+        $emittedFalse = \Cdd\Tests\emit('post', '/api/users', $operation, false);
+        $this->assertStringContainsString('$mocks[\'User\'] ?? []', $emittedFalse);
+    }
+
     public function testEmitModular()
     {
         $paths = [
