@@ -27,7 +27,7 @@ class MegaCoverageTest extends TestCase
             ['cdd-php', 'from_openapi', 'to_sdk_cli', '-i', $spec, '-o', sys_get_temp_dir() . '/sdk_cli', '--no-github-actions', '--no-installable-package', '--tests', '--mcp'],
             ['cdd-php', 'from_openapi', 'to_sdk', '-i', $spec, '-o', sys_get_temp_dir() . '/sdk', '--no-github-actions', '--no-installable-package', '--tests', '--mcp'],
             ['cdd-php', 'from_openapi', 'to_server', '-i', $spec, '-o', sys_get_temp_dir() . '/server'],
-            ['cdd-php', 'serve_json_rpc', '--port', '8082', '--listen', '127.0.0.1', '--timeout', '1'],
+            ['cdd-php', 'serve_json_rpc', '--port', '0', '--listen', '127.0.0.1', '--timeout', '0.1'],
         ];
 
         foreach ($commands as $cmd) {

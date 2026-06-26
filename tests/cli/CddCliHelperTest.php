@@ -36,12 +36,12 @@ class CddCliHelperTest extends TestCase
 
         // Also call the helper directly to cover it, but with invalid args so it fails quickly
         ob_start();
-        CddCli::serve_json_rpc(['--port', 'invalid']);
+        CddCli::serve_json_rpc(['--port', 'invalid', '--timeout', '0.1']);
         ob_get_clean();
         $this->assertTrue(true);
 
         ob_start();
-        CddCli::run(['cdd-php', 'serve_json_rpc', '-p', 'invalid']);
+        CddCli::run(['cdd-php', 'serve_json_rpc', '-p', 'invalid', '--timeout', '0.1']);
         ob_get_clean();
         $this->assertTrue(true);
 

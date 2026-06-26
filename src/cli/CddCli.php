@@ -306,12 +306,15 @@ class CddCli
         if ($command === "serve_json_rpc") {
             $port = (int)($_ENV["CDD_PORT"] ?? 8080);
             $listen = $_ENV["CDD_LISTEN"] ?? "127.0.0.1";
+            $timeout = (float)ini_get("default_socket_timeout");
             for ($i = 2; $i < $argc; $i++) {
                 if (($argv[$i] === "--port" || $argv[$i] === "-p") && isset($argv[$i + 1])) {
                     $port = (int)$argv[++$i];
                     /*cov_ignore*/
                 } elseif (($argv[$i] === "--listen" || $argv[$i] === "-l") && isset($argv[$i + 1])) {
                     /*cov_ignore*/                     $listen = $argv[++$i];
+                } elseif ($argv[$i] === "--timeout" && isset($argv[$i + 1])) {
+                    $timeout = (float)$argv[++$i];
                 }
             }
             $serverUrl = "tcp://$listen:$port";
@@ -322,7 +325,7 @@ class CddCli
             }
             echo "JSON-RPC server listening on $serverUrl
 ";
-            while ($conn = @stream_socket_accept($socket)) {
+            while ($conn = @stream_socket_accept($socket, $timeout)) {
                 /*cov_ignore*/                 $request = "";
                 /*cov_ignore*/                 while ($data = fread($conn, 8192)) {
                     /*cov_ignore*/                     $request .= $data;

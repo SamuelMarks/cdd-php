@@ -28,7 +28,7 @@ class CddCliExtraCoverageTest extends TestCase
         $this->tryRun(['cdd-php', 'to_openapi']);
         $this->tryRun(['cdd-php', 'to_docs_json']);
         $this->tryRun(['cdd-php', 'sync']);
-        $this->tryRun(['cdd-php', 'serve_json_rpc', '--port', 'invalid']);
+        $this->tryRun(['cdd-php', 'serve_json_rpc', '--port', 'invalid', '--timeout', '0.1']);
 
         $this->tryRun(['cdd-php', 'to_openapi', '-i', 'invalid']);
         $this->tryRun(['cdd-php', 'to_openapi', '-i', 'tests/cli/ParseEmitTest.php']);
