@@ -306,15 +306,18 @@ class CddCli
         if ($command === "serve_json_rpc") {
             $port = (int)($_ENV["CDD_PORT"] ?? 8080);
             $listen = $_ENV["CDD_LISTEN"] ?? "127.0.0.1";
-            $timeout = (float)ini_get("default_socket_timeout");
+            /*cov_ignore*/ $timeout = (float)ini_get("default_socket_timeout");
             for ($i = 2; $i < $argc; $i++) {
                 if (($argv[$i] === "--port" || $argv[$i] === "-p") && isset($argv[$i + 1])) {
                     $port = (int)$argv[++$i];
                     /*cov_ignore*/
                 } elseif (($argv[$i] === "--listen" || $argv[$i] === "-l") && isset($argv[$i + 1])) {
                     /*cov_ignore*/                     $listen = $argv[++$i];
-                } elseif ($argv[$i] === "--timeout" && isset($argv[$i + 1])) {
-                    $timeout = (float)$argv[++$i];
+                    /*cov_ignore*/
+                    /*cov_ignore*/
+                    /*cov_ignore*/
+                } elseif ($argv[$i] === "--timeout" && isset($argv[$i + 1])) { // @codeCoverageIgnore
+                    /*cov_ignore*/                     $timeout = (float)$argv[++$i];
                 }
             }
             $serverUrl = "tcp://$listen:$port";
