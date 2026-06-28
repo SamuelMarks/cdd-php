@@ -118,39 +118,73 @@ A true ecosystem requires standardized tooling. Once a developer learns the CDD 
 
 ### Core Subcommands
 
-#### `from_openapi to_sdk_cli`
-Generate a client SDK and a corresponding command-line interface (CLI) from an OpenAPI specification.
-- `--input, -i <spec>`: Path to the OpenAPI specification file.
+#### `from_openapi`
+```text
+Usage: cdd-php from_openapi <target> [options]
 
-#### `from_openapi to_sdk`
-Generate a client SDK from an OpenAPI specification.
-- `--input, -i <spec>`: Path to the OpenAPI specification file.
+Targets:
+  to_sdk_cli      Generate a client SDK and a corresponding CLI
+  to_sdk          Generate a client SDK
+  to_server       Generate server boilerplate, models, and routing logic
 
-#### `from_openapi to_server`
-Generate server boilerplate, models, and routing logic from an OpenAPI specification.
-- `--input, -i <spec>`: Path to the OpenAPI specification file.
+Options:
+  -i, --input <spec>    Path to the OpenAPI specification file
+  -d, --input-dir <dir> Path to a directory containing OpenAPI specifications
+  -o, --output <dir>    Destination path for generation
+  --no-github-actions   Disable GitHub Actions generation
+  --no-installable-package Disable Composer package generation
+  --tests               Generate PHPUnit tests
+  --mcp                 Generate MCP server
+  --help, -h            Show this help message
+```
 
 #### `to_openapi`
-Parse the existing codebase and extract an authoritative OpenAPI specification.
-- `--input, -i <path>` (or `-f <path>`): Path to the source code directory or file to parse.
+```text
+Usage: cdd-php to_openapi [options]
+
+Options:
+  -i, --input <path>    Path to the source code directory or file to parse
+  -o, --output <path>   Destination file for the OpenAPI specification
+  --help, -h            Show this help message
+```
 
 #### `to_docs_json`
-Convert an OpenAPI specification into a localized, documentation-optimized JSON format.
-- `--input, -i <spec>`: Path to the OpenAPI specification file.
-- `--no-imports`: Disable import statements in the generated documentation.
-- `--no-wrapping`: Disable line wrapping in the generated documentation.
+```text
+Usage: cdd-php to_docs_json [options]
+
+Options:
+  -i, --input <spec>    Path to the OpenAPI specification file
+  -o, --output <path>   Destination file for the JSON documentation
+  --no-imports          Disable import statements in the generated documentation
+  --no-wrapping         Disable line wrapping in the generated documentation
+  --help, -h            Show this help message
+```
 
 #### `serve_json_rpc`
-Launch a JSON-RPC server for editor and tool integrations.
-- `--port <port>` (or `-p`): Port to listen on (e.g., `8080`).
-- `--listen <address>` (or `-l`): Address to bind to (e.g., `0.0.0.0`).
+```text
+Usage: cdd-php serve_json_rpc [options]
 
-#### `mcp`
-Run the Model Context Protocol server via stdio.
+Options:
+  -p, --port <port>     Port to listen on (e.g., 8080)
+  -l, --listen <addr>   Address to bind to (e.g., 127.0.0.1)
+  --help, -h            Show this help message
+```
 
 #### `sync`
-Synchronize database schema to models and OpenAPI specifications.
-- `--dir, -d <directory>`: Target directory to synchronize.
+```text
+Usage: cdd-php sync [options]
+
+Options:
+  -d, --input-dir <directory> Target directory to synchronize
+  --help, -h            Show this help message
+```
+
+#### `mcp`
+```text
+Usage: cdd-php mcp
+
+Run the Model Context Protocol server via stdio.
+```
 
 ### Detail Features Beyond Common Subset
 

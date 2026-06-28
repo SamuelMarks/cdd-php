@@ -18,11 +18,16 @@ class SyncCommandTest extends TestCase
         file_put_contents("$dir/src/routes.php", "<?php\n/**\n * @return User\n */\nfunction getUser() {}\n");
 
         ob_start();
-        \Cdd\Cli\CddCli::run(['cdd-php', 'sync', '-d', $dir]);
+        \Cdd\Cli\CddCli::run(['cdd-php', 'sync', '-i', $dir]);
         $out = ob_get_clean();
 
         $this->assertTrue(strpos($out, 'Synchronized codebase in') !== false);
         $this->assertTrue(file_exists("$dir/openapi.json"));
+
+        ob_start();
+        \Cdd\Cli\CddCli::run(['cdd-php', 'sync', '-i', $dir, '-t', 'class']);
+        $out = ob_get_clean();
+        $this->assertTrue(strpos($out, 'Synchronized codebase in') !== false);
 
         $json = json_decode(file_get_contents("$dir/openapi.json"), true);
         $this->assertTrue(isset($json['components']['schemas']['User']));

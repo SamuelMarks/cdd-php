@@ -29,7 +29,7 @@ return [
 
         // Run sync
         $baseDir = dirname(__DIR__, 2);
-        exec("php $baseDir/bin/cdd-php sync -d $tmpDir", $output, $returnVar);
+        exec("php $baseDir/bin/cdd-php sync -i $tmpDir", $output, $returnVar);
 
         $this->assertEquals(0, $returnVar);
 

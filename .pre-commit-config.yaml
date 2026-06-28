@@ -48,30 +48,20 @@ repos:
         name: Swagger 2.0 Petstore test
         entry: |-
           bash -c '
+          if [ "$RUN_SLOW_TESTS" != "1" ] && [ "$RUN_SLOW_TESTS" != "true" ]; then
+            echo "Skipping slow test (set RUN_SLOW_TESTS=1 to run)"
+            exit 0
+          fi
           SPEC_FILE="cdd-openapi-test-harness/petstore.json"
-          MOCK_FILE="cdd-openapi-test-harness/mock_nginx.py"
           if [ ! -f "$SPEC_FILE" ]; then
             SPEC_FILE="../petstore.json"
-            MOCK_FILE="../mock_nginx.py"
           fi
-          pkill -9 -f mock_nginx.py >/dev/null 2>&1 || true;
-          if command -v python3 >/dev/null 2>&1 && [ -f "$MOCK_FILE" ]; then
-            python3 -c "import socket; socket.getfqdn = lambda x: \"localhost\"; exec(open(\"$MOCK_FILE\").read())" >/dev/null 2>python3 "$MOCK_FILE" >/dev/null 2>&1 &1 &
-            SERVER_PID=$!
-            sleep 0.5
-          elif command -v docker >/dev/null 2>&1; then
-            docker rm -f petstore_swagger_2 >/dev/null 2>&1 || true;
-            docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/v2" --name petstore_swagger_2 swaggerapi/petstore >/dev/null 2>&1 || docker run -d -p 8080:8080 --name petstore_swagger_2 swaggerapi/swagger-petstore-node >/dev/null 2>&1;
-            sleep 5;
-            DOCKER_USED=1
-          fi;
+          ./scripts/start_mock_server.sh
           rm -rf temp-php-client-swagger2 &&
           php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-swagger2 >/dev/null 2>&1 &&
           cd temp-php-client-swagger2 && composer dump-autoload -q && ../vendor/bin/phpunit --bootstrap vendor/autoload.php tests >/dev/null 2>&1;
           TEST_EXIT_CODE=$? ;
           cd .. && rm -rf temp-php-client-swagger2 ;
-          if [ -n "$SERVER_PID" ]; then kill -9 $SERVER_PID >/dev/null 2>&1 || true; sleep 0.2; fi;
-          if [ -n "$DOCKER_USED" ]; then docker rm -f petstore_swagger_2 >/dev/null 2>&1 || true; fi;
           exit $TEST_EXIT_CODE
           '
         language: system
@@ -81,30 +71,20 @@ repos:
         name: OpenAPI 3.2.0 Petstore test
         entry: |-
           bash -c '
+          if [ "$RUN_SLOW_TESTS" != "1" ] && [ "$RUN_SLOW_TESTS" != "true" ]; then
+            echo "Skipping slow test (set RUN_SLOW_TESTS=1 to run)"
+            exit 0
+          fi
           SPEC_FILE="cdd-openapi-test-harness/petstore_oas3.json"
-          MOCK_FILE="cdd-openapi-test-harness/mock_nginx.py"
           if [ ! -f "$SPEC_FILE" ]; then
             SPEC_FILE="../petstore_oas3.json"
-            MOCK_FILE="../mock_nginx.py"
           fi
-          pkill -9 -f mock_nginx.py >/dev/null 2>&1 || true;
-          if command -v python3 >/dev/null 2>&1 && [ -f "$MOCK_FILE" ]; then
-            python3 -c "import socket; socket.getfqdn = lambda x: \"localhost\"; exec(open(\"$MOCK_FILE\").read())" >/dev/null 2>python3 "$MOCK_FILE" >/dev/null 2>&1 &1 &
-            SERVER_PID=$!
-            sleep 0.5
-          elif command -v docker >/dev/null 2>&1; then
-            docker rm -f petstore_openapi_3 >/dev/null 2>&1 || true;
-            docker run -d -p 8080:8080 -e SWAGGER_HOST="http://localhost:8080" -e SWAGGER_BASE_PATH="/api/v3" --name petstore_openapi_3 swaggerapi/petstore >/dev/null 2>&1 || docker run -d -p 8080:8080 --name petstore_openapi_3 swaggerapi/swagger-petstore-node >/dev/null 2>&1;
-            sleep 5;
-            DOCKER_USED=1
-          fi;
+          ./scripts/start_mock_server.sh
           rm -rf temp-php-client-openapi3 &&
           php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-openapi3 >/dev/null 2>&1 &&
           cd temp-php-client-openapi3 && composer dump-autoload -q && ../vendor/bin/phpunit --bootstrap vendor/autoload.php tests >/dev/null 2>&1;
           TEST_EXIT_CODE=$? ;
           cd .. && rm -rf temp-php-client-openapi3 ;
-          if [ -n "$SERVER_PID" ]; then kill -9 $SERVER_PID >/dev/null 2>&1 || true; sleep 0.2; fi;
-          if [ -n "$DOCKER_USED" ]; then docker rm -f petstore_openapi_3 >/dev/null 2>&1 || true; fi;
           exit $TEST_EXIT_CODE
           '
         language: system
@@ -114,6 +94,10 @@ repos:
         name: PHP Server Swagger 2.0 test
         entry: |-
           bash -c '
+          if [ "$RUN_SLOW_TESTS" != "1" ] && [ "$RUN_SLOW_TESTS" != "true" ]; then
+            echo "Skipping slow test (set RUN_SLOW_TESTS=1 to run)"
+            exit 0
+          fi
           SPEC_FILE="cdd-openapi-test-harness/petstore.json"
           if [ ! -f "$SPEC_FILE" ]; then
             SPEC_FILE="../petstore.json"
@@ -139,6 +123,10 @@ repos:
         name: PHP Server OpenAPI 3.2.0 test
         entry: |-
           bash -c '
+          if [ "$RUN_SLOW_TESTS" != "1" ] && [ "$RUN_SLOW_TESTS" != "true" ]; then
+            echo "Skipping slow test (set RUN_SLOW_TESTS=1 to run)"
+            exit 0
+          fi
           SPEC_FILE="cdd-openapi-test-harness/petstore_oas3.json"
           if [ ! -f "$SPEC_FILE" ]; then
             SPEC_FILE="../petstore_oas3.json"

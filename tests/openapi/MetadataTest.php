@@ -31,7 +31,7 @@ class MetadataTest extends \Cdd\Tests\Framework\TestCase
         $this->assertTrue(file_exists("$tmpDir/src/api_metadata.php"));
 
         $baseDir = dirname(__DIR__, 2);
-        exec("php $baseDir/bin/cdd-php sync -d $tmpDir", $output, $returnVar);
+        exec("php $baseDir/bin/cdd-php sync -i $tmpDir", $output, $returnVar);
 
         $json = file_get_contents("$tmpDir/openapi.json");
         $parsed = json_decode($json, true);

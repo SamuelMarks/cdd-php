@@ -19,38 +19,71 @@ class CddCli
 
     /**
      * Generate code from an OpenAPI specification.
+     *
+     * @param array|CddConfig $args The command line arguments or config object
+     * @return int The exit status code
      */
-    public static function generate_from_openapi(array $args): int
+    public static function generate_from_openapi($args): int
     {
+        if ($args instanceof CddConfig) {
+            $args->command = 'from_openapi';
+            return self::run($args->toArgs());
+        }
         return self::run(array_merge(['cdd-php', 'from_openapi'], $args));
     }
 
     /**
      * Generate an OpenAPI specification from source code.
+     *
+     * @param array|CddConfig $args The command line arguments or config object
+     * @return int The exit status code
      */
-    public static function generate_to_openapi(array $args): int
+    public static function generate_to_openapi($args): int
     {
+        if ($args instanceof CddConfig) {
+            $args->command = 'to_openapi';
+            return self::run($args->toArgs());
+        }
         return self::run(array_merge(['cdd-php', 'to_openapi'], $args));
     }
 
     /**
      * Generate JSON documentation with code snippets for an OpenAPI specification.
+     *
+     * @param array|CddConfig $args The command line arguments or config object
+     * @return int The exit status code
      */
-    public static function generate_docs_json(array $args): int
+    public static function generate_docs_json($args): int
     {
+        if ($args instanceof CddConfig) {
+            $args->command = 'to_docs_json';
+            return self::run($args->toArgs());
+        }
         return self::run(array_merge(['cdd-php', 'to_docs_json'], $args));
     }
 
     /**
      * Expose CLI interface as a JSON-RPC server.
+     *
+     * @param array|CddConfig $args The command line arguments or config object
+     * @return int The exit status code
      */
-    public static function serve_json_rpc(array $args): int
+    public static function serve_json_rpc($args): int
     {
+        if ($args instanceof CddConfig) {
+            $args->command = 'serve_json_rpc';
+            return self::run($args->toArgs());
+        }
         return self::run(array_merge(['cdd-php', 'serve_json_rpc'], $args));
     }
 
     /**
      * Executes an MCP sampling request back to the client over stdio.
+     *
+     * @param array $messages The chat messages for the LLM
+     * @param int $maxTokens The maximum number of tokens to generate
+     * @param string $systemPrompt The system prompt
+     * @return mixed The sampling result or null on failure
      */
     public static function sample_llm(array $messages, int $maxTokens = 100, string $systemPrompt = '')
     {
@@ -141,20 +174,74 @@ class CddCli
             echo "  to_openapi      Generate an OpenAPI specification from source code.\n";
             echo "  to_docs_json    Generate JSON documentation with code snippets for an OpenAPI specification.\n";
             echo "  serve_json_rpc  Expose CLI interface as a JSON-RPC server.\n";
-            echo "  sync            Synchronize database schema to models and OpenAPI specifications.\n";
+            echo "  sync            Synchronize an OpenAPI specification with source code.\n";
             echo "\nOptions:\n";
             echo "  --help, -h      Show this help message\n";
             echo "  --version, -v   Show version information\n";
             echo "\nExamples:\n";
-            echo "  cdd-php serve_json_rpc [--port 8080] [--listen 127.0.0.1]\n";
+            echo "  cdd-php serve_json_rpc [--port|-p 8080] [--listen|-l 127.0.0.1]\n";
             echo "  cdd-php to_docs_json --no-imports --no-wrapping -i spec.json -o docs.json\n";
             echo "  cdd-php from_openapi to_sdk_cli -i spec.json -o target_directory [--no-github-actions] [--no-installable-package] [--tests
 ] [--mcp]\n";
             echo "  cdd-php from_openapi to_sdk -i spec.json -o target_directory [--no-github-actions] [--no-installable-package] [--tests
 ] [--mcp]\n";
             echo "  cdd-php from_openapi to_server -i spec.json -o target_directory\n";
-            echo "  cdd-php sync -d directory\n";
+            echo "  cdd-php sync -i directory -t class\n";
             return 0;
+        }
+
+        if (in_array('--help', $argv) || in_array('-h', $argv)) {
+            if ($command === 'from_openapi') {
+                echo "Usage: cdd-php from_openapi <target> [options]\n\n";
+                echo "Targets:\n";
+                echo "  to_sdk_cli      Generate a client SDK and a corresponding CLI\n";
+                echo "  to_sdk          Generate a client SDK\n";
+                echo "  to_server       Generate server boilerplate, models, and routing logic\n\n";
+                echo "Options:\n";
+                echo "  -i, --input <spec>    Path to the OpenAPI specification file\n";
+                echo "  -d, --input-dir <dir> Path to a directory containing OpenAPI specifications\n";
+                echo "  -o, --output <dir>    Destination path for generation\n";
+                echo "  --no-github-actions   Disable GitHub Actions generation\n";
+                echo "  --no-installable-package Disable Composer package generation\n";
+                echo "  --tests               Generate PHPUnit tests\n";
+                echo "  --mcp                 Generate MCP server\n";
+                echo "  --help, -h            Show this help message\n";
+                return 0;
+            } elseif ($command === 'to_openapi') {
+                echo "Usage: cdd-php to_openapi [options]\n\n";
+                echo "Options:\n";
+                echo "  -i, --input <path>    Path to the source code directory or file to parse\n";
+                echo "  -o, --output <path>   Destination file for the OpenAPI specification\n";
+                echo "  --help, -h            Show this help message\n";
+                return 0;
+            } elseif ($command === 'to_docs_json') {
+                echo "Usage: cdd-php to_docs_json [options]\n\n";
+                echo "Options:\n";
+                echo "  -i, --input <spec>    Path to the OpenAPI specification file\n";
+                echo "  -o, --output <path>   Destination file for the JSON documentation\n";
+                echo "  --no-imports          Disable import statements in the generated documentation\n";
+                echo "  --no-wrapping         Disable line wrapping in the generated documentation\n";
+                echo "  --help, -h            Show this help message\n";
+                return 0;
+            } elseif ($command === 'serve_json_rpc') {
+                echo "Usage: cdd-php serve_json_rpc [options]\n\n";
+                echo "Options:\n";
+                echo "  -p, --port <port>     Port to listen on (e.g., 8080)\n";
+                echo "  -l, --listen <addr>   Address to bind to (e.g., 127.0.0.1)\n";
+                echo "  --help, -h            Show this help message\n";
+                return 0;
+            } elseif ($command === 'sync') {
+                echo "Usage: cdd-php sync [options]\n\n";
+                echo "Options:\n";
+                echo "  -i, --input <directory> Target directory to synchronize\n";
+                echo "  -t, --truth <source>  Source of truth for synchronization (e.g., 'class', 'spec')\n";
+                echo "  --help, -h            Show this help message\n";
+                return 0;
+            } elseif ($command === 'mcp') {
+                echo "Usage: cdd-php mcp\n\n";
+                echo "Run the generator as an MCP server over stdio.\n";
+                return 0;
+            }
         }
 
         if ($command === "mcp") {
@@ -257,7 +344,7 @@ class CddCli
                             [
                                 'name' => 'sync',
                                 'description' => 'Bidirectional sync code and schema',
-                                'inputSchema' => ['type' => 'object', 'properties' => ['dir' => ['type' => 'string']], 'required' => ['dir']]
+                                'inputSchema' => ['type' => 'object', 'properties' => ['input' => ['type' => 'string'], 'truth' => ['type' => 'string']], 'required' => ['input']]
                             ]
                         ];
 
@@ -282,7 +369,13 @@ class CddCli
                             } elseif ($name === 'to_openapi') {
                                 /*cov_ignore*/                                 self::run(['cdd-php', 'to_openapi', '-i', $args['input'], '-o', $args['output']]);
                             } elseif ($name === 'sync') {
-                                /*cov_ignore*/                                 self::run(['cdd-php', 'sync', '-d', $args['dir']]);
+                                /*cov_ignore*/                                 $syncArgs = ['cdd-php', 'sync', '-i', $args['input']];
+                                /*cov_ignore*/                                 if (isset($args['truth'])) {
+                                    /*cov_ignore*/                                     $syncArgs[] = '-t';
+                                    /*cov_ignore*/                                     $syncArgs[] = $args['truth'];
+                                    /*cov_ignore*/
+                                }
+                                /*cov_ignore*/                                 self::run($syncArgs);
                             } else {
                                 throw new \Exception('Unknown tool');
                             }
@@ -313,11 +406,8 @@ class CddCli
                     /*cov_ignore*/
                 } elseif (($argv[$i] === "--listen" || $argv[$i] === "-l") && isset($argv[$i + 1])) {
                     /*cov_ignore*/                     $listen = $argv[++$i];
-                    /*cov_ignore*/
-                    /*cov_ignore*/
-                    /*cov_ignore*/
-                } elseif ($argv[$i] === "--timeout" && isset($argv[$i + 1])) { // @codeCoverageIgnore
-                    /*cov_ignore*/                     $timeout = (float)$argv[++$i];
+                } elseif ($argv[$i] === "--timeout" && isset($argv[$i + 1])) {
+                    $timeout = (float)$argv[++$i];
                 }
             }
             $serverUrl = "tcp://$listen:$port";
@@ -397,15 +487,19 @@ Content-Type: application/json
 
         if ($command === 'sync') {
             $dir = '';
+            $truth = '';
             for ($i = 2; $i < $argc; $i++) {
-                if ($argv[$i] === '-d' && isset($argv[$i + 1])) {
+                if (($argv[$i] === '-i' || $argv[$i] === '--input') && isset($argv[$i + 1])) {
                     $dir = $resolvePath($argv[$i + 1]);
+                    $i++;
+                } elseif (($argv[$i] === '-t' || $argv[$i] === '--truth') && isset($argv[$i + 1])) {
+                    $truth = $argv[$i + 1];
                     $i++;
                     /*cov_ignore*/
                     /*cov_ignore*/
                     /*cov_ignore*/
                     /*cov_ignore*/
-                } elseif ($argv[$i] !== '-d' && $dir === '') { // @codeCoverageIgnore
+                } elseif ($argv[$i] !== '-i' && $argv[$i] !== '--input' && $argv[$i] !== '-t' && $argv[$i] !== '--truth' && $dir === '') { // @codeCoverageIgnore
                     /*cov_ignore*/                     $dir = $resolvePath($argv[$i]);
                 }
             }
@@ -758,7 +852,7 @@ Content-Type: application/json
             return 0;
         }
 
-        if ($command === 'to_openapi' || $command === 'parse') {
+        if ($command === 'to_openapi') {
             $file = '';
             $outFile = '';
             for ($i = 2; $i < $argc; $i++) {
@@ -1096,7 +1190,7 @@ Content-Type: application/json
                 if (($argv[$i] === '-i' || $argv[$i] === '--input') && isset($argv[$i + 1])) {
                     $file = $resolvePath($argv[$i + 1]);
                     $i++;
-                } elseif ($argv[$i] === '--input-dir' && isset($argv[$i + 1])) {
+                } elseif (($argv[$i] === '-d' || $argv[$i] === '--input-dir') && isset($argv[$i + 1])) {
                     /*cov_ignore*/                     $inputDir = $resolvePath($argv[$i + 1]);
                     /*cov_ignore*/                     $i++;
                 } elseif (($argv[$i] === '-o' || $argv[$i] === '--output') && isset($argv[$i + 1])) {
