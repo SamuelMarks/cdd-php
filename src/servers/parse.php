@@ -13,7 +13,6 @@ namespace Cdd\Servers;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\Property;
 use PhpParser\NodeFinder;
-use PhpParser\ParserFactory;
 
 /**
  * Parses PHP class to extract OpenAPI Server Objects.
@@ -23,7 +22,7 @@ use PhpParser\ParserFactory;
  */
 function parse(string $code): array
 {
-    $parser = (new ParserFactory())->createForNewestSupportedVersion();
+    $parser = \Cdd\Classes\create_parser();
     try {
         $stmts = $parser->parse($code);
     } catch (\Throwable $e) {

@@ -85,15 +85,7 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
     if (isset($operation['responses']['200']['content']['application/json']['schema'])) {
         $schema = $operation['responses']['200']['content']['application/json']['schema'];
         if (isset($schema['type'])) {
-            $typeMap = [
-                'integer' => 'int',
-                'number' => 'float',
-                'boolean' => 'bool',
-                'string' => 'string',
-                'array' => 'array',
-                'object' => 'object',
-            ];
-            $returnType = $typeMap[$schema['type']] ?? '';
+            $returnType = \Cdd\Schemas\openapi_type_to_php((string) $schema['type'], '');
             if ($schema['type'] === 'array' && isset($schema['items']['$ref'])) {
                 $parts = explode('/', $schema['items']['$ref']);
                 $primarySchema = end($parts);

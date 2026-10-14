@@ -1,46 +1,58 @@
 <?php
 
+/**
+ * Tests for the `cdd-php sync` CLI subcommand.
+ *
+ * @package Cdd\Tests\Cli
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Cli;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Verifies bidirectional synchronization via `CddCli::run(['cdd-php', 'sync', ...])`.
+ */
 class SyncCommandTest extends TestCase
 {
-    public function testSync()
+    /**
+     * Tests synchronizing a directory containing models and routes.
+     *
+     * @return void
+     */
+    public function testSync(): void
     {
         $dir = sys_get_temp_dir() . '/cdd_sync_test_' . uniqid();
         mkdir($dir);
         mkdir("$dir/src");
 
-        file_put_contents("$dir/src/Models.php", "<?php\nclass User { public int \$id; public string \$name; }\n");
-        file_put_contents("$dir/src/routes.php", "<?php\n/**\n * @return User\n */\nfunction getUser() {}\n");
+        file_put_contents("$dir/src/Models.php", "<?php
+class User { public int \$id; public string \$name; }
+");
+        file_put_contents("$dir/src/routes.php", "<?php
+/**
+ * @return User
+ */
+function getUser() {}
+");
 
         ob_start();
         \Cdd\Cli\CddCli::run(['cdd-php', 'sync', '-i', $dir]);
-        $out = ob_get_clean();
+        $out = (string) ob_get_clean();
 
         $this->assertTrue(strpos($out, 'Synchronized codebase in') !== false);
         $this->assertTrue(file_exists("$dir/openapi.json"));
 
         ob_start();
         \Cdd\Cli\CddCli::run(['cdd-php', 'sync', '-i', $dir, '-t', 'class']);
-        $out = ob_get_clean();
+        $out = (string) ob_get_clean();
         $this->assertTrue(strpos($out, 'Synchronized codebase in') !== false);
 
-        $json = json_decode(file_get_contents("$dir/openapi.json"), true);
+        $json = json_decode((string) file_get_contents("$dir/openapi.json"), true);
         $this->assertTrue(isset($json['components']['schemas']['User']));
 
-        // cleanup
-        $files = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
-        );
-        foreach ($files as $fileinfo) {
-            $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
-            $todo($fileinfo->getRealPath());
-        }
-        rmdir($dir);
+        $this->removeDir($dir);
     }
 }

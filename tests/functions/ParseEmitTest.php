@@ -1,14 +1,28 @@
 <?php
 
+/**
+ * Tests for standalone PHP function parsing and emission (`\Cdd\Functions`).
+ *
+ * @package Cdd\Tests\Functions
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Functions;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests `\Cdd\Functions\parse` and `\Cdd\Functions\emit`.
+ */
 class ParseEmitTest extends TestCase
 {
-    public function testParseAndEmit()
+    /**
+     * Tests parsing and emitting a standalone PHP function with docblock.
+     *
+     * @return void
+     */
+    public function testParseAndEmit(): void
     {
         $code = "<?php
 
@@ -22,34 +36,47 @@ function my_func(int \$a): int {
 
         $functions = \Cdd\Functions\parse($code);
         $this->assertEquals(1, count($functions));
-
         $this->assertEquals('my_func', $functions[0]['name']);
 
         $emitted = \Cdd\Functions\emit($functions[0]);
-        $expected = '/**
+        $expected = "/**
  * Test function
  */
-function my_func(int $a): int {
-    return $a + 1;
-}';
+function my_func(int \$a): int {
+    return \$a + 1;
+}";
         $this->assertEquals($expected, $emitted);
     }
 
-    public function testEmitWithMissingKeys()
+    /**
+     * Tests emitting with missing node/tokens keys.
+     *
+     * @return void
+     */
+    public function testEmitWithMissingKeys(): void
     {
         $this->assertEquals('', \Cdd\Functions\emit([]));
     }
 
-    public function testParseInvalidCode()
+    /**
+     * Tests parsing syntactically invalid PHP code.
+     *
+     * @return void
+     */
+    public function testParseInvalidCode(): void
     {
         $this->assertEquals([], \Cdd\Functions\parse('<?php class { '));
     }
 
-    public function testParseAnonymousFunction()
+    /**
+     * Tests that closures are not extracted as standalone named functions.
+     *
+     * @return void
+     */
+    public function testParseAnonymousFunction(): void
     {
-        // Actually, PHP parser uses Closure for anonymous functions, but let's test just in case
         $code = "<?php \$a = function() {};";
         $functions = \Cdd\Functions\parse($code);
-        $this->assertEquals(0, count($functions)); // Because it finds Function_ not Closure_
+        $this->assertEquals(0, count($functions));
     }
 }

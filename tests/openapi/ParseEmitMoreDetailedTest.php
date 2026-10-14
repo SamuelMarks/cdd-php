@@ -1,110 +1,139 @@
 <?php
 
+/**
+ * Tests for Response content, Callbacks, Security Requirements, Webhooks, and uniqueness rules (`\Cdd\Openapi\parse`).
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests uniqueness and structural rules for Operations, Parameters, Webhooks, and Security.
+ */
 class ParseEmitMoreDetailedTest extends TestCase
 {
-    public function testInvalidResponseObjectContent()
+    /**
+     * Tests error when Response `content` is not a map.
+     *
+     * @return void
+     */
+    public function testInvalidResponseObjectContent(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"A","content":"invalid"}}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Response "content" must be a map') !== false);
-        }
+        }, \RuntimeException::class, 'Response "content" must be a map');
     }
 
-    public function testInvalidOperationCallback()
+    /**
+     * Tests error when Operation `callbacks` entry is not an object.
+     *
+     * @return void
+     */
+    public function testInvalidOperationCallback(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"callbacks":{"ev":"invalid"}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Callback must be an object') !== false);
-        }
+        }, \RuntimeException::class, 'Callback must be an object');
     }
 
-    public function testInvalidSecurityRequirementScope()
+    /**
+     * Tests error when Security Requirement scopes is not an array.
+     *
+     * @return void
+     */
+    public function testInvalidSecurityRequirementScope(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"security":[{"api_key":"invalid"}],"paths":{}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Security Requirement scopes must be an array of strings') !== false);
-        }
+        }, \RuntimeException::class, 'Security Requirement scopes must be an array of strings');
     }
 
-    public function testInvalidSecurityRequirementScopeItems()
+    /**
+     * Tests error when Security Requirement scope elements are not strings.
+     *
+     * @return void
+     */
+    public function testInvalidSecurityRequirementScopeItems(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"security":[{"api_key":[123]}],"paths":{}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Security Requirement scopes must be an array of strings') !== false);
-        }
+        }, \RuntimeException::class, 'Security Requirement scopes must be an array of strings');
     }
 
-    public function testInvalidOperationSecurityRequirement()
+    /**
+     * Tests error when an Operation Security Requirement entry is not an object/map.
+     *
+     * @return void
+     */
+    public function testInvalidOperationSecurityRequirement(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"security":["invalid"]}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Security Requirement must be an object/map') !== false);
-        }
+        }, \RuntimeException::class, 'Security Requirement must be an object/map');
     }
-    public function testInvalidWebhooksObject()
+
+    /**
+     * Tests error when top-level `webhooks` is not a map.
+     *
+     * @return void
+     */
+    public function testInvalidWebhooksObject(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"webhooks":"invalid"}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Field "webhooks" must be a map') !== false);
-        }
+        }, \RuntimeException::class, 'Field "webhooks" must be a map');
     }
 
-    public function testInvalidWebhooksPathItem()
+    /**
+     * Tests error when a `webhooks` entry is not a Path Item Object.
+     *
+     * @return void
+     */
+    public function testInvalidWebhooksPathItem(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"webhooks":{"myHook":"invalid"}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Path Item must be an object') !== false);
-        }
+        }, \RuntimeException::class, 'Path Item must be an object');
     }
 
-    public function testDuplicateOperationIds()
+    /**
+     * Tests error when `operationId` values are duplicated across operations.
+     *
+     * @return void
+     */
+    public function testDuplicateOperationIds(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"operationId":"dup","responses":{"200":{"description":"ok"}}}},"/b":{"post":{"operationId":"dup","responses":{"200":{"description":"ok"}}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'MUST be unique among all operations') !== false);
-        }
+        }, \RuntimeException::class, 'MUST be unique among all operations');
     }
 
-    public function testDuplicateOperationParameters()
+    /**
+     * Tests error when an Operation parameters list contains duplicates.
+     *
+     * @return void
+     */
+    public function testDuplicateOperationParameters(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"parameters":[{"name":"id","in":"query","schema":{}},{"name":"id","in":"query","schema":{}}]}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Operation parameters list MUST NOT include duplicated parameters') !== false);
-        }
+        }, \RuntimeException::class, 'Operation parameters list MUST NOT include duplicated parameters');
     }
 
-    public function testDuplicatePathItemParameters()
+    /**
+     * Tests error when a Path Item parameters list contains duplicates.
+     *
+     * @return void
+     */
+    public function testDuplicatePathItemParameters(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query","schema":{}},{"name":"id","in":"query","schema":{}}]}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Path Item parameters list MUST NOT include duplicated parameters') !== false);
-        }
+        }, \RuntimeException::class, 'Path Item parameters list MUST NOT include duplicated parameters');
     }
-
 }

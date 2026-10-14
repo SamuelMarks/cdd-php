@@ -1,16 +1,33 @@
 <?php
 
+/**
+ * Tests for OpenAPI Example / Mock parsing, emission, and validation (`\Cdd\Mocks`).
+ *
+ * @package Cdd\Tests\Mocks
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Mocks;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests `\Cdd\Mocks\parse`, `\Cdd\Mocks\emit`, `\Cdd\Mocks\emit_modular`, and example validation.
+ */
 class ParseEmitTest extends TestCase
 {
-    public function testParseAndEmit()
+    /**
+     * Tests parsing and emitting PHP mock arrays.
+     *
+     * @return void
+     */
+    public function testParseAndEmit(): void
     {
-        $code = "<?php\n\nreturn ['example1' => ['test' => 123]];\n";
+        $code = "<?php
+
+return ['example1' => ['test' => 123]];
+";
         $parsed = \Cdd\Mocks\parse($code);
         $this->assertEquals(123, $parsed['example1']['dataValue']['test']);
 
@@ -19,7 +36,12 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(strpos($emitted, "'dataValue' =>") !== false);
     }
 
-    public function testEmitModular()
+    /**
+     * Tests emitting modular mock files.
+     *
+     * @return void
+     */
+    public function testEmitModular(): void
     {
         $examples = ['example1' => ['dataValue' => ['test' => 123]]];
         $files = \Cdd\Mocks\emit_modular($examples);
@@ -27,33 +49,55 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(isset($files['example1Mock.php']));
         $this->assertStringContainsString("'dataValue' =>", $files['example1Mock.php']);
     }
-    public function testParseJSONMocks()
+
+    /**
+     * Tests parsing mock files that already wrap data inside `dataValue`.
+     *
+     * @return void
+     */
+    public function testParseJSONMocks(): void
     {
-        $code = "<?php\nreturn [\n    'example1' => ['dataValue' => ['test'=>123]]\n];";
+        $code = "<?php
+return [
+    'example1' => ['dataValue' => ['test'=>123]]
+];";
         $parsed = \Cdd\Mocks\parse($code);
         $this->assertTrue(isset($parsed['example1']));
         $this->assertEquals(123, $parsed['example1']['dataValue']['test']);
     }
 
-
-    public function testParseCatch()
+    /**
+     * Tests AST evaluation of scalar, unary, boolean, null, and list nodes in mock files.
+     *
+     * @return void
+     */
+    public function testParseCatch(): void
     {
         $code = "<?php throw new \Exception('test');";
         $parsed = \Cdd\Mocks\parse($code);
         $this->assertEquals([], $parsed);
 
-        $invalidSyntax = "<?php return [;";
+        $invalidSyntax = '<?php return [;';
         $this->assertEquals([], \Cdd\Mocks\parse($invalidSyntax));
 
-        $richMocks = "<?php return [\n"
-            . "    'ex1' => [\n"
-            . "        'negInt' => -42,\n"
-            . "        'negFloat' => -3.14,\n"
-            . "        'flagTrue' => true,\n"
-            . "        'flagFalse' => false,\n"
-            . "        'flagNull' => null,\n"
-            . "        'list' => ['a', 'b'],\n"
-            . "    ]\n"
+        $richMocks = "<?php return [
+"
+            . "    'ex1' => [
+"
+            . "        'negInt' => -42,
+"
+            . "        'negFloat' => -3.14,
+"
+            . "        'flagTrue' => true,
+"
+            . "        'flagFalse' => false,
+"
+            . "        'flagNull' => null,
+"
+            . "        'list' => ['a', 'b'],
+"
+            . "    ]
+"
             . "];";
         $parsedRich = \Cdd\Mocks\parse($richMocks);
         $this->assertEquals(-42, $parsedRich['ex1']['dataValue']['negInt']);
@@ -65,7 +109,12 @@ class ParseEmitTest extends TestCase
         $this->assertNull(\Cdd\Mocks\evaluateAstNode(null));
     }
 
-    public function testValidateExampleOrReferenceObject()
+    /**
+     * Tests validation errors and valid shapes for Example or Reference Objects.
+     *
+     * @return void
+     */
+    public function testValidateExampleOrReferenceObject(): void
     {
         $tests = [
             ['input' => 'not array', 'error' => 'Example must be an object'],
@@ -78,17 +127,13 @@ class ParseEmitTest extends TestCase
         ];
 
         foreach ($tests as $test) {
-            $caught = false;
-            try {
+            $this->assertThrows(function () use ($test): void {
                 \Cdd\Mocks\validateExampleOrReferenceObject($test['input']);
-            } catch (\RuntimeException $e) {
-                $this->assertEquals($test['error'], $e->getMessage());
-                $caught = true;
-            }
-            $this->assertTrue($caught, "Expected exception: {$test['error']}");
+            }, \RuntimeException::class, $test['error']);
         }
 
-        // test valid reference object
-        \Cdd\Mocks\validateExampleOrReferenceObject(['$ref' => '#/components/examples/Test']);
+        $this->assertDoesNotThrow(function (): void {
+            \Cdd\Mocks\validateExampleOrReferenceObject(['$ref' => '#/components/examples/Test']);
+        });
     }
 }

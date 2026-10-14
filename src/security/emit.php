@@ -24,9 +24,11 @@ function emit(array $security): string
         foreach ($req as $name => $scopes) {
             $scopesStr = '[]';
             if (!empty($scopes)) {
-                $scopesStr = "['" . implode("', '", $scopes) . "']";
+                $exportedScopes = array_map(static fn (string $s): string => var_export($s, true), $scopes);
+                $scopesStr = '[' . implode(', ', $exportedScopes) . ']';
             }
-            $out .= "    \$this->requireSecurity('$name', $scopesStr, \$headers, \$params);
+            $exportedName = var_export((string) $name, true);
+            $out .= "    \$this->requireSecurity({$exportedName}, {$scopesStr}, \$headers, \$params);
 ";
         }
     }

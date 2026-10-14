@@ -18,14 +18,13 @@ namespace Cdd\Cli;
  */
 function emit(array $paths, string $existingCode = ''): string
 {
-    $out = "<?php\n\n/**\n * Auto-generated API CLI\n * Usage: php api_cli.php <command> [args]\n */\n\n";
-    $out .= "require_once __DIR__ . '/ApiClient.php';\n\n";
-    $out .= "\$client = new ApiClient('http://localhost');\n\n";
+    $out = $existingCode !== '' ? $existingCode : "<?php\n\n/**\n * Auto-generated API CLI\n * Usage: php api_cli.php <command> [args]\n */\n\ndeclare(strict_types=1);\n\nrequire_once __DIR__ . '/ApiClient.php';\n\nuse Api\\ApiClient;\n\n\$client = new ApiClient('http://localhost');\n\n";
     $out .= "\$command = \$argv[1] ?? '--help';\n\n";
     $out .= "if (\$command === '--help' || \$command === '-h') {\n";
     $out .= "    echo \"Usage: php api_cli.php <command> [args]\\n\\n\";\n";
     $out .= "    echo \"Commands:\\n\";\n";
     $commands = [];
+    $methodNames = [];
     $to_snake_case = function (string $text): string {
         return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $text));
     };
@@ -35,31 +34,32 @@ function emit(array $paths, string $existingCode = ''): string
             if (in_array(strtolower((string) $method), ['parameters', 'summary', 'description', 'servers'], true)) {
                 continue;
             }
-            $opId = $operation['operationId'] ?? strtolower((string) $method) . preg_replace('/[^a-zA-Z0-9]/', '', (string) $path);
-            $opId = $to_snake_case((string) $opId);
+            $rawOpId = (string) ($operation['operationId'] ?? strtolower((string) $method) . '_' . preg_replace('/[^a-zA-Z0-9]/', '_', (string) $path));
+            $opId = $to_snake_case($rawOpId);
             $commands[$opId] = $operation;
-            $desc = $operation['description'] ?? 'Call ' . strtoupper((string) $method) . ' ' . $path;
-            $out .= "    echo \"  " . str_pad($opId, 25) . " $desc\\n\";\n";
+            $methodNames[$opId] = $rawOpId;
+            $desc = (string) ($operation['description'] ?? 'Call ' . strtoupper((string) $method) . ' ' . $path);
+            $out .= "    echo \"  " . str_pad($opId, 25) . " " . addslashes($desc) . "\\n\";\n";
         }
     }
     $out .= "    exit(0);\n";
     $out .= "}\n\n";
 
     foreach ($commands as $opId => $operation) {
+        $clientMethod = $methodNames[$opId];
         $out .= "if (\$command === '$opId') {\n";
         $out .= "    if (isset(\$argv[2]) && (\$argv[2] === '--help' || \$argv[2] === '-h')) {\n";
         $out .= "        echo \"Usage: php api_cli.php $opId [args]\\n\\n\";\n";
         if (isset($operation['description'])) {
-            $out .= "        echo \"" . addslashes($operation['description']) . "\\n\\n\";\n";
+            $out .= "        echo \"" . addslashes((string) $operation['description']) . "\\n\\n\";\n";
         }
         $out .= "        echo \"Options:\\n\";\n";
 
-        $paramsHelp = [];
         if (isset($operation['parameters'])) {
             foreach ($operation['parameters'] as $p) {
                 $name = $p['name'] ?? 'param';
                 $req = !empty($p['required']) ? '(required)' : '(optional)';
-                $desc = $p['description'] ?? '';
+                $desc = addslashes((string) ($p['description'] ?? ''));
                 $out .= "        echo \"  --$name $req $desc\\n\";\n";
             }
         }
@@ -87,7 +87,7 @@ function emit(array $paths, string $existingCode = ''): string
         $out .= "            }\n";
         $out .= "        }\n";
         $out .= "    }\n";
-        $out .= "    \$response = \$client->$opId(\$params, \$body);\n";
+        $out .= "    \$response = \$client->$clientMethod(\$params, \$body);\n";
         $out .= "    echo json_encode(\$response, JSON_PRETTY_PRINT) . \"\\n\";\n";
         $out .= "    exit(0);\n";
         $out .= "}\n\n";
@@ -249,10 +249,11 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "                        continue;\n";
     $out .= "                    }\n";
     $out .= "                }\n";
-    $out .= "                switch (\$name) {\n";
+    $out .= "                try {\n";
     $out .= "                    \$callRes = null;\n";
     $out .= "                    switch (\$name) {\n";
     foreach ($commands as $opId => $operation) {
+        $clientMethod = $methodNames[$opId];
         $out .= "                        case '$opId':\n";
         $out .= "                            \$params = [];\n";
         $out .= "                            \$body = [];\n";
@@ -265,7 +266,7 @@ function emit(array $paths, string $existingCode = ''): string
         if (isset($operation['requestBody'])) {
             $out .= "                            \$body = \$args['body'] ?? [];\n";
         }
-        $out .= "                            \$callRes = \$client->$opId(\$params, \$body);\n";
+        $out .= "                            \$callRes = \$client->$clientMethod(\$params, \$body);\n";
         $out .= "                            break;\n";
     }
     $out .= "                        default:\n";

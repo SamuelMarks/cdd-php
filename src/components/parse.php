@@ -70,7 +70,11 @@ function parse_classes(array $classes, array $existingComponents = []): array
                 $mediaType['itemSchema'] = ['$ref' => '#/components/schemas/' . trim((string) $parsedDoc['tags']['itemSchema'][0])];
             }
             if (isset($parsedDoc['tags']['itemEncoding'])) {
-                $mediaType['itemEncoding'] = ['contentType' => trim((string) $parsedDoc['tags']['itemEncoding'][0])];
+                $rawItemEnc = trim((string) $parsedDoc['tags']['itemEncoding'][0]);
+                $decodedEnc = json_decode($rawItemEnc, true);
+                $mediaType['itemEncoding'] = is_array($decodedEnc)
+                    ? \Cdd\Encoding\parse($decodedEnc)
+                    : \Cdd\Encoding\parse(['contentType' => $rawItemEnc]);
             }
             $components[$type][$name] = $mediaType;
         } elseif ($type === 'parameters') {

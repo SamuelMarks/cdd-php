@@ -14,7 +14,6 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\NodeFinder;
-use PhpParser\ParserFactory;
 
 /**
  * Parses a test file to extract operations tested.
@@ -25,7 +24,7 @@ use PhpParser\ParserFactory;
 function parse(string $testCode): array
 {
     $tested = [];
-    $parser = (new ParserFactory())->createForNewestSupportedVersion();
+    $parser = \Cdd\Classes\create_parser();
     try {
         $stmts = $parser->parse($testCode);
     } catch (\Throwable $e) {

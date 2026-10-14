@@ -10,7 +10,8 @@ declare(strict_types=1);
 
 namespace Cdd\Functions;
 
-use PhpParser\Node\Stmt\Function_;
+use PhpParser\Node;
+use PhpParser\Token;
 
 /**
  * Emits a PHP function from its extracted node.
@@ -24,25 +25,10 @@ function emit(array $functionInfo): string
         return '';
     }
 
-    /** @var Function_ $node */
+    /** @var Node $node */
     $node = $functionInfo['node'];
+    /** @var array<int, Token> $tokens */
     $tokens = $functionInfo['tokens'];
 
-    $start = $node->getStartTokenPos();
-    $end = $node->getEndTokenPos();
-
-    $comments = $node->getAttribute('comments');
-    if (is_array($comments) && count($comments) > 0) {
-        $firstCommentStart = $comments[0]->getStartTokenPos();
-        if ($firstCommentStart !== -1 && $firstCommentStart < $start) {
-            $start = $firstCommentStart;
-        }
-    }
-
-    $code = '';
-    for ($i = $start; $i <= $end; $i++) {
-        $code .= $tokens[$i]->text;
-    }
-
-    return ltrim($code);
+    return \Cdd\Classes\extract_node_source($node, $tokens);
 }

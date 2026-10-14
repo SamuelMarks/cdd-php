@@ -12,7 +12,6 @@ namespace Cdd\Functions;
 
 use PhpParser\Node\Stmt\Function_;
 use PhpParser\NodeFinder;
-use PhpParser\ParserFactory;
 
 /**
  * Parses PHP source code to extract standalone functions using nikic/php-parser.
@@ -22,7 +21,7 @@ use PhpParser\ParserFactory;
  */
 function parse(string $code): array
 {
-    $parser = (new ParserFactory())->createForNewestSupportedVersion();
+    $parser = \Cdd\Classes\create_parser();
     try {
         $stmts = $parser->parse($code);
     } catch (\Throwable $e) {

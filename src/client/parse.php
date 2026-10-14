@@ -20,7 +20,6 @@ use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Expression;
 use PhpParser\NodeFinder;
-use PhpParser\ParserFactory;
 
 /**
  * Parses client PHP code to extract operations.
@@ -31,7 +30,7 @@ use PhpParser\ParserFactory;
 function parse(string $clientCode): array
 {
     $operations = [];
-    $parser = (new ParserFactory())->createForNewestSupportedVersion();
+    $parser = \Cdd\Classes\create_parser();
     try {
         $stmts = $parser->parse($clientCode);
     } catch (\Throwable $e) {

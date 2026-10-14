@@ -1,14 +1,28 @@
 <?php
 
+/**
+ * Tests for OpenAPI RequestBody Object parsing, emission, and validation (`\Cdd\RequestBodies`).
+ *
+ * @package Cdd\Tests\RequestBodies
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\RequestBodies;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests `\Cdd\RequestBodies\parse`, `\Cdd\RequestBodies\emit`, and requestBody validation.
+ */
 class ParseEmitTest extends TestCase
 {
-    public function testParseAndEmit()
+    /**
+     * Tests parsing and emitting an OpenAPI RequestBody Object.
+     *
+     * @return void
+     */
+    public function testParseAndEmit(): void
     {
         $rb = \Cdd\RequestBodies\parse('User', 'A user object');
 
@@ -18,31 +32,50 @@ class ParseEmitTest extends TestCase
 
         $emitted = \Cdd\RequestBodies\emit($rb, 'user');
         $this->assertEquals('User $user', $emitted);
+
+        $rbScalar = \Cdd\RequestBodies\parse('string');
+        $this->assertEquals('string', $rbScalar['content']['application/json']['schema']['type']);
     }
 
-    public function testValidateRef()
+    /**
+     * Tests validating a RequestBody Reference Object.
+     *
+     * @return void
+     */
+    public function testValidateRef(): void
     {
         $ref = ['$ref' => '#/components/requestBodies/User'];
-        \Cdd\RequestBodies\validateRequestBodyOrReferenceObject($ref);
-        $this->assertEquals('#/components/requestBodies/User', $ref['$ref']);
+        $this->assertDoesNotThrow(function () use ($ref): void {
+            \Cdd\RequestBodies\validateRequestBodyOrReferenceObject($ref);
+        });
     }
 
-    public function testValidateDescriptionNotString()
+    /**
+     * Tests validation error when RequestBody `description` is not a string.
+     *
+     * @return void
+     */
+    public function testValidateDescriptionNotString(): void
     {
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\RequestBodies\validateRequestBodyOrReferenceObject([
                 'content' => [],
-                'description' => 123
+                'description' => 123,
             ]);
         }, \RuntimeException::class, 'Request Body "description" must be a string');
     }
 
-    public function testValidateRequiredNotBool()
+    /**
+     * Tests validation error when RequestBody `required` is not a boolean.
+     *
+     * @return void
+     */
+    public function testValidateRequiredNotBool(): void
     {
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\RequestBodies\validateRequestBodyOrReferenceObject([
                 'content' => [],
-                'required' => 'yes'
+                'required' => 'yes',
             ]);
         }, \RuntimeException::class, 'Request Body "required" must be a boolean');
     }

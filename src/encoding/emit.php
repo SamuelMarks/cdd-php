@@ -21,21 +21,21 @@ function emit(array $encoding): string
     $out = "[
 ";
     if (isset($encoding['contentType'])) {
-        $out .= "    'contentType' => '" . addslashes((string) $encoding['contentType']) . "',
+        $out .= "    'contentType' => " . var_export((string) $encoding['contentType'], true) . ",
 ";
     }
     if (isset($encoding['headers']) && is_array($encoding['headers'])) {
         $out .= "    'headers' => [
 ";
         foreach ($encoding['headers'] as $name => $header) {
-            $out .= "        '" . addslashes((string) $name) . "' => " . \Cdd\Encoding\emit_header($header) . ",
+            $out .= "        " . var_export((string) $name, true) . " => " . \Cdd\Encoding\emit_header($header) . ",
 ";
         }
         $out .= "    ],
 ";
     }
     if (isset($encoding['style'])) {
-        $out .= "    'style' => '" . addslashes((string) $encoding['style']) . "',
+        $out .= "    'style' => " . var_export((string) $encoding['style'], true) . ",
 ";
     }
     if (isset($encoding['explode'])) {
@@ -61,11 +61,11 @@ function emit_header(array $header): string
     $out = "[
 ";
     if (isset($header['description'])) {
-        $out .= "            'description' => '" . addslashes((string) $header['description']) . "',
+        $out .= "            'description' => " . var_export((string) $header['description'], true) . ",
 ";
     }
     if (isset($header['schema']) && is_array($header['schema'])) {
-        $out .= "            'schema' => ['type' => '" . addslashes((string) ($header['schema']['type'] ?? '')) . "'],
+        $out .= "            'schema' => ['type' => " . var_export((string) ($header['schema']['type'] ?? ''), true) . "],
 ";
     }
     $out .= "        ]";

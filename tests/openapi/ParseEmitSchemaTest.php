@@ -1,14 +1,28 @@
 <?php
 
+/**
+ * Tests for OpenAPI Schema Object validation inside `components.schemas` (`\Cdd\Openapi\parse`).
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests Schema Discriminator, XML, type, properties, and items validation via `\Cdd\Openapi\parse`.
+ */
 class ParseEmitSchemaTest extends TestCase
 {
-    public function testParseSchemaDiscriminator()
+    /**
+     * Tests parsing a valid Schema Discriminator Object.
+     *
+     * @return void
+     */
+    public function testParseSchemaDiscriminator(): void
     {
         $json = '{
             "openapi": "3.2.0",
@@ -25,10 +39,15 @@ class ParseEmitSchemaTest extends TestCase
             }
         }';
         $parsed = \Cdd\Openapi\parse($json);
-        $this->assertEquals("type", $parsed['components']['schemas']['Test']['discriminator']['propertyName']);
+        $this->assertEquals('type', $parsed['components']['schemas']['Test']['discriminator']['propertyName']);
     }
 
-    public function testParseSchemaDiscriminatorInvalid()
+    /**
+     * Tests error when Discriminator is missing `propertyName`.
+     *
+     * @return void
+     */
+    public function testParseSchemaDiscriminatorInvalid(): void
     {
         $json = '{
             "openapi": "3.2.0",
@@ -44,15 +63,17 @@ class ParseEmitSchemaTest extends TestCase
                 }
             }
         }';
-        try {
+        $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Discriminator must contain a "propertyName" string') !== false);
-        }
+        }, \RuntimeException::class, 'Discriminator must contain a "propertyName" string');
     }
 
-    public function testParseSchemaXMLInvalid()
+    /**
+     * Tests error when XML `name` is not a string.
+     *
+     * @return void
+     */
+    public function testParseSchemaXMLInvalid(): void
     {
         $json = '{
             "openapi": "3.2.0",
@@ -68,15 +89,17 @@ class ParseEmitSchemaTest extends TestCase
                 }
             }
         }';
-        try {
+        $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'XML "name" must be a string') !== false);
-        }
+        }, \RuntimeException::class, 'XML "name" must be a string');
     }
 
-    public function testSchemaTypeValidation()
+    /**
+     * Tests error when Schema `type` is neither a string nor an array of strings.
+     *
+     * @return void
+     */
+    public function testSchemaTypeValidation(): void
     {
         $json = '{
             "openapi": "3.2.0",
@@ -90,15 +113,17 @@ class ParseEmitSchemaTest extends TestCase
                 }
             }
         }';
-        try {
+        $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Schema "type" must be a string or array of strings') !== false);
-        }
+        }, \RuntimeException::class, 'Schema "type" must be a string or array of strings');
     }
 
-    public function testSchemaPropertiesValidation()
+    /**
+     * Tests parsing a Schema Object with an empty `properties` map.
+     *
+     * @return void
+     */
+    public function testSchemaPropertiesValidation(): void
     {
         $json = '{
             "openapi": "3.2.0",
@@ -116,7 +141,12 @@ class ParseEmitSchemaTest extends TestCase
         $this->assertEquals([], $parsed['components']['schemas']['Test']['properties']);
     }
 
-    public function testSchemaItemsValidation()
+    /**
+     * Tests parsing a Schema Object with `items`.
+     *
+     * @return void
+     */
+    public function testSchemaItemsValidation(): void
     {
         $json = '{
             "openapi": "3.2.0",
@@ -131,6 +161,6 @@ class ParseEmitSchemaTest extends TestCase
             }
         }';
         $parsed = \Cdd\Openapi\parse($json);
-        $this->assertEquals("string", $parsed['components']['schemas']['Test']['items']['type']);
+        $this->assertEquals('string', $parsed['components']['schemas']['Test']['items']['type']);
     }
 }

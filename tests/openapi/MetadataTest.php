@@ -1,10 +1,28 @@
 <?php
 
+/**
+ * Tests for OpenAPI top-level metadata emission and synchronization (`api_metadata.php`).
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
+declare(strict_types=1);
+
 namespace Cdd\Tests\Openapi;
 
-class MetadataTest extends \Cdd\Tests\Framework\TestCase
+use Cdd\Tests\Framework\TestCase;
+
+/**
+ * Verifies round-trip preservation of `info`, `jsonSchemaDialect`, `externalDocs`, `security`, and `tags`.
+ */
+class MetadataTest extends TestCase
 {
-    public function testMetadataEmitAndParse()
+    /**
+     * Tests emitting and syncing top-level OpenAPI metadata.
+     *
+     * @return void
+     */
+    public function testMetadataEmitAndParse(): void
     {
         $tmpDir = sys_get_temp_dir() . '/cdd-php-metadata-' . uniqid();
         mkdir($tmpDir);
@@ -17,13 +35,13 @@ class MetadataTest extends \Cdd\Tests\Framework\TestCase
                 'description' => 'A test api.',
                 'termsOfService' => 'http://example.com/tos',
                 'contact' => ['name' => 'API Support', 'url' => 'http://example.com/support', 'email' => 'support@example.com'],
-                'license' => ['name' => 'Apache 2.0', 'url' => 'http://www.apache.org/licenses/LICENSE-2.0.html']
+                'license' => ['name' => 'Apache 2.0', 'url' => 'http://www.apache.org/licenses/LICENSE-2.0.html'],
             ],
             'jsonSchemaDialect' => 'https://json-schema.org/draft/2020-12/schema',
             'externalDocs' => ['url' => 'http://example.com/docs'],
             'security' => [['apiKey' => []]],
             'tags' => [['name' => 'user']],
-            'paths' => []
+            'paths' => [],
         ];
 
         \Cdd\Openapi\emit($openapi, $tmpDir);
@@ -33,7 +51,7 @@ class MetadataTest extends \Cdd\Tests\Framework\TestCase
         $baseDir = dirname(__DIR__, 2);
         exec("php $baseDir/bin/cdd-php sync -i $tmpDir", $output, $returnVar);
 
-        $json = file_get_contents("$tmpDir/openapi.json");
+        $json = (string) file_get_contents("$tmpDir/openapi.json");
         $parsed = json_decode($json, true);
 
         $this->assertEquals('https://json-schema.org/draft/2020-12/schema', $parsed['jsonSchemaDialect']);
@@ -49,7 +67,6 @@ class MetadataTest extends \Cdd\Tests\Framework\TestCase
         $this->assertEquals('support@example.com', $parsed['info']['contact']['email']);
         $this->assertEquals('Apache 2.0', $parsed['info']['license']['name']);
 
-        // Clean up
-        exec("rm -rf " . escapeshellarg($tmpDir));
+        $this->removeDir($tmpDir);
     }
 }

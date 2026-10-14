@@ -21,16 +21,9 @@ namespace Cdd\Responses;
 function parse(string $statusCode = '200', string $type = 'string', string $description = 'Successful response'): array
 {
     $response = ['description' => $description, 'content' => ['application/json' => ['schema' => []]]];
-    $typeMap = [
-        'int' => 'integer',
-        'float' => 'number',
-        'bool' => 'boolean',
-        'string' => 'string',
-        'array' => 'array',
-        'object' => 'object',
-    ];
-    if (isset($typeMap[$type])) {
-        $response['content']['application/json']['schema']['type'] = $typeMap[$type];
+    $mappedType = \Cdd\Schemas\php_type_to_openapi($type);
+    if ($mappedType !== null) {
+        $response['content']['application/json']['schema']['type'] = $mappedType;
     } else {
         $response['content']['application/json']['schema']['$ref'] = "#/components/schemas/{$type}";
     }

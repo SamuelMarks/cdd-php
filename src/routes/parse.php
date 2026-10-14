@@ -10,12 +10,13 @@ declare(strict_types=1);
 
 namespace Cdd\Routes;
 
+use PhpParser\Node\Expr\Array_;
+use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\NodeFinder;
-use PhpParser\ParserFactory;
 
 /**
  * Parses PHP code to extract routing definitions.
@@ -25,7 +26,7 @@ use PhpParser\ParserFactory;
  */
 function parse(string $code): array
 {
-    $parser = (new ParserFactory())->createForNewestSupportedVersion();
+    $parser = \Cdd\Classes\create_parser();
     try {
         $stmts = $parser->parse($code);
     } catch (\Throwable $e) {
@@ -49,8 +50,27 @@ function parse(string $code): array
                         if (!isset($routes[$path])) {
                             $routes[$path] = [];
                         }
+                        $operationId = $method . preg_replace('/[^a-zA-Z0-9]/', '', $path);
+                        if (isset($call->args[1])) {
+                            $secondArg = $call->args[1]->value;
+                            if ($secondArg instanceof String_ && $secondArg->value !== '' && strpos($secondArg->value, '@') === false) {
+                                $operationId = $secondArg->value;
+                            } elseif ($secondArg instanceof Array_ && count($secondArg->items) >= 2) {
+                                $firstItem = $secondArg->items[0]->value ?? null;
+                                $secondItem = $secondArg->items[1]->value ?? null;
+                                if ($secondItem instanceof String_ && $secondItem->value !== '__invoke') {
+                                    $operationId = $secondItem->value;
+                                } elseif ($firstItem instanceof ClassConstFetch && $firstItem->class instanceof Name) {
+                                    $parts = explode('\\', $firstItem->class->toString());
+                                    $classShort = (string) end($parts);
+                                    if (str_ends_with($classShort, 'Controller') && strlen($classShort) > 10) {
+                                        $operationId = lcfirst(substr($classShort, 0, -10));
+                                    }
+                                }
+                            }
+                        }
                         $op = [
-                            'operationId' => $method . preg_replace('/[^a-zA-Z0-9]/', '', $path),
+                            'operationId' => $operationId,
                             'responses' => [
                                 '200' => [
                                     'description' => 'Successful operation',

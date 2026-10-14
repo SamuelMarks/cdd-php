@@ -1,31 +1,111 @@
 <?php
 
+/**
+ * Tests for synchronizing all OpenAPI Component types from annotated PHP classes.
+ *
+ * @package Cdd\Tests\Components
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Components;
 
 use Cdd\Cli\CddCli;
+use Cdd\Tests\Framework\TestCase;
 
-class SyncComponentsTest extends \Cdd\Tests\Framework\TestCase
+/**
+ * Tests `CddCli::run(['cdd-php', 'sync', ...])` for component docblock tags.
+ */
+class SyncComponentsTest extends TestCase
 {
-    public function testComponentsSync()
+    /**
+     * Tests syncing pathItems, callbacks, links, mediaTypes, parameters, responses, requestBodies, headers, and securitySchemes.
+     *
+     * @return void
+     */
+    public function testComponentsSync(): void
     {
         $tmpDir = sys_get_temp_dir() . '/cdd-php-comps-' . uniqid();
         mkdir($tmpDir);
 
-        $code = "<?php\n\n";
-        $code .= "/**\n * @pathItem\n * A reusable path item\n */\nclass ReusablePath {}\n";
-        $code .= "/**\n * @callback\n */\nclass OnEvent { public string \$status; }\n";
-        $code .= "/**\n * @link\n * @operationId getUser\n */\nclass GetUserLink {}\n";
-        $code .= "/**\n * @mediaType\n * @itemSchema User\n * @itemEncoding application/json\n */\nclass UserMedia {}\n";
-        $code .= "/**\n * @parameter\n * @in header\n * @name X-Custom\n * @required true\n */\nclass CustomParam { public string \$val; }\n";
-        $code .= "/**\n * @response\n * A custom response\n */\nclass CustomResponse { public string \$msg; }\n";
-        $code .= "/**\n * @requestBody\n * A custom request body\n */\nclass CustomBody { public string \$bodyVal; }\n";
-        $code .= "/**\n * @header\n * A custom header\n */\nclass CustomHeader { public string \$hVal; }\n";
-        $code .= "/**\n * @securityScheme\n * @type http\n * @scheme bearer\n * @bearerFormat JWT\n */\nclass HttpAuth {}\n";
-        $code .= "/**\n * @securityScheme\n * @type apiKey\n * @in query\n * @name api_key\n */\nclass ApiKeyAuth {}\n";
-        $code .= "/**\n * @securityScheme\n * @type oauth2\n * @flow implicit {\"authorizationUrl\":\"http://example.com/auth\",\"scopes\":{\"read\":\"read everything\"}}\n */\nclass OAuth2Auth {}\n";
-        $code .= "/**\n * @securityScheme\n * @type openIdConnect\n * @openIdConnectUrl http://example.com/.well-known\n */\nclass OpenIdConnectAuth {}\n";
+        $code = "<?php
+
+";
+        $code .= "/**
+ * @pathItem
+ * A reusable path item
+ */
+class ReusablePath {}
+";
+        $code .= "/**
+ * @callback
+ */
+class OnEvent { public string \$status; }
+";
+        $code .= "/**
+ * @link
+ * @operationId getUser
+ */
+class GetUserLink {}
+";
+        $code .= "/**
+ * @mediaType
+ * @itemSchema User
+ * @itemEncoding application/json
+ */
+class UserMedia {}
+";
+        $code .= "/**\n * @mediaType\n * @itemEncoding " . '{"contentType":"application/xml","style":"form"}' . "\n */\nclass XmlMedia {}\n";
+        $code .= "/**
+ * @parameter
+ * @in header
+ * @name X-Custom
+ * @required true
+ */
+class CustomParam { public string \$val; }
+";
+        $code .= "/**
+ * @response
+ * A custom response
+ */
+class CustomResponse { public string \$msg; }
+";
+        $code .= "/**
+ * @requestBody
+ * A custom request body
+ */
+class CustomBody { public string \$bodyVal; }
+";
+        $code .= "/**
+ * @header
+ * A custom header
+ */
+class CustomHeader { public string \$hVal; }
+";
+        $code .= "/**
+ * @securityScheme
+ * @type http
+ * @scheme bearer
+ * @bearerFormat JWT
+ */
+class HttpAuth {}
+";
+        $code .= "/**
+ * @securityScheme
+ * @type apiKey
+ * @in query
+ * @name api_key
+ */
+class ApiKeyAuth {}
+";
+        $code .= "/**\n * @securityScheme\n * @type oauth2\n * @flow implicit " . '{"authorizationUrl":"http://example.com/auth","scopes":{"read":"read everything"}}' . "\n */\nclass OAuth2Auth {}\n";
+        $code .= "/**
+ * @securityScheme
+ * @type openIdConnect
+ * @openIdConnectUrl http://example.com/.well-known
+ */
+class OpenIdConnectAuth {}
+";
 
         mkdir("$tmpDir/src", 0777, true);
         file_put_contents("$tmpDir/src/Models.php", $code);
@@ -76,6 +156,6 @@ class SyncComponentsTest extends \Cdd\Tests\Framework\TestCase
         $this->assertEquals('openIdConnect', $openapi['components']['securitySchemes']['OpenIdConnectAuth']['type']);
         $this->assertEquals('http://example.com/.well-known', $openapi['components']['securitySchemes']['OpenIdConnectAuth']['openIdConnectUrl']);
 
-        exec("rm -rf " . escapeshellarg($tmpDir));
+        $this->removeDir($tmpDir);
     }
 }

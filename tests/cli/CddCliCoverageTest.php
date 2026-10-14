@@ -1,15 +1,29 @@
 <?php
 
+/**
+ * In-process MCP server and LLM sampling coverage tests for `CddCli`.
+ *
+ * @package Cdd\Tests\Cli
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Cli;
 
-use Cdd\Tests\Framework\TestCase;
 use Cdd\Cli\CddCli;
+use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests `CddCli::sample_llm` EOF handling and in-process `mcp` protocol branches.
+ */
 class CddCliCoverageTest extends TestCase
 {
-    public function testSampleLlm()
+    /**
+     * Tests `sample_llm` returning null when the input stream reaches EOF without matching response.
+     *
+     * @return void
+     */
+    public function testSampleLlm(): void
     {
         $mockIn = fopen('php://memory', 'r+');
         $mockOut = fopen('php://memory', 'r+');
@@ -23,12 +37,17 @@ class CddCliCoverageTest extends TestCase
         CddCli::$testOutStream = null;
     }
 
-    public function testMcpCoverage()
+    /**
+     * Tests all in-process `CddCli::runMcpServer` request and notification branches.
+     *
+     * @return void
+     */
+    public function testMcpCoverage(): void
     {
         $tmpDir = sys_get_temp_dir() . '/cdd_mcp_test_' . uniqid();
         mkdir($tmpDir, 0777, true);
         $specPath = "$tmpDir/spec.json";
-        file_put_contents($specPath, json_encode([
+        file_put_contents($specPath, (string) json_encode([
             'openapi' => '3.2.0',
             'info' => ['title' => 'MCP Test', 'version' => '1.0.0'],
             'paths' => ['/ping' => ['get' => ['operationId' => 'pingOp', 'responses' => ['200' => ['description' => 'ok']]]]],
@@ -64,12 +83,13 @@ class CddCliCoverageTest extends TestCase
             ['jsonrpc' => '2.0', 'id' => 14, 'method' => 'completion/complete', 'params' => ['ref' => ['type' => 'ref'], 'argument' => ['name' => 'arg', 'value' => 'val']]],
             ['jsonrpc' => '2.0', 'method' => 'notifications/cancelled', 'params' => ['requestId' => 10, 'reason' => 'test']],
             ['jsonrpc' => '2.0', 'method' => 'notifications/progress', 'params' => ['progressToken' => '10', 'progress' => 10, 'total' => 100]],
-            "invalid json",
-            ['jsonrpc' => '2.0', 'id' => 22]
+            'invalid json',
+            ['jsonrpc' => '2.0', 'id' => 22],
         ];
 
         foreach ($requests as $req) {
-            fwrite($mock, (is_string($req) ? $req : json_encode($req)) . "\n");
+            fwrite($mock, (is_string($req) ? $req : json_encode($req)) . "
+");
         }
         rewind($mock);
 
@@ -83,6 +103,6 @@ class CddCliCoverageTest extends TestCase
         $this->assertTrue(file_exists("$tmpDir/parsed.json"));
         CddCli::$testInStream = null;
         CddCli::$testOutStream = null;
-        exec("rm -rf " . escapeshellarg($tmpDir));
+        $this->removeDir($tmpDir);
     }
 }

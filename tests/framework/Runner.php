@@ -421,4 +421,61 @@ TearDown failure in " . get_class($this) . "::$method
         $this->recordAssertion();
         $this->expectedExceptionMessage = $message;
     }
+
+    /**
+     * Asserts that executing a callback does not throw any exception.
+     *
+     * @param callable $callback The callback to execute.
+     * @param string $message Optional failure message.
+     * @return void
+     * @throws \Exception If the callback throws any Throwable.
+     */
+    protected function assertDoesNotThrow(callable $callback, string $message = ''): void
+    {
+        $this->recordAssertion();
+        try {
+            $callback();
+        } catch (\Throwable $e) {
+            $prefix = $message !== '' ? "$message: " : '';
+            throw new \Exception($prefix . "Expected no exception, but caught " . get_class($e) . ": " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Unconditionally fails a test with the given message.
+     *
+     * @param string $message Failure description.
+     * @return never
+     * @throws \Exception Always thrown to fail the current test.
+     */
+    protected function fail(string $message = 'Test failed explicitly'): never
+    {
+        $this->recordAssertion();
+        throw new \Exception($message);
+    }
+
+    /**
+     * Recursively removes a temporary directory and its contents safely without shell exec.
+     *
+     * @param string $dir The directory path to remove.
+     * @return void
+     */
+    protected function removeDir(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+        $items = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($items as $item) {
+            if ($item->isDir()) {
+                @rmdir($item->getPathname());
+            } else {
+                @unlink($item->getPathname());
+            }
+        }
+        @rmdir($dir);
+    }
 }

@@ -12,7 +12,22 @@ namespace Cdd\Classes;
 
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\NodeFinder;
+use PhpParser\Parser;
 use PhpParser\ParserFactory;
+
+/**
+ * Returns a shared PHP-Parser instance for the newest supported PHP version.
+ *
+ * @return Parser The shared PHP-Parser instance.
+ */
+function create_parser(): Parser
+{
+    static $parser = null;
+    if ($parser === null) {
+        $parser = (new ParserFactory())->createForNewestSupportedVersion();
+    }
+    return $parser;
+}
 
 /**
  * Parses PHP source code to extract classes using nikic/php-parser.
@@ -22,7 +37,7 @@ use PhpParser\ParserFactory;
  */
 function parse(string $code): array
 {
-    $parser = (new ParserFactory())->createForNewestSupportedVersion();
+    $parser = create_parser();
     try {
         $stmts = $parser->parse($code);
     } catch (\Throwable $e) {

@@ -35,11 +35,30 @@ class MockRoute
 }
 class_alias('MockRoute', 'Illuminate\Support\Facades\Route');
 
+if (file_exists('/tmp/temp-php-server/src/ApiServers.php')) {
+    require_once '/tmp/temp-php-server/src/ApiServers.php';
+}
 require '/tmp/temp-php-server/src/ApiController.php';
 require '/tmp/temp-php-server/src/routes.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$uri = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+
+if (class_exists('ApiServers')) {
+    $serversObj = new ApiServers();
+    foreach (get_object_vars($serversObj) as $propVal) {
+        if (is_string($propVal)) {
+            $parsedPath = parse_url($propVal, PHP_URL_PATH);
+            if (is_string($parsedPath) && $parsedPath !== '' && $parsedPath !== '/' && str_starts_with($uri, rtrim($parsedPath, '/'))) {
+                $uri = substr($uri, strlen(rtrim($parsedPath, '/')));
+                if ($uri === '') {
+                    $uri = '/';
+                }
+                break;
+            }
+        }
+    }
+}
 
 $controller = new ApiController();
 
@@ -52,10 +71,27 @@ foreach (MockRoute::$routes as $route) {
         array_shift($matches); // remove full match
 
         $action = $route['action'];
-        if (method_exists($controller, $action)) {
-            // For testing, just return a dummy response
+        if (is_string($action) && method_exists($controller, $action)) {
+            ob_start();
+            $ref = new \ReflectionMethod($controller, $action);
+            $callArgs = [];
+            foreach ($ref->getParameters() as $idx => $param) {
+                if (isset($matches[$idx])) {
+                    $callArgs[] = $matches[$idx];
+                } else {
+                    $callArgs[] = null;
+                }
+            }
+            $result = $controller->$action(...$callArgs);
+            $buffered = (string) ob_get_clean();
             header('Content-Type: application/json');
-            echo json_encode(["status" => "success", "action" => $action]);
+            if ($buffered !== '') {
+                echo $buffered;
+            } elseif ($result !== null) {
+                echo json_encode($result);
+            } else {
+                echo json_encode(["status" => "success", "action" => $action]);
+            }
             exit;
         }
     }

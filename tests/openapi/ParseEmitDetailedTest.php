@@ -1,249 +1,315 @@
 <?php
 
+/**
+ * Detailed validation tests for Paths, Operations, Parameters, Headers, Encoding, Responses, and OAuth2 (`\Cdd\Openapi\parse`).
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests detailed OpenAPI 3.2.0 validation rules across nested specification objects.
+ */
 class ParseEmitDetailedTest extends TestCase
 {
-    public function testPathsObjectInvalid()
+    /**
+     * Tests error when `paths` is not an object.
+     *
+     * @return void
+     */
+    public function testPathsObjectInvalid(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":"invalid"}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Field "paths" must be an object') !== false);
-        }
+        }, \RuntimeException::class, 'Field "paths" must be an object');
     }
 
-    public function testPathsObjectKeysWithoutSlash()
+    /**
+     * Tests error when a `paths` key does not start with `/`.
+     *
+     * @return void
+     */
+    public function testPathsObjectKeysWithoutSlash(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"no-slash":{}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Paths object keys must start with a forward slash (/)') !== false);
-        }
+        }, \RuntimeException::class, 'Paths object keys must start with a forward slash (/)');
     }
 
-    public function testPathItemObjectInvalid()
+    /**
+     * Tests error when a Path Item is not an object.
+     *
+     * @return void
+     */
+    public function testPathItemObjectInvalid(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":"invalid"}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Path Item must be an object') !== false);
-        }
+        }, \RuntimeException::class, 'Path Item must be an object');
     }
 
-    public function testOperationObjectInvalid()
+    /**
+     * Tests error when an Operation is not an object.
+     *
+     * @return void
+     */
+    public function testOperationObjectInvalid(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":"invalid"}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Operation must be an object') !== false);
-        }
+        }, \RuntimeException::class, 'Operation must be an object');
     }
 
-    public function testOperationObjectTags()
+    /**
+     * Tests error when Operation `tags` items are not strings.
+     *
+     * @return void
+     */
+    public function testOperationObjectTags(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"tags":[123]}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Operation "tags" items must be strings') !== false);
-        }
+        }, \RuntimeException::class, 'Operation "tags" items must be strings');
     }
 
-    public function testOperationObjectRequestBody()
+    /**
+     * Tests error when Operation `requestBody` is not an object.
+     *
+     * @return void
+     */
+    public function testOperationObjectRequestBody(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"requestBody":"invalid"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Request Body must be an object') !== false);
-        }
+        }, \RuntimeException::class, 'Request Body must be an object');
     }
 
-    public function testOperationObjectRequestBodyNoContent()
+    /**
+     * Tests error when Operation `requestBody` is missing `content`.
+     *
+     * @return void
+     */
+    public function testOperationObjectRequestBodyNoContent(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"requestBody":{}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Request Body must contain a "content" map') !== false);
-        }
+        }, \RuntimeException::class, 'Request Body must contain a "content" map');
     }
 
-    public function testParameterMissingName()
+    /**
+     * Tests error when a Parameter is missing `name`.
+     *
+     * @return void
+     */
+    public function testParameterMissingName(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{}]}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Parameter must contain a "name" string') !== false);
-        }
+        }, \RuntimeException::class, 'Parameter must contain a "name" string');
     }
 
-    public function testParameterMissingIn()
+    /**
+     * Tests error when a Parameter is missing `in`.
+     *
+     * @return void
+     */
+    public function testParameterMissingIn(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id"}]}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Parameter must contain an "in" string') !== false);
-        }
+        }, \RuntimeException::class, 'Parameter must contain an "in" string');
     }
 
-    public function testParameterInvalidIn()
+    /**
+     * Tests error when a Parameter has an invalid `in` location.
+     *
+     * @return void
+     */
+    public function testParameterInvalidIn(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"body"}]}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Parameter "in" must be one of') !== false);
-        }
+        }, \RuntimeException::class, 'Parameter "in" must be one of');
     }
 
-    public function testParameterPathMissingRequired()
+    /**
+     * Tests error when a `path` Parameter does not have `required: true`.
+     *
+     * @return void
+     */
+    public function testParameterPathMissingRequired(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"path","required":false}]}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Parameter with in: path MUST have required: true') !== false);
-        }
+        }, \RuntimeException::class, 'Parameter with in: path MUST have required: true');
     }
 
-    public function testParameterBothSchemaContent()
+    /**
+     * Tests error when a Parameter contains both `schema` and `content`.
+     *
+     * @return void
+     */
+    public function testParameterBothSchemaContent(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query","schema":{},"content":{}}]}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Parameter cannot contain both "schema" and "content"') !== false);
-        }
+        }, \RuntimeException::class, 'Parameter cannot contain both "schema" and "content"');
     }
 
-    public function testParameterNeitherSchemaContent()
+    /**
+     * Tests error when a Parameter contains neither `schema` nor `content`.
+     *
+     * @return void
+     */
+    public function testParameterNeitherSchemaContent(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query"}]}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Parameter must contain either "schema" or "content"') !== false);
-        }
+        }, \RuntimeException::class, 'Parameter must contain either "schema" or "content"');
     }
-    public function testParameterExampleExamples()
+
+    /**
+     * Tests error when a Parameter contains both `example` and `examples`.
+     *
+     * @return void
+     */
+    public function testParameterExampleExamples(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query","schema":{},"example":1,"examples":{"a":{}}}]}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Parameter cannot contain both "example" and "examples"') !== false);
-        }
+        }, \RuntimeException::class, 'Parameter cannot contain both "example" and "examples"');
     }
 
-    public function testParameterAllowEmptyValueNotQuery()
+    /**
+     * Tests error when `allowEmptyValue` is used on a non-query Parameter.
+     *
+     * @return void
+     */
+    public function testParameterAllowEmptyValueNotQuery(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"header","schema":{},"allowEmptyValue":true}]}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Parameter "allowEmptyValue" is only allowed for in: query') !== false);
-        }
+        }, \RuntimeException::class, 'Parameter "allowEmptyValue" is only allowed for in: query');
     }
 
-    public function testParameterQuerystringWithSchemaFields()
+    /**
+     * Tests error when `schema` or `style` is used with `in: querystring`.
+     *
+     * @return void
+     */
+    public function testParameterQuerystringWithSchemaFields(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"querystring","schema":{},"style":"form"}]}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'schema, style, explode, allowReserved MUST NOT be used with in: querystring') !== false);
-        }
+        }, \RuntimeException::class, 'schema, style, explode, allowReserved MUST NOT be used with in: querystring');
     }
 
-    public function testHeaderExampleExamples()
+    /**
+     * Tests error when a Header contains both `example` and `examples`.
+     *
+     * @return void
+     */
+    public function testHeaderExampleExamples(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"MyHeader":{"schema":{},"example":1,"examples":{"a":{}}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Header cannot contain both "example" and "examples"') !== false);
-        }
+        }, \RuntimeException::class, 'Header cannot contain both "example" and "examples"');
     }
 
-    public function testEncodingMutualExclusivity()
+    /**
+     * Tests error when MediaType contains both `encoding` and `prefixEncoding`.
+     *
+     * @return void
+     */
+    public function testEncodingMutualExclusivity(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"mediaTypes":{"MyMediaType":{"schema":{},"encoding":{"a":{}},"prefixEncoding":[{}]}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Media Type "encoding" cannot be present with "prefixEncoding" or "itemEncoding"') !== false);
-        }
+        }, \RuntimeException::class, 'Media Type "encoding" cannot be present with "prefixEncoding" or "itemEncoding"');
     }
 
-    public function testOperationQueryQuerystringMutualExclusivity()
+    /**
+     * Tests error when an Operation mixes `query` and `querystring` parameters.
+     *
+     * @return void
+     */
+    public function testOperationQueryQuerystringMutualExclusivity(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"parameters":[{"name":"a","in":"query","schema":{}},{"name":"b","in":"querystring","content":{}}]}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'query and querystring parameters are mutually exclusive') !== false);
-        }
+        }, \RuntimeException::class, 'query and querystring parameters are mutually exclusive');
     }
 
-    public function testOperationMultipleQuerystring()
+    /**
+     * Tests error when an Operation defines multiple `querystring` parameters.
+     *
+     * @return void
+     */
+    public function testOperationMultipleQuerystring(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"parameters":[{"name":"a","in":"querystring","content":{}},{"name":"b","in":"querystring","content":{}}]}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'querystring parameter MUST NOT appear more than once') !== false);
-        }
+        }, \RuntimeException::class, 'querystring parameter MUST NOT appear more than once');
     }
 
-    public function testResponsesObjectInvalidKeys()
+    /**
+     * Tests error when Responses keys are invalid status codes.
+     *
+     * @return void
+     */
+    public function testResponsesObjectInvalidKeys(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"invalid":{"description":"ok"}}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Responses keys must be HTTP status codes, ranges like 2XX, or "default"') !== false);
-        }
+        }, \RuntimeException::class, 'Responses keys must be HTTP status codes, ranges like 2XX, or "default"');
     }
 
-    public function testResponsesObjectValidKeys()
+    /**
+     * Tests valid Responses keys (`200`, `3XX`, `default`, `x-custom`).
+     *
+     * @return void
+     */
+    public function testResponsesObjectValidKeys(): void
     {
         $parsed = \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"},"3XX":{"description":"redirect"},"default":{"description":"default"},"x-custom":{}}}}}}');
         $this->assertEquals('ok', $parsed['paths']['/a']['get']['responses']['200']['description']);
     }
 
-    public function testSecuritySchemeOauth2ImplicitRequiresAuthUrl()
+    /**
+     * Tests error when OAuth2 implicit flow is missing `authorizationUrl`.
+     *
+     * @return void
+     */
+    public function testSecuritySchemeOauth2ImplicitRequiresAuthUrl(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"o":{"type":"oauth2","flows":{"implicit":{"scopes":{}}}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), "OAuth2 implicit flow requires an 'authorizationUrl' string") !== false);
-        }
+        }, \RuntimeException::class, "OAuth2 implicit flow requires an 'authorizationUrl' string");
     }
 
-    public function testSecuritySchemeOauth2PasswordRequiresTokenUrl()
+    /**
+     * Tests error when OAuth2 password flow is missing `tokenUrl`.
+     *
+     * @return void
+     */
+    public function testSecuritySchemeOauth2PasswordRequiresTokenUrl(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"o":{"type":"oauth2","flows":{"password":{"scopes":{}}}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), "OAuth2 password flow requires a 'tokenUrl' string") !== false);
-        }
+        }, \RuntimeException::class, "OAuth2 password flow requires a 'tokenUrl' string");
     }
 
-    public function testSecuritySchemeOauth2Valid()
+    /**
+     * Tests valid OAuth2 implicit and password flow definitions.
+     *
+     * @return void
+     */
+    public function testSecuritySchemeOauth2Valid(): void
     {
         $parsed = \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"o":{"type":"oauth2","flows":{"implicit":{"authorizationUrl":"http://a","scopes":{}},"password":{"tokenUrl":"http://b","scopes":{}}}}}}}');
         $this->assertEquals('http://a', $parsed['components']['securitySchemes']['o']['flows']['implicit']['authorizationUrl']);

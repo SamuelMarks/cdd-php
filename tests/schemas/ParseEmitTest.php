@@ -1,16 +1,36 @@
 <?php
 
+/**
+ * Tests for OpenAPI Schema Object parsing, emission, and validation (`\Cdd\Schemas`).
+ *
+ * @package Cdd\Tests\Schemas
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Schemas;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests `\Cdd\Schemas\parse`, `\Cdd\Schemas\emit`, and schema/discriminator/XML validation.
+ */
 class ParseEmitTest extends TestCase
 {
-    public function testParseAndEmit()
+    /**
+     * Tests parsing a PHP class AST node into a Schema Object and emitting an Eloquent Model.
+     *
+     * @return void
+     */
+    public function testParseAndEmit(): void
     {
-        $code = "<?php\nclass User {\n    public int \$id;\n    public string \$name;\n    public ?string \$email;\n}\n";
+        $code = "<?php
+class User {
+    public int \$id;
+    public string \$name;
+    public ?string \$email;
+}
+";
 
         $classes = \Cdd\Classes\parse($code);
         $this->assertEquals(1, count($classes));
@@ -22,8 +42,8 @@ class ParseEmitTest extends TestCase
         $this->assertEquals('string', $schema['properties']['name']['type']);
         $this->assertEquals('string', $schema['properties']['email']['type']);
         $this->assertTrue($schema['properties']['email']['nullable']);
-        $this->assertTrue(in_array('id', $schema['required']));
-        $this->assertTrue(in_array('name', $schema['required']));
+        $this->assertTrue(in_array('id', $schema['required'], true));
+        $this->assertTrue(in_array('name', $schema['required'], true));
 
         $emitted = \Cdd\Schemas\emit('User', $schema);
         $this->assertTrue(strpos($emitted, 'class User extends \Illuminate\Database\Eloquent\Model {') !== false);
@@ -33,9 +53,25 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(strpos($emitted, "'id' => 'integer',") !== false);
     }
 
-    public function testDocblockParsing()
+    /**
+     * Tests parsing and emitting `@xml` and `@discriminator` docblock tags on schema classes.
+     *
+     * @return void
+     */
+    public function testDocblockParsing(): void
     {
-        $code = "<?php\n/**\n * My User model\n * @xml nodeType element\n * @discriminator propertyName role\n * @discriminator defaultMapping Guest\n * @discriminator mapping admin AdminUser\n */\nclass User {\n    public string \$role;\n}\n";
+        $code = "<?php
+/**
+ * My User model
+ * @xml nodeType element
+ * @discriminator propertyName role
+ * @discriminator defaultMapping Guest
+ * @discriminator mapping admin AdminUser
+ */
+class User {
+    public string \$role;
+}
+";
         $classes = \Cdd\Classes\parse($code);
         $schema = \Cdd\Schemas\parse($classes[0]['node']);
 
@@ -54,7 +90,12 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(strpos($emitted, '* @discriminator mapping admin AdminUser') !== false);
     }
 
-    public function testParseOptionals()
+    /**
+     * Tests parsing mixed, custom class reference, and non-public properties.
+     *
+     * @return void
+     */
+    public function testParseOptionals(): void
     {
         $code = "<?php
 /**
@@ -69,17 +110,21 @@ class DefaultDisc {
 ";
         $classes = \Cdd\Classes\parse($code);
         $schema = \Cdd\Schemas\parse($classes[0]['node']);
-        $this->assertEquals('type', $schema['discriminator']['propertyName']); // 45, 56
-
-        $this->assertEquals('string', $schema['properties']['mixedProp']['type']); // 94
-        $this->assertEquals('#/components/schemas/MyType', $schema['properties']['customType']['$ref']); // 98
+        $this->assertEquals('type', $schema['discriminator']['propertyName']);
+        $this->assertEquals('string', $schema['properties']['mixedProp']['type']);
+        $this->assertEquals('#/components/schemas/MyType', $schema['properties']['customType']['$ref']);
         $this->assertTrue(empty($schema['properties']['hidden']));
 
         $schemaEmpty = \Cdd\Schemas\parse($classes[1]['node']);
         $this->assertTrue(empty($schemaEmpty['properties']));
     }
 
-    public function testValidationErrors()
+    /**
+     * Tests validation errors and valid composition keywords on Schema Objects.
+     *
+     * @return void
+     */
+    public function testValidationErrors(): void
     {
         $tests = [
             ['input' => ['properties' => 123], 'error' => 'Schema "properties" must be a map'],
@@ -99,31 +144,29 @@ class DefaultDisc {
         ];
 
         foreach ($tests as $test) {
-            $caught = false;
-            try {
+            $this->assertThrows(function () use ($test): void {
                 \Cdd\Schemas\validateSchemaOrReferenceObject($test['input']);
-            } catch (\RuntimeException $e) {
-                $this->assertEquals($test['error'], $e->getMessage());
-                $caught = true;
-            }
-            $this->assertTrue($caught, "Expected exception: {$test['error']}");
+            }, \RuntimeException::class, $test['error']);
         }
 
-        // boolean schema
-        \Cdd\Schemas\validateSchemaOrReferenceObject(true);
-
-        // schema with allOf/anyOf/oneOf/not and externalDocs
-        $compSchema = [
-            'allOf' => [['type' => 'string']],
-            'anyOf' => [['type' => 'string']],
-            'oneOf' => [['type' => 'string']],
-            'not' => ['type' => 'string'],
-            'externalDocs' => ['url' => 'http://example.com']
-        ];
-        \Cdd\Schemas\validateSchemaOrReferenceObject($compSchema);
-        $this->assertCount(1, $compSchema['allOf']);
+        $this->assertDoesNotThrow(function (): void {
+            \Cdd\Schemas\validateSchemaOrReferenceObject(true);
+            \Cdd\Schemas\validateSchemaOrReferenceObject([
+                'allOf' => [['type' => 'string']],
+                'anyOf' => [['type' => 'string']],
+                'oneOf' => [['type' => 'string']],
+                'not' => ['type' => 'string'],
+                'externalDocs' => ['url' => 'http://example.com'],
+            ]);
+        });
     }
-    public function testParseDiscriminatorMappingOnly()
+
+    /**
+     * Tests default discriminator propertyName when only `@discriminator mapping` is present.
+     *
+     * @return void
+     */
+    public function testParseDiscriminatorMappingOnly(): void
     {
         $code = "<?php
 /**
@@ -136,7 +179,12 @@ class MappingOnly { }
         $this->assertEquals('type', $schema['discriminator']['propertyName']);
     }
 
-    public function testParseUnionType()
+    /**
+     * Tests parsing PHP 8 union types on class properties.
+     *
+     * @return void
+     */
+    public function testParseUnionType(): void
     {
         $code = "<?php
 class UnionTypeClass {
@@ -148,7 +196,12 @@ class UnionTypeClass {
         $this->assertEquals('string', $schema['properties']['unionProp']['type']);
     }
 
-    public function testParseNullableUnionType()
+    /**
+     * Tests parsing nullable union types and class-typed nullable properties.
+     *
+     * @return void
+     */
+    public function testParseNullableUnionType(): void
     {
         $code = "<?php
 class NullableUnionTypeClass {
@@ -160,37 +213,26 @@ class NullableUnionTypeClass {
         $schema = \Cdd\Schemas\parse($classes[0]['node']);
         $this->assertEquals('integer', $schema['properties']['nullableUnionProp']['type']);
         $this->assertTrue($schema['properties']['nullableUnionProp']['nullable']);
-
         $this->assertEquals('#/components/schemas/Closure', $schema['properties']['closureProp']['$ref']);
     }
 
-    public function testExtraXMLValidation()
+    /**
+     * Tests XML Object validation rules when `nodeType` conflicts with `attribute` or `wrapped`.
+     *
+     * @return void
+     */
+    public function testExtraXMLValidation(): void
     {
-        $caught = false;
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Schemas\validateSchemaOrReferenceObject(['xml' => ['nodeType' => 'element', 'attribute' => true]]);
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('XML "attribute" MUST NOT be present if "nodeType" is present', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught);
+        }, \RuntimeException::class, 'XML "attribute" MUST NOT be present if "nodeType" is present');
 
-        $caught = false;
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Schemas\validateSchemaOrReferenceObject(['xml' => ['nodeType' => 'element', 'wrapped' => true]]);
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('XML "wrapped" MUST NOT be present if "nodeType" is present', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught);
+        }, \RuntimeException::class, 'XML "wrapped" MUST NOT be present if "nodeType" is present');
 
-        $caught = false;
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Schemas\validateSchemaOrReferenceObject(['xml' => ['name' => 123]]);
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('XML "name" must be a string', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught);
+        }, \RuntimeException::class, 'XML "name" must be a string');
     }
 }

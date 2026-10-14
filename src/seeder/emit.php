@@ -13,23 +13,58 @@ namespace Cdd\Seeder;
 /**
  * Emits Seeder logic using FakerPHP.
  *
- * @param array $schemas The OpenAPI schemas
- * @return string
+ * @param array<string, array<string, mixed>> $schemas The OpenAPI schemas.
+ * @param string $namespace Optional PHP namespace for the generated DatabaseSeeder class.
+ * @return string The generated DatabaseSeeder PHP code.
  */
-function emit(array $schemas): string
+function emit(array $schemas, string $namespace = ''): string
 {
-    $out = "<?php\n\n/**\n * Auto-generated Fake Data Seeder\n * Manages referential integrity by caching IDs in an Entity Pool.\n */\n\n";
-    $out .= "use Faker\\Factory as FakerFactory;\n";
-    $out .= "use Illuminate\\Database\\Capsule\\Manager as Capsule;\n\n";
+    $out = "<?php
 
-    $out .= "/**\n * Seeder class to populate the database with fake data.\n */\n";
-    $out .= "class DatabaseSeeder {\n";
-    $out .= "    private \\Faker\\Generator \$faker;\n";
-    $out .= "    private array \$entityPool = [];\n\n";
+/**
+ * Auto-generated Fake Data Seeder
+ * Manages referential integrity by caching IDs in an Entity Pool.
+ */
 
-    $out .= "    public function __construct() {\n";
-    $out .= "        \$this->faker = FakerFactory::create('en_US');\n";
-    $out .= "    }\n\n";
+declare(strict_types=1);
+
+";
+    if ($namespace !== '') {
+        $out .= "namespace {$namespace};
+
+";
+        $out .= "use Api\Database\DatabaseConnection;
+";
+        foreach (array_keys($schemas) as $schemaName) {
+            $out .= "use Api\Models\{$schemaName};
+";
+        }
+    }
+    $out .= "use Faker\Factory as FakerFactory;
+";
+    $out .= "use Illuminate\Database\Capsule\Manager as Capsule;
+
+";
+
+    $out .= "/**
+ * Seeder class to populate the database with fake data.
+ */
+";
+    $out .= "class DatabaseSeeder {
+";
+    $out .= "    private \Faker\Generator \$faker;
+";
+    $out .= "    private array \$entityPool = [];
+
+";
+
+    $out .= "    public function __construct() {
+";
+    $out .= "        \$this->faker = FakerFactory::create('en_US');
+";
+    $out .= "    }
+
+";
 
     // Topological sort heuristic
     $deps = [];
@@ -40,7 +75,7 @@ function emit(array $schemas): string
             foreach ($schema['properties'] as $propName => $propDef) {
                 if (preg_match('/^([a-z_]+)_id$/i', $propName, $matches)) {
                     $potentialParent = str_replace('_', '', ucwords($matches[1], '_'));
-                    if (in_array($potentialParent, $names)) {
+                    if (in_array($potentialParent, $names, true)) {
                         $deps[$name][] = $potentialParent;
                     }
                 }
@@ -50,7 +85,7 @@ function emit(array $schemas): string
 
     $sorted = [];
     $visited = [];
-    $visit = function ($node) use (&$visit, &$visited, &$sorted, $deps) {
+    $visit = function (string $node) use (&$visit, &$visited, &$sorted, $deps): void {
         if (!isset($visited[$node])) {
             $visited[$node] = true;
             foreach ($deps[$node] as $dep) {
@@ -60,12 +95,17 @@ function emit(array $schemas): string
         }
     };
     foreach ($names as $name) {
-        $visit($name);
+        $visit((string) $name);
     }
 
-    $out .= "    /**\n     * Runs the seeder logic to populate the DB.\n     */\n";
-    $out .= "    public function seed(): void {\n";
-    $out .= "        Capsule::transaction(function() {\n";
+    $out .= "    /**
+     * Runs the seeder logic to populate the DB.
+     */
+";
+    $out .= "    public function seed(): void {
+";
+    $out .= "        Capsule::transaction(function() {
+";
 
     foreach ($sorted as $name) {
         $schema = $schemas[$name];
@@ -75,10 +115,14 @@ function emit(array $schemas): string
             $count = 50;
         }
 
-        $out .= "            // Seed {$name}\n";
-        $out .= "            \$this->entityPool['{$name}'] = [];\n";
-        $out .= "            for (\$i = 0; \$i < {$count}; \$i++) {\n";
-        $out .= "                \$data = [\n";
+        $out .= "            // Seed {$name}
+";
+        $out .= "            \$this->entityPool['{$name}'] = [];
+";
+        $out .= "            for (\$i = 0; \$i < {$count}; \$i++) {
+";
+        $out .= "                \$data = [
+";
         if (isset($schema['properties'])) {
             foreach ($schema['properties'] as $propName => $propDef) {
                 if ($propName === 'id') {
@@ -87,7 +131,7 @@ function emit(array $schemas): string
                 $val = "''";
                 if (preg_match('/^([a-z_]+)_id$/i', $propName, $matches)) {
                     $parent = str_replace('_', '', ucwords($matches[1], '_'));
-                    if (in_array($parent, $names)) {
+                    if (in_array($parent, $names, true)) {
                         $val = "\$this->entityPool['{$parent}'][array_rand(\$this->entityPool['{$parent}'])] ?? 1";
                     } else {
                         $val = "1";
@@ -112,18 +156,26 @@ function emit(array $schemas): string
                         $val = "\$this->faker->randomFloat(2, 0, 1000)";
                     }
                 }
-                $out .= "                    '{$propName}' => {$val},\n";
+                $out .= "                    '{$propName}' => {$val},
+";
             }
         }
-        $out .= "                ];\n";
-        $out .= "                \$record = {$name}::create(\$data);\n";
-        $out .= "                \$this->entityPool['{$name}'][] = \$record->id;\n";
-        $out .= "            }\n";
+        $out .= "                ];
+";
+        $out .= "                \$record = {$name}::create(\$data);
+";
+        $out .= "                \$this->entityPool['{$name}'][] = \$record->id;
+";
+        $out .= "            }
+";
     }
 
-    $out .= "        });\n";
-    $out .= "    }\n";
-    $out .= "}\n";
+    $out .= "        });
+";
+    $out .= "    }
+";
+    $out .= "}
+";
 
     return $out;
 }

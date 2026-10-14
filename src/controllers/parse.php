@@ -10,19 +10,22 @@ declare(strict_types=1);
 
 namespace Cdd\Controllers;
 
+use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Name;
+use PhpParser\Node\NullableType;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\NodeFinder;
-use PhpParser\ParserFactory;
 
 /**
- * Parses PHP code to extract OpenAPI metadata from Controller docblocks.
+ * Parses PHP code to extract OpenAPI metadata from Controller docblocks and signatures.
  *
  * @param string $code The PHP controller source code.
  * @return array<string, array<string, mixed>> Map of operationId to extracted operation metadata.
  */
 function parse(string $code): array
 {
-    $parser = (new ParserFactory())->createForNewestSupportedVersion();
+    $parser = \Cdd\Classes\create_parser();
     try {
         $stmts = $parser->parse($code);
     } catch (\Throwable $e) {
@@ -95,6 +98,49 @@ function parse(string $code): array
                         }
                         $op['responses'][$codeKey]['links'][$linkName] = $linkObj;
                     }
+                }
+            }
+        }
+
+        // Parse method parameters and requestBody
+        foreach ($method->params as $paramNode) {
+            /** @var Variable $paramVar */
+            $paramVar = $paramNode->var;
+            $paramName = (string) $paramVar->name;
+            $required = true;
+            $typeName = 'string';
+            $typeNode = $paramNode->type;
+            if ($typeNode instanceof NullableType) {
+                $required = false;
+                $inner = $typeNode->type;
+                if ($inner instanceof Identifier || $inner instanceof Name) {
+                    $typeName = $inner->toString();
+                }
+            } elseif ($typeNode instanceof Identifier || $typeNode instanceof Name) {
+                $typeName = $typeNode->toString();
+            }
+            if ($paramName === 'body') {
+                $rb = \Cdd\RequestBodies\parse($typeName);
+                $rb['required'] = $required;
+                $op['requestBody'] = $rb;
+            } else {
+                if (!isset($op['parameters'])) {
+                    $op['parameters'] = [];
+                }
+                $op['parameters'][] = \Cdd\Parameters\parse($paramName, $typeName, 'query', $required);
+            }
+        }
+
+        // Parse return type if present
+        $returnTypeNode = $method->returnType;
+        if ($returnTypeNode instanceof Identifier || $returnTypeNode instanceof Name) {
+            $retTypeStr = $returnTypeNode->toString();
+            if ($retTypeStr !== 'void') {
+                $parsedResp = \Cdd\Responses\parse('200', $retTypeStr);
+                if (!isset($op['responses']['200'])) {
+                    $op['responses']['200'] = $parsedResp['200'];
+                } else {
+                    $op['responses']['200'] = array_replace_recursive($parsedResp['200'], $op['responses']['200']);
                 }
             }
         }

@@ -23,7 +23,7 @@ function emit(array $requestBody, string $name = 'body'): string
 
     $type = '';
     if (isset($schema['type'])) {
-        $type = (string) $schema['type'];
+        $type = \Cdd\Schemas\openapi_type_to_php((string) $schema['type'], (string) $schema['type']);
     } elseif (isset($schema['$ref'])) {
         $parts = explode('/', (string) $schema['$ref']);
         $type = (string) end($parts);

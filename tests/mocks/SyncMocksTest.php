@@ -1,14 +1,29 @@
 <?php
 
+/**
+ * Tests for inferring and updating OpenAPI Schema Objects from mock examples during `sync`.
+ *
+ * @package Cdd\Tests\Mocks
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Mocks;
 
 use Cdd\Cli\CddCli;
+use Cdd\Tests\Framework\TestCase;
 
-class SyncMocksTest extends \Cdd\Tests\Framework\TestCase
+/**
+ * Tests `CddCli::run(['cdd-php', 'sync', ...])` schema inference from `mocks.php`.
+ */
+class SyncMocksTest extends TestCase
 {
-    public function testMockUpdatesSchema()
+    /**
+     * Tests that mock `dataValue` entries infer and populate component schemas.
+     *
+     * @return void
+     */
+    public function testMockUpdatesSchema(): void
     {
         $tmpDir = sys_get_temp_dir() . '/cdd-php-test-' . uniqid();
         mkdir($tmpDir);
@@ -28,8 +43,12 @@ return [
 ";
         mkdir("$tmpDir/src", 0777, true);
         file_put_contents("$tmpDir/src/mocks.php", $mockCode);
-        file_put_contents("$tmpDir/src/Models.php", "<?php\n\n");
-        file_put_contents("$tmpDir/src/routes.php", "<?php\n\n");
+        file_put_contents("$tmpDir/src/Models.php", "<?php
+
+");
+        file_put_contents("$tmpDir/src/routes.php", "<?php
+
+");
 
         ob_start();
         $returnVar = CddCli::run(['cdd-php', 'sync', '-i', $tmpDir]);
@@ -52,6 +71,6 @@ return [
         $this->assertEquals('array', $schema['properties']['tags']['type']);
         $this->assertEquals('string', $schema['properties']['tags']['items']['type']);
 
-        exec("rm -rf " . escapeshellarg($tmpDir));
+        $this->removeDir($tmpDir);
     }
 }

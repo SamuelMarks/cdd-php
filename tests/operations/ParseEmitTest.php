@@ -1,14 +1,28 @@
 <?php
 
+/**
+ * Tests for OpenAPI Operation and Callback Object parsing, emission, and validation (`\Cdd\Operations`).
+ *
+ * @package Cdd\Tests\Operations
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Operations;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests `\Cdd\Operations\parse`, `\Cdd\Operations\emit`, and operation/callback validators.
+ */
 class ParseEmitTest extends TestCase
 {
-    public function testParseAndEmit()
+    /**
+     * Tests parsing and emitting basic Operation Objects.
+     *
+     * @return void
+     */
+    public function testParseAndEmit(): void
     {
         $op = \Cdd\Operations\parse('getUser', [], ['201' => ['description' => 'Created']], null, 'Get a user');
         $this->assertEquals('getUser', $op['operationId']);
@@ -23,12 +37,18 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(strpos($emitted, '* Get a user') !== false);
     }
 
-    public function testEmitFullCoverage()
+    /**
+     * Tests emitting a full Operation Object with summary, description, tags, externalDocs, callbacks, links, and return types.
+     *
+     * @return void
+     */
+    public function testEmitFullCoverage(): void
     {
         $op = [
             'operationId' => 'fullOp',
             'summary' => 'Summary',
-            'description' => "Desc line 1\nDesc line 2",
+            'description' => "Desc line 1
+Desc line 2",
             'tags' => ['Tag1', 'Tag2'],
             'externalDocs' => ['url' => 'http://example.com', 'description' => 'Example Docs'],
             'callbacks' => ['myCb' => []],
@@ -36,23 +56,23 @@ class ParseEmitTest extends TestCase
                 '200' => [
                     'description' => 'Success',
                     'links' => [
-                        'link1' => ['operationId' => 'otherOp']
+                        'link1' => ['operationId' => 'otherOp'],
                     ],
                     'content' => [
                         'application/json' => [
                             'schema' => [
-                                'type' => 'integer'
-                            ]
-                        ]
-                    ]
-                ]
+                                'type' => 'integer',
+                            ],
+                        ],
+                    ],
+                ],
             ],
             'parameters' => [
-                ['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']]
+                ['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']],
             ],
             'requestBody' => [
-                'content' => ['application/json' => ['schema' => ['type' => 'object']]]
-            ]
+                'content' => ['application/json' => ['schema' => ['type' => 'object']]],
+            ],
         ];
 
         $emitted = \Cdd\Operations\emit($op);
@@ -64,7 +84,6 @@ class ParseEmitTest extends TestCase
         $this->assertStringContainsString('* @oas-link 200 link1 {"operationId":"otherOp"}', $emitted);
         $this->assertStringContainsString('public function fullOp(string $id, ?object $body): int', $emitted);
 
-        // ref return type
         $opRef = [
             'operationId' => 'refOp',
             'responses' => [
@@ -73,18 +92,23 @@ class ParseEmitTest extends TestCase
                     'content' => [
                         'application/json' => [
                             'schema' => [
-                                '$ref' => '#/components/schemas/User'
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+                                '$ref' => '#/components/schemas/User',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ];
         $emittedRef = \Cdd\Operations\emit($opRef);
         $this->assertStringContainsString('public function refOp(): User', $emittedRef);
     }
 
-    public function testEmitPostWithSchema()
+    /**
+     * Tests emitting DAO-backed controller method bodies for POST, DELETE, and GET list operations.
+     *
+     * @return void
+     */
+    public function testEmitPostWithSchema(): void
     {
         $op = [
             'operationId' => 'createItem',
@@ -94,19 +118,22 @@ class ParseEmitTest extends TestCase
                     'content' => [
                         'application/json' => [
                             'schema' => [
-                                '$ref' => '#/components/schemas/MyItem'
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+                                '$ref' => '#/components/schemas/MyItem',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ];
         $emitted = \Cdd\Operations\emit($op, '/items', 'post');
-        $this->assertStringContainsString('\Api\Daos\DaoFactory::create(\'MyItem\')', $emitted);
+        $this->assertStringContainsString("\Api\Daos\DaoFactory::create('MyItem')", $emitted);
         $this->assertStringContainsString('$dao->create(', $emitted);
 
         $emittedDelete = \Cdd\Operations\emit($op, '/items/{itemId}', 'delete');
         $this->assertStringContainsString('$dao->delete($itemId)', $emittedDelete);
+
+        $emittedGetById = \Cdd\Operations\emit($op, '/items/{itemId}', 'get');
+        $this->assertStringContainsString('$dao->getById($itemId)', $emittedGetById);
 
         $opList = [
             'operationId' => 'listItems',
@@ -128,7 +155,12 @@ class ParseEmitTest extends TestCase
         $this->assertStringContainsString('$dao->getAll()', $emittedList);
     }
 
-    public function testValidateOperationObjectErrors()
+    /**
+     * Tests validation errors for Operation Objects.
+     *
+     * @return void
+     */
+    public function testValidateOperationObjectErrors(): void
     {
         $tests = [
             ['input' => 'string', 'error' => 'Operation must be an object'],
@@ -140,174 +172,105 @@ class ParseEmitTest extends TestCase
             ['input' => ['description' => 123], 'error' => 'Operation "description" must be a string'],
             ['input' => ['operationId' => 123], 'error' => 'Operation "operationId" must be a string'],
             ['input' => ['parameters' => 123], 'error' => 'Operation "parameters" must be an array'],
-            ['input' => ['responses' => 123], 'error' => 'Operation must contain a "responses" object'],
-            ['input' => ['responses' => 123], 'error' => 'Operation "responses" must be a Responses Object map', 'unset' => false],
+            ['input' => [], 'error' => 'Operation must contain a "responses" object'],
+            ['input' => ['responses' => 123], 'error' => 'Operation "responses" must be a Responses Object map'],
+            ['input' => ['responses' => []], 'error' => 'Responses Object MUST contain at least one response code'],
+            ['input' => ['responses' => ['invalid' => []]], 'error' => 'Responses keys must be HTTP status codes, ranges like 2XX, or "default"'],
+            ['input' => ['responses' => ['200' => ['description' => 'OK']], 'callbacks' => 123], 'error' => 'Operation "callbacks" must be a map'],
+            ['input' => ['responses' => ['200' => ['description' => 'OK']], 'deprecated' => 123], 'error' => 'Operation "deprecated" must be a boolean'],
+            ['input' => ['responses' => ['200' => ['description' => 'OK']], 'security' => 123], 'error' => 'Operation "security" must be an array'],
+            ['input' => ['responses' => ['200' => ['description' => 'OK']], 'servers' => 123], 'error' => 'Operation "servers" must be an array'],
         ];
 
         foreach ($tests as $test) {
-            $caught = false;
-            try {
-                if (isset($test['unset']) && !$test['unset']) {
-                    // special handling to bypass the first 'responses' check if needed, but it checks !isset first.
-                    // actually if it's 123, it will fail `!isset`? No, isset(123) is true.
-                    // wait, `if (!isset($operation['responses']))` will be skipped for 123.
-                    // then `if (!is_array($operation['responses']))` will throw 'Operation "responses" must be a Responses Object map'.
-                } elseif ($test['error'] === 'Operation must contain a "responses" object') {
-                    // if we pass `['responses' => null]`
-                    $test['input'] = []; // this triggers !isset
-                }
+            $this->assertThrows(function () use ($test): void {
                 \Cdd\Operations\validateOperationObject($test['input']);
-            } catch (\RuntimeException $e) {
-                $this->assertEquals($test['error'], $e->getMessage());
-                $caught = true;
-            }
-            $this->assertTrue($caught, "Expected exception: {$test['error']}");
+            }, \RuntimeException::class, $test['error']);
         }
 
-        $caught = false;
-        try {
-            \Cdd\Operations\validateOperationObject([
-                'responses' => []
-            ]);
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('Responses Object MUST contain at least one response code', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught);
-
-        $caught = false;
-        try {
-            \Cdd\Operations\validateOperationObject([
-                'responses' => ['invalid' => []]
-            ]);
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('Responses keys must be HTTP status codes, ranges like 2XX, or "default"', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught);
-
-        $caught = false;
-        try {
+        $this->assertDoesNotThrow(function (): void {
             \Cdd\Operations\validateOperationObject([
                 'responses' => ['200' => ['description' => 'OK']],
-                'callbacks' => 123
+                'tags' => ['valid'],
             ]);
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('Operation "callbacks" must be a map', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught);
-
-        $caught = false;
-        try {
-            \Cdd\Operations\validateOperationObject([
-                'responses' => ['200' => ['description' => 'OK']],
-                'deprecated' => 123
-            ]);
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('Operation "deprecated" must be a boolean', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught);
-
-        $caught = false;
-        try {
-            \Cdd\Operations\validateOperationObject([
-                'responses' => ['200' => ['description' => 'OK']],
-                'security' => 123
-            ]);
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('Operation "security" must be an array', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught);
-
-        $caught = false;
-        try {
-            \Cdd\Operations\validateOperationObject([
-                'responses' => ['200' => ['description' => 'OK']],
-                'tags' => ['valid']
-            ]);
-        } catch (\RuntimeException $e) {
-            $caught = true;
-        }
-        $this->assertTrue(!$caught);
-
-        $caught = false;
-        try {
-            \Cdd\Operations\validateOperationObject([
-                'responses' => ['200' => ['description' => 'OK']],
-                'servers' => 123
-            ]);
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('Operation "servers" must be an array', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught);
+        });
     }
 
-    public function testValidateCallbackOrReferenceObject()
+    /**
+     * Tests validating Callback or Reference Objects.
+     *
+     * @return void
+     */
+    public function testValidateCallbackOrReferenceObject(): void
     {
-        $caught = false;
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Operations\validateCallbackOrReferenceObject('not array');
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('Callback must be an object', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught);
+        }, \RuntimeException::class, 'Callback must be an object');
 
-        // ref
-        \Cdd\Operations\validateCallbackOrReferenceObject(['$ref' => '#/components/callbacks/MyCb']);
-
-        // extensions
-        \Cdd\Operations\validateCallbackOrReferenceObject([
-            'x-ignore' => 123,
-            'http://example.com' => [] // path item
-        ]);
+        $this->assertDoesNotThrow(function (): void {
+            \Cdd\Operations\validateCallbackOrReferenceObject(['$ref' => '#/components/callbacks/MyCb']);
+            \Cdd\Operations\validateCallbackOrReferenceObject([
+                'x-ignore' => 123,
+                'http://example.com' => [],
+            ]);
+        });
     }
 
-    public function testParseOptionals()
+    /**
+     * Tests `\Cdd\Operations\parse` with optional parameters and requestBody.
+     *
+     * @return void
+     */
+    public function testParseOptionals(): void
     {
         $op = \Cdd\Operations\parse('testOp', [['in' => 'query', 'name' => 'q']], [], ['content' => []]);
         $this->assertTrue(isset($op['parameters']));
         $this->assertTrue(isset($op['requestBody']));
     }
 
-    public function testValidateOperationObjectOptionals()
+    /**
+     * Tests validating optional fields on an Operation Object.
+     *
+     * @return void
+     */
+    public function testValidateOperationObjectOptionals(): void
     {
-        // cover continue for ref/non-array param
         $op = [
             'operationId' => 'testOp',
             'responses' => [
                 '200' => ['description' => 'OK'],
                 'x-test' => ['description' => 'Test'],
-                '5XX' => ['description' => 'Server Error']
+                '5XX' => ['description' => 'Server Error'],
             ],
             'parameters' => [
-                ['$ref' => '#/components/parameters/Test']
+                ['$ref' => '#/components/parameters/Test'],
             ],
             'externalDocs' => ['url' => 'http://example.com'],
             'servers' => [['url' => 'http://example.com']],
             'callbacks' => [
                 'onData' => [
                     '{$request.query.url}' => [
-                        'post' => ['responses' => ['200' => ['description' => 'OK']]]
-                    ]
-                ]
+                        'post' => ['responses' => ['200' => ['description' => 'OK']]],
+                    ],
+                ],
             ],
             'security' => [
-                ['basicAuth' => []]
-            ]
+                ['basicAuth' => []],
+            ],
         ];
-        // this shouldn't throw
         $seen = [];
         \Cdd\Operations\validateOperationObject($op, [], $seen);
         $this->assertArrayHasKey('testOp', $seen);
     }
-    public function testValidateOperationServersNotArray()
+
+    /**
+     * Tests validation error when Operation `servers` is not an array.
+     *
+     * @return void
+     */
+    public function testValidateOperationServersNotArray(): void
     {
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\Operations\validateOperationObject(['responses' => ['200' => ['description' => 'OK']], 'servers' => 'not array']);
         }, \RuntimeException::class, 'Operation "servers" must be an array');
     }

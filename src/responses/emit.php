@@ -25,15 +25,7 @@ function emit(array $responses): string
 
         $type = 'mixed';
         if (isset($schema['type'])) {
-            $typeMap = [
-                'integer' => 'int',
-                'number' => 'float',
-                'boolean' => 'bool',
-                'string' => 'string',
-                'array' => 'array',
-                'object' => 'object',
-            ];
-            $type = $typeMap[$schema['type']] ?? 'mixed';
+            $type = \Cdd\Schemas\openapi_type_to_php((string) $schema['type'], 'mixed');
         } elseif (isset($schema['$ref'])) {
             $parts = explode('/', (string) $schema['$ref']);
             $type = (string) end($parts);

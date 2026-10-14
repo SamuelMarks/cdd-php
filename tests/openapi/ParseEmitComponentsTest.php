@@ -1,80 +1,103 @@
 <?php
 
+/**
+ * Tests for OpenAPI Components Object validation errors (`\Cdd\Openapi\parse`).
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests validation failures on invalid `components` fields.
+ */
 class ParseEmitComponentsTest extends TestCase
 {
-    public function testComponentsObjectInvalid()
+    /**
+     * Tests error when `components` is not an object.
+     *
+     * @return void
+     */
+    public function testComponentsObjectInvalid(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":"invalid"}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Field "components" must be an object') !== false);
-        }
+        }, \RuntimeException::class, 'Field "components" must be an object');
     }
 
-    public function testComponentsObjectSchemasInvalid()
+    /**
+     * Tests error when `components.schemas` is not a map.
+     *
+     * @return void
+     */
+    public function testComponentsObjectSchemasInvalid(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":"invalid"}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), "Components 'schemas' must be a map") !== false);
-        }
+        }, \RuntimeException::class, "Components 'schemas' must be a map");
     }
 
-    public function testComponentsObjectKeysInvalidRegex()
+    /**
+     * Tests error when a component key violates the allowed regex pattern.
+     *
+     * @return void
+     */
+    public function testComponentsObjectKeysInvalidRegex(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":{"invalid space":{}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), "Components 'schemas' map keys must match") !== false);
-        }
+        }, \RuntimeException::class, "Components 'schemas' map keys must match");
     }
 
-    public function testComponentsObjectSchemaInvalid()
+    /**
+     * Tests error when a schema definition is neither an object nor a boolean.
+     *
+     * @return void
+     */
+    public function testComponentsObjectSchemaInvalid(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":{"ValidName":"invalid"}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Schema must be an object or boolean') !== false);
-        }
+        }, \RuntimeException::class, 'Schema must be an object or boolean');
     }
 
-    public function testComponentsResponseMissingDescription()
+    /**
+     * Tests error when a component response is missing `description`.
+     *
+     * @return void
+     */
+    public function testComponentsResponseMissingDescription(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"responses":{"A":{}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Response must contain a "description" string') !== false);
-        }
+        }, \RuntimeException::class, 'Response must contain a "description" string');
     }
 
-    public function testComponentsExampleBothValues()
+    /**
+     * Tests error when a component example contains both `value` and `externalValue`.
+     *
+     * @return void
+     */
+    public function testComponentsExampleBothValues(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"examples":{"A":{"value":1,"externalValue":"a"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Example cannot contain "externalValue" with "serializedValue" or "value"') !== false);
-        }
+        }, \RuntimeException::class, 'Example cannot contain "externalValue" with "serializedValue" or "value"');
     }
 
-    public function testComponentsSecuritySchemeMissingType()
+    /**
+     * Tests error when a component securityScheme is missing `type`.
+     *
+     * @return void
+     */
+    public function testComponentsSecuritySchemeMissingType(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"A":{}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Security Scheme must contain a "type" string') !== false);
-        }
+        }, \RuntimeException::class, 'Security Scheme must contain a "type" string');
     }
 }

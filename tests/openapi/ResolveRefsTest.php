@@ -1,24 +1,38 @@
 <?php
 
+/**
+ * Tests for local `$ref` resolution and circular reference detection.
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
 declare(strict_types=1);
 
-namespace Cdd\Tests\Openapi;
+namespace Cdd\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests `resolve_refs` in the `Cdd\Openapi` namespace.
+ */
 class ResolveRefsTest extends TestCase
 {
-    public function testResolveRefs()
+    /**
+     * Tests resolving valid local `$ref` pointers.
+     *
+     * @return void
+     */
+    public function testResolveRefs(): void
     {
         $components = [
             'schemas' => [
                 'User' => [
                     'type' => 'object',
                     'properties' => [
-                        'id' => ['type' => 'integer']
-                    ]
-                ]
-            ]
+                        'id' => ['type' => 'integer'],
+                    ],
+                ],
+            ],
         ];
 
         $structure = [
@@ -26,33 +40,38 @@ class ResolveRefsTest extends TestCase
                 'content' => [
                     'application/json' => [
                         'schema' => [
-                            '$ref' => '#/components/schemas/User'
-                        ]
-                    ]
-                ]
-            ]
+                            '$ref' => '#/components/schemas/User',
+                        ],
+                    ],
+                ],
+            ],
         ];
 
-        $resolved = \Cdd\Openapi\resolve_refs($structure, $components);
+        $resolved = resolve_refs($structure, $components);
 
         $this->assertEquals('object', $resolved['requestBody']['content']['application/json']['schema']['type']);
         $this->assertEquals('integer', $resolved['requestBody']['content']['application/json']['schema']['properties']['id']['type']);
         $this->assertTrue(!isset($resolved['requestBody']['content']['application/json']['schema']['$ref']));
     }
 
-    public function testResolveRefsNotFound()
+    /**
+     * Tests unresolved and circular `$ref` pointers.
+     *
+     * @return void
+     */
+    public function testResolveRefsNotFound(): void
     {
         $components = [
-            'schemas' => []
+            'schemas' => [],
         ];
 
         $structure = [
             'schema' => [
-                '$ref' => '#/components/schemas/NonExistent'
-            ]
+                '$ref' => '#/components/schemas/NonExistent',
+            ],
         ];
 
-        $resolved = \Cdd\Openapi\resolve_refs($structure, $components);
+        $resolved = resolve_refs($structure, $components);
 
         $this->assertEquals('#/components/schemas/NonExistent', $resolved['schema']['$ref']);
 
@@ -66,7 +85,7 @@ class ResolveRefsTest extends TestCase
                 ],
             ],
         ];
-        $circularResolved = \Cdd\Openapi\resolve_refs(['$ref' => '#/components/schemas/Node'], $circularComponents);
+        $circularResolved = resolve_refs(['$ref' => '#/components/schemas/Node'], $circularComponents);
         $this->assertEquals('object', $circularResolved['type']);
         $this->assertEquals('#/components/schemas/Node', $circularResolved['properties']['parent']['$ref']);
     }

@@ -4,6 +4,8 @@
 /**
  * CDD-PHP (Compiler Driven Development) CLI
  * No external dependencies.
+ *
+ * @package Cdd
  */
 
 declare(strict_types=1);

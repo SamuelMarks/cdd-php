@@ -1,20 +1,34 @@
 <?php
 
+/**
+ * Tests for OpenAPI Paths and Path Item Object parsing, emission, and validation (`\Cdd\Paths`).
+ *
+ * @package Cdd\Tests\Paths
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Paths;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests `\Cdd\Paths\parse`, `\Cdd\Paths\emit`, `\Cdd\Paths\emit_modular`, and path item validation.
+ */
 class ParseEmitTest extends TestCase
 {
-    public function testParseAndEmit()
+    /**
+     * Tests parsing and emitting an `ApiController` from OpenAPI Paths.
+     *
+     * @return void
+     */
+    public function testParseAndEmit(): void
     {
         $pathItems = [
             '/users' => [
                 'get' => ['operationId' => 'listUsers'],
                 'post' => ['operationId' => 'createUser'],
-            ]
+            ],
         ];
 
         $paths = \Cdd\Paths\parse($pathItems);
@@ -25,112 +39,143 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(strpos($emitted, 'public function createUser() {') !== false);
     }
 
-    public function testEmitWithExistingCode()
+    /**
+     * Tests emitting into an existing `ApiController` class while preserving custom methods.
+     *
+     * @return void
+     */
+    public function testEmitWithExistingCode(): void
     {
         $paths = ['/api/users' => ['get' => ['operationId' => 'getUsers']]];
-        $existing = "<?php\n\nclass ApiController {\n    // Some comment\n    public function custom() {}\n}\n";
+        $existing = "<?php
+
+class ApiController {
+    // Some comment
+    public function custom() {}
+}
+";
         $emitted = \Cdd\Paths\emit($paths, $existing);
         $this->assertTrue(strpos($emitted, '// Some comment') !== false);
         $this->assertTrue(strpos($emitted, 'public function custom() {}') !== false);
         $this->assertTrue(strpos($emitted, 'public function getUsers') !== false);
     }
 
-    public function testEmitAdditionalOperations()
+    /**
+     * Tests emitting `additionalOperations` in `Cdd\Paths\emit`.
+     *
+     * @return void
+     */
+    public function testEmitAdditionalOperations(): void
     {
         $paths = [
             '/extra' => [
                 'additionalOperations' => [
                     'm-SEARCH' => ['operationId' => 'mSearchExtra'],
-                    'PROPFIND' => [] // Will generate operationId: propfindextra
-                ]
-            ]
+                    'PROPFIND' => [],
+                ],
+            ],
         ];
         $emitted = \Cdd\Paths\emit($paths);
         $this->assertTrue(strpos($emitted, 'public function mSearchExtra() {') !== false);
         $this->assertTrue(strpos($emitted, 'public function propfindextra() {') !== false);
 
-        // Test with existing code
-        $existing = "<?php class ApiController { }";
+        $existing = '<?php class ApiController { }';
         $emitted2 = \Cdd\Paths\emit($paths, $existing);
         $this->assertTrue(strpos($emitted2, 'public function mSearchExtra() {') !== false);
 
-        // Test with existing code but missing closing brace
-        $existingNoBrace = "<?php class ApiController ";
+        $existingNoBrace = '<?php class ApiController ';
         $emitted3 = \Cdd\Paths\emit($paths, $existingNoBrace);
         $this->assertTrue(strpos($emitted3, 'public function mSearchExtra() {') !== false);
     }
 
-    public function testEmitMissingOperationId()
+    /**
+     * Tests fallback operationId generation when `operationId` is omitted.
+     *
+     * @return void
+     */
+    public function testEmitMissingOperationId(): void
     {
         $paths = [
             '/no-op' => [
-                'get' => [] // generates getnoop
-            ]
+                'get' => [],
+            ],
         ];
         $emitted = \Cdd\Paths\emit($paths);
         $this->assertTrue(strpos($emitted, 'public function getnoop() {') !== false);
 
-        $existingNoBrace = "<?php class ApiController ";
+        $existingNoBrace = '<?php class ApiController ';
         $emitted2 = \Cdd\Paths\emit($paths, $existingNoBrace);
         $this->assertTrue(strpos($emitted2, 'public function getnoop() {') !== false);
     }
 
-    public function testValidatePathItemObjectFailures()
+    /**
+     * Tests validation errors for Path Item Objects.
+     *
+     * @return void
+     */
+    public function testValidatePathItemObjectFailures(): void
     {
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject('not array');
         }, \RuntimeException::class, 'Path Item must be an object');
 
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['$ref' => 123]);
         }, \RuntimeException::class, 'Path Item "$ref" must be a string');
 
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['summary' => 123]);
         }, \RuntimeException::class, 'Path Item "summary" must be a string');
 
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['description' => 123]);
         }, \RuntimeException::class, 'Path Item "description" must be a string');
 
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['additionalOperations' => 'not array']);
         }, \RuntimeException::class, 'Path Item "additionalOperations" must be a map');
 
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['additionalOperations' => ['GET' => []]]);
         }, \RuntimeException::class, 'Path Item "additionalOperations" MUST NOT contain any entry for fixed methods (e.g., GET)');
 
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['servers' => 'not array']);
         }, \RuntimeException::class, 'Path Item "servers" must be an array');
 
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['parameters' => 'not array']);
         }, \RuntimeException::class, 'Path Item "parameters" must be an array');
 
-        $this->assertThrows(function () {
+        $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject([
                 'parameters' => [
                     ['name' => 'id', 'in' => 'query', 'schema' => []],
-                    ['name' => 'id', 'in' => 'query', 'schema' => []]
-                ]
+                    ['name' => 'id', 'in' => 'query', 'schema' => []],
+                ],
             ]);
         }, \RuntimeException::class, 'Path Item parameters list MUST NOT include duplicated parameters');
     }
 
-    public function testValidatePathItemObjectValid()
+    /**
+     * Tests validating a valid Path Item Object and emitting modular controllers.
+     *
+     * @return void
+     */
+    public function testValidatePathItemObjectValid(): void
     {
-        \Cdd\Paths\validatePathItemObject([
-            '$ref' => '#/paths/~1foo',
-            'summary' => 'summary',
-            'description' => 'desc',
-            'servers' => [['url' => 'http://example.com']],
-            'parameters' => [
-                ['name' => 'id', 'in' => 'query', 'schema' => []],
-                ['name' => 'id', 'in' => 'header', 'schema' => []]
-            ]
-        ]);
+        $this->assertDoesNotThrow(function (): void {
+            \Cdd\Paths\validatePathItemObject([
+                '$ref' => '#/paths/~1foo',
+                'summary' => 'summary',
+                'description' => 'desc',
+                'servers' => [['url' => 'http://example.com']],
+                'parameters' => [
+                    ['name' => 'id', 'in' => 'query', 'schema' => []],
+                    ['name' => 'id', 'in' => 'header', 'schema' => []],
+                ],
+            ]);
+        });
         $modular = \Cdd\Paths\emit_modular([
             '/users' => [
                 'summary' => 'Users path',

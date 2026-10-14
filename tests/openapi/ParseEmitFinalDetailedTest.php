@@ -1,181 +1,223 @@
 <?php
 
+/**
+ * Tests for Header, Link, Response, SecurityScheme, and Encoding validation (`\Cdd\Openapi\parse`).
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests additional validation rules on Headers, Links, Responses, SecuritySchemes, and Encodings.
+ */
 class ParseEmitFinalDetailedTest extends TestCase
 {
-    public function testHeaderObjectBothSchemaContent()
+    /**
+     * Tests error when a Header contains both `schema` and `content`.
+     *
+     * @return void
+     */
+    public function testHeaderObjectBothSchemaContent(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"H1":{"schema":{},"content":{}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Header cannot contain both "schema" and "content"') !== false);
-        }
+        }, \RuntimeException::class, 'Header cannot contain both "schema" and "content"');
     }
 
-    public function testHeaderObjectNeitherSchemaContent()
+    /**
+     * Tests error when a Header contains neither `schema` nor `content`.
+     *
+     * @return void
+     */
+    public function testHeaderObjectNeitherSchemaContent(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"H1":{"description":"Test"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Header must contain either "schema" or "content"') !== false);
-        }
+        }, \RuntimeException::class, 'Header must contain either "schema" or "content"');
     }
 
-    public function testCallbackObjectKeys()
+    /**
+     * Tests validating a Callback Object with numeric/expression keys.
+     *
+     * @return void
+     */
+    public function testCallbackObjectKeys(): void
     {
-        try {
-            // we cannot test this via json_decode easily because PHP auto-casts numeric string keys to ints and then we cast them back. The string cast in our code fixed the crash.
-            throw new \RuntimeException('Callback expression keys must be strings');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Callback expression keys must be strings') !== false);
-        }
+        $this->assertDoesNotThrow(function (): void {
+            \Cdd\Operations\validateCallbackOrReferenceObject(['200' => ['get' => ['responses' => ['200' => ['description' => 'ok']]]]]);
+        });
     }
 
-    public function testLinkObjectBothOperationRefId()
+    /**
+     * Tests error when a Link Object contains both `operationRef` and `operationId`.
+     *
+     * @return void
+     */
+    public function testLinkObjectBothOperationRefId(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"links":{"L1":{"operationRef":"ref","operationId":"id"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Link cannot contain both "operationRef" and "operationId"') !== false);
-        }
+        }, \RuntimeException::class, 'Link cannot contain both "operationRef" and "operationId"');
     }
 
-    public function testResponseObjectHeaders()
+    /**
+     * Tests error when Response `headers` is not a map.
+     *
+     * @return void
+     */
+    public function testResponseObjectHeaders(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"responses":{"R1":{"description":"Test","headers":"invalid"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Response "headers" must be a map') !== false);
-        }
+        }, \RuntimeException::class, 'Response "headers" must be a map');
     }
 
-    public function testResponseObjectLinks()
+    /**
+     * Tests error when Response `links` is not a map.
+     *
+     * @return void
+     */
+    public function testResponseObjectLinks(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"responses":{"R1":{"description":"Test","links":"invalid"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Response "links" must be a map') !== false);
-        }
+        }, \RuntimeException::class, 'Response "links" must be a map');
     }
 
-    public function testSecuritySchemeInvalidType()
+    /**
+     * Tests error when SecurityScheme `type` is invalid.
+     *
+     * @return void
+     */
+    public function testSecuritySchemeInvalidType(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"invalid"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Security Scheme "type" must be one of') !== false);
-        }
+        }, \RuntimeException::class, 'Security Scheme "type" must be one of');
     }
 
-    public function testSecuritySchemeApiKeyMissingName()
+    /**
+     * Tests error when `apiKey` SecurityScheme is missing `name`.
+     *
+     * @return void
+     */
+    public function testSecuritySchemeApiKeyMissingName(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"apiKey"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Security Scheme "apiKey" requires a "name" string') !== false);
-        }
+        }, \RuntimeException::class, 'Security Scheme "apiKey" requires a "name" string');
     }
 
-    public function testSecuritySchemeApiKeyMissingIn()
+    /**
+     * Tests error when `apiKey` SecurityScheme is missing `in`.
+     *
+     * @return void
+     */
+    public function testSecuritySchemeApiKeyMissingIn(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"apiKey","name":"key"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Security Scheme "apiKey" requires an "in" string') !== false);
-        }
+        }, \RuntimeException::class, 'Security Scheme "apiKey" requires an "in" string');
     }
 
-    public function testSecuritySchemeHttpMissingScheme()
+    /**
+     * Tests error when `http` SecurityScheme is missing `scheme`.
+     *
+     * @return void
+     */
+    public function testSecuritySchemeHttpMissingScheme(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"http"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Security Scheme "http" requires a "scheme" string') !== false);
-        }
+        }, \RuntimeException::class, 'Security Scheme "http" requires a "scheme" string');
     }
 
-    public function testSecuritySchemeOauth2MissingFlows()
+    /**
+     * Tests error when `oauth2` SecurityScheme is missing `flows`.
+     *
+     * @return void
+     */
+    public function testSecuritySchemeOauth2MissingFlows(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"oauth2"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Security Scheme "oauth2" requires a "flows" map') !== false);
-        }
+        }, \RuntimeException::class, 'Security Scheme "oauth2" requires a "flows" map');
     }
 
-    public function testSecuritySchemeOpenIdConnectMissingUrl()
+    /**
+     * Tests error when `openIdConnect` SecurityScheme is missing `openIdConnectUrl`.
+     *
+     * @return void
+     */
+    public function testSecuritySchemeOpenIdConnectMissingUrl(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"openIdConnect"}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Security Scheme "openIdConnect" requires an "openIdConnectUrl" string') !== false);
-        }
+        }, \RuntimeException::class, 'Security Scheme "openIdConnect" requires an "openIdConnectUrl" string');
     }
-    public function testEncodingObjectInvalidContentType()
+
+    /**
+     * Tests error when Encoding `contentType` is not a string.
+     *
+     * @return void
+     */
+    public function testEncodingObjectInvalidContentType(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"requestBodies":{"R":{"content":{"multipart/form-data":{"encoding":{"a":{"contentType":123}}}}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Encoding "contentType" must be a string') !== false);
-        }
+        }, \RuntimeException::class, 'Encoding "contentType" must be a string');
     }
 
-    public function testEncodingObjectInvalidHeaders()
+    /**
+     * Tests error when Encoding `headers` is not a map.
+     *
+     * @return void
+     */
+    public function testEncodingObjectInvalidHeaders(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"requestBodies":{"R":{"content":{"multipart/form-data":{"encoding":{"a":{"headers":123}}}}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Encoding "headers" must be a map') !== false);
-        }
+        }, \RuntimeException::class, 'Encoding "headers" must be a map');
     }
 
-    public function testEncodingObjectInvalidStyle()
+    /**
+     * Tests error when Encoding `style` is not a string.
+     *
+     * @return void
+     */
+    public function testEncodingObjectInvalidStyle(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"requestBodies":{"R":{"content":{"multipart/form-data":{"encoding":{"a":{"style":123}}}}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Encoding "style" must be a string') !== false);
-        }
+        }, \RuntimeException::class, 'Encoding "style" must be a string');
     }
 
-    public function testEncodingObjectInvalidExplode()
+    /**
+     * Tests error when Encoding `explode` is not a boolean.
+     *
+     * @return void
+     */
+    public function testEncodingObjectInvalidExplode(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"requestBodies":{"R":{"content":{"multipart/form-data":{"encoding":{"a":{"explode":123}}}}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Encoding "explode" must be a boolean') !== false);
-        }
+        }, \RuntimeException::class, 'Encoding "explode" must be a boolean');
     }
 
-    public function testEncodingObjectInvalidAllowReserved()
+    /**
+     * Tests error when Encoding `allowReserved` is not a boolean.
+     *
+     * @return void
+     */
+    public function testEncodingObjectInvalidAllowReserved(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"requestBodies":{"R":{"content":{"multipart/form-data":{"encoding":{"a":{"allowReserved":123}}}}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Encoding "allowReserved" must be a boolean') !== false);
-        }
+        }, \RuntimeException::class, 'Encoding "allowReserved" must be a boolean');
     }
-
 }

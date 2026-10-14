@@ -1,16 +1,29 @@
 <?php
 
+/**
+ * Tests for `\Cdd\Openapi\emit` generation options, scaffolding, and Swagger 2.0 downgrade.
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests `\Cdd\Openapi\emit` across `to_sdk`, `to_sdk_cli`, `to_server`, and `target_version=2.0`.
+ */
 class EmitOptionsTest extends TestCase
 {
-    public function testEmitDefaults()
+    /**
+     * Tests default OpenAPI fields when emitting an empty specification array.
+     *
+     * @return void
+     */
+    public function testEmitDefaults(): void
     {
-        // Line 18-31: Ensuring basic fields are present when they are omitted
         $openapi = [];
         $emitted = \Cdd\Openapi\emit($openapi);
         $decoded = json_decode($emitted, true);
@@ -18,10 +31,15 @@ class EmitOptionsTest extends TestCase
         $this->assertEquals('3.2.0', $decoded['openapi']);
         $this->assertEquals('Default API', $decoded['info']['title']);
         $this->assertEquals('0.0.3', $decoded['info']['version']);
-        $this->assertTrue(is_array($decoded['paths'])); // wait, it's emitted as (object)[], which becomes empty object in JSON, so array in json_decode assoc=true
+        $this->assertTrue(is_array($decoded['paths']));
     }
 
-    public function testEmitWithOutDirAndSubcommandToSdk()
+    /**
+     * Tests emitting an SDK project with tests and all parameter/requestBody media types.
+     *
+     * @return void
+     */
+    public function testEmitWithOutDirAndSubcommandToSdk(): void
     {
         $outDir = sys_get_temp_dir() . '/cdd_test_emit_outdir_' . uniqid();
 
@@ -31,8 +49,6 @@ class EmitOptionsTest extends TestCase
             'servers' => [['url' => 'http://localhost']],
             'jsonSchemaDialect' => 'schema',
             'externalDocs' => ['url' => 'url'],
-            'security' => [['basicAuth' => ['type' => 'http', 'scheme' => 'basic'],
-                    'oauth2_authCode' => []]],
             'tags' => [['name' => 'tag']],
             'security' => [['api_key' => []]],
             'paths' => [
@@ -51,31 +67,31 @@ class EmitOptionsTest extends TestCase
                             ['name' => 'param7', 'in' => 'query', 'required' => true, 'schema' => ['$ref' => '#/components/schemas/Dummy']],
                             ['name' => 'param8', 'in' => 'query', 'required' => true, 'schema' => ['type' => 'string', 'format' => 'date-time']],
                             ['name' => 'param9', 'in' => 'query', 'required' => true, 'schema' => ['type' => 'object']],
-                        ]
+                        ],
                     ],
                     'post' => [
                         'operationId' => 'testPostJson',
-                        'requestBody' => ['content' => ['application/json' => ['schema' => ['type' => 'string']]]]
+                        'requestBody' => ['content' => ['application/json' => ['schema' => ['type' => 'string']]]],
                     ],
                     'post_obj' => [
                         'operationId' => 'testPostObj',
                         'requestBody' => [
                             'content' => [
                                 'application/json' => [
-                                    'schema' => ['type' => 'string']
-                                ]
-                            ]
-                        ]
+                                    'schema' => ['type' => 'string'],
+                                ],
+                            ],
+                        ],
                     ],
                     'put' => [
                         'operationId' => 'testPutForm',
                         'requestBody' => [
                             'content' => [
                                 'application/x-www-form-urlencoded' => [
-                                    'schema' => ['type' => 'object', 'properties' => ['prop' => ['type' => 'string']]]
-                                ]
-                            ]
-                        ]
+                                    'schema' => ['type' => 'object', 'properties' => ['prop' => ['type' => 'string']]],
+                                ],
+                            ],
+                        ],
                     ],
                     'patch' => [
                         'operationId' => 'testPatchMultipart',
@@ -86,64 +102,63 @@ class EmitOptionsTest extends TestCase
                                         'type' => 'object',
                                         'properties' => [
                                             'prop' => ['type' => 'string'],
-                                            'file' => ['type' => 'string', 'format' => 'binary']
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ]
+                                            'file' => ['type' => 'string', 'format' => 'binary'],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
                     ],
                     'delete' => [
                         'summary' => 'Should be ignored in testing',
-                        'parameters' => []
+                        'parameters' => [],
                     ],
                     'additionalOperations' => ['should_be_ignored' => ['summary' => 'test']],
                     'post_json_obj' => [
                         'operationId' => 'testPostJsonObj',
-                        'requestBody' => ['content' => ['application/json' => ['schema' => ['type' => 'object', 'properties' => ['p' => ['type' => 'string']]]]]]
+                        'requestBody' => ['content' => ['application/json' => ['schema' => ['type' => 'object', 'properties' => ['p' => ['type' => 'string']]]]]],
                     ],
                     'put_form_str' => [
                         'operationId' => 'testPutFormStr',
-                        'requestBody' => ['content' => ['application/x-www-form-urlencoded' => ['schema' => ['type' => 'string']]]]
+                        'requestBody' => ['content' => ['application/x-www-form-urlencoded' => ['schema' => ['type' => 'string']]]],
                     ],
                     'patch_multi_str' => [
                         'operationId' => 'testPatchMultiStr',
-                        'requestBody' => ['content' => ['multipart/form-data' => ['schema' => ['type' => 'string']]]]
-                    ]
-                ]
+                        'requestBody' => ['content' => ['multipart/form-data' => ['schema' => ['type' => 'string']]]],
+                    ],
+                ],
             ],
             'components' => [
                 'schemas' => [
-                    'Dummy' => ['type' => 'string']
+                    'Dummy' => ['type' => 'string'],
+                ],
+                'securitySchemes' => [
+                    'api_key' => ['type' => 'apiKey', 'name' => 'api_key', 'in' => 'header'],
+                    'petstore_auth' => ['type' => 'http', 'scheme' => 'bearer'],
                 ],
                 'examples' => [
-                    'Ex' => ['value' => 'test']
-                ]
+                    'Ex' => ['value' => 'test'],
+                ],
             ],
             'webhooks' => [
                 'myWebhook' => [
                     'post' => [
-                        'operationId' => 'webhookPost'
-                    ]
-                ]
-            ]
+                        'operationId' => 'webhookPost',
+                    ],
+                ],
+            ],
         ];
 
-        // test with to_sdk and tests => true
         $options = [
             'subcommand' => 'to_sdk',
-            'tests' => true
+            'tests' => true,
         ];
 
-        // Ensure functions exist to prevent fatal errors, mock them if needed
         \Cdd\Openapi\emit($openapi, $outDir, $options);
 
-        // Run a SECOND time to hit the "file_exists" TRUE branches
-        // Also add an operation without operationId to hit the preg_replace fallback
         $openapi['paths']['/test']['get'] = [
-            'parameters' => []
+            'parameters' => [],
         ];
-        // Add a "parameters" method to hit the ignore branch
         $openapi['paths']['/test']['parameters'] = [];
         \Cdd\Openapi\emit($openapi, $outDir, $options);
 
@@ -151,43 +166,33 @@ class EmitOptionsTest extends TestCase
         $this->assertTrue(is_dir($outDir . '/tests'));
         $this->assertTrue(file_exists($outDir . '/src/ApiServers.php'));
         $this->assertTrue(file_exists($outDir . '/src/api_metadata.php'));
-        if ($options['subcommand'] === 'to_server') {
-            $this->assertTrue(is_dir($outDir . '/src/Controllers'));
-        } else {
-            $this->assertTrue(file_exists($outDir . "/src/ApiController.php"));
-        }
+        $this->assertTrue(file_exists($outDir . '/src/ApiController.php'));
         $this->assertTrue(file_exists($outDir . '/src/routes.php'));
         $this->assertTrue(file_exists($outDir . '/src/ApiClient.php'));
         $this->assertTrue(file_exists($outDir . '/src/Models.php'));
         $this->assertTrue(file_exists($outDir . '/src/mocks.php'));
         $this->assertTrue(file_exists($outDir . '/src/Webhooks.php'));
-        if ($options['subcommand'] === 'to_server') {
-            $this->assertTrue(is_dir($outDir . '/tests/Routes'));
-        } else {
-            $this->assertTrue(file_exists($outDir . '/tests/ApiTests.php'));
-        }
-        if ($options['subcommand'] !== 'to_server') {
-            $this->assertTrue(file_exists($outDir . '/tests/ComposableTests.php'));
-        }
+        $this->assertTrue(file_exists($outDir . '/tests/ApiTests.php'));
+        $this->assertTrue(file_exists($outDir . '/tests/ComposableTests.php'));
         $this->assertTrue(file_exists($outDir . '/tests/SdkIntegrationTest.php'));
         $this->assertTrue(file_exists($outDir . '/composer.json'));
         $this->assertTrue(file_exists($outDir . '/.github/workflows/ci.yml'));
 
-        // Check conditional dependencies for to_sdk
-        $this->assertTrue(file_exists($outDir . '/composer.json'));
-        $composerJson = json_decode(file_get_contents($outDir . '/composer.json'), true);
+        $composerJson = json_decode((string) file_get_contents($outDir . '/composer.json'), true);
         $this->assertTrue(isset($composerJson['require']));
         $this->assertTrue(!isset($composerJson['require']['illuminate/database']));
         $this->assertTrue(!isset($composerJson['require']['fakerphp/faker']));
-
-        // Check README is NOT generated for to_sdk
         $this->assertTrue(!file_exists($outDir . '/README.md'));
 
-        // Cleanup
-        system("rm -rf " . escapeshellarg($outDir));
+        $this->removeDir($outDir);
     }
 
-    public function testEmitWithSubcommandToSdkCliAndNoPackages()
+    /**
+     * Tests emitting with `no_installable_package` and `no_github_actions`.
+     *
+     * @return void
+     */
+    public function testEmitWithSubcommandToSdkCliAndNoPackages(): void
     {
         $outDir = sys_get_temp_dir() . '/cdd_test_emit_outdir2_' . uniqid();
 
@@ -196,7 +201,7 @@ class EmitOptionsTest extends TestCase
             'subcommand' => 'to_sdk_cli',
             'no_installable_package' => true,
             'no_github_actions' => true,
-            'tests' => false
+            'tests' => false,
         ];
 
         \Cdd\Openapi\emit($openapi, $outDir, $options);
@@ -205,10 +210,15 @@ class EmitOptionsTest extends TestCase
         $this->assertTrue(!file_exists($outDir . '/composer.json'));
         $this->assertTrue(!file_exists($outDir . '/.github/workflows/ci.yml'));
 
-        system("rm -rf " . escapeshellarg($outDir));
+        $this->removeDir($outDir);
     }
 
-    public function testEmitWithSubcommandToServer()
+    /**
+     * Tests emitting a full server project (`subcommand=to_server`).
+     *
+     * @return void
+     */
+    public function testEmitWithSubcommandToServer(): void
     {
         $outDir = sys_get_temp_dir() . '/cdd_test_emit_outdir_server_' . uniqid();
 
@@ -236,44 +246,41 @@ class EmitOptionsTest extends TestCase
 
         \Cdd\Openapi\emit($openapi, $outDir, $options);
 
-        // Check if /mcp/sse and /mcp/message routes were generated
-        if ($options['subcommand'] === 'to_server') {
-            $this->assertTrue(is_dir($outDir . '/src/Controllers'));
-        } else {
-            $this->assertTrue(file_exists($outDir . "/src/ApiController.php"));
-        }
+        $this->assertTrue(is_dir($outDir . '/src/Controllers'));
         $this->assertTrue(file_exists($outDir . '/src/Controllers/Mcp_sseController.php'));
         $this->assertTrue(file_exists($outDir . '/src/Controllers/Mcp_messageController.php'));
 
         $this->assertTrue(file_exists($outDir . '/src/routes.php'));
         $this->assertTrue(file_exists($outDir . '/src/Routes/McpRoutes.php'));
-        $mcpRouteCode = file_get_contents($outDir . '/src/Routes/McpRoutes.php');
+        $mcpRouteCode = (string) file_get_contents($outDir . '/src/Routes/McpRoutes.php');
         $this->assertStringContainsString('/mcp/sse', $mcpRouteCode);
         $this->assertStringContainsString('/mcp/message', $mcpRouteCode);
 
-        // Check conditional dependencies for to_server
         $this->assertTrue(file_exists($outDir . '/composer.json'));
-        $composerJson = json_decode(file_get_contents($outDir . '/composer.json'), true);
+        $composerJson = json_decode((string) file_get_contents($outDir . '/composer.json'), true);
         $this->assertTrue(isset($composerJson['require']));
         $this->assertTrue(isset($composerJson['require']['illuminate/database']));
         $this->assertTrue(isset($composerJson['require']['fakerphp/faker']));
         $this->assertTrue(isset($composerJson['require']['ext-pdo']));
         $this->assertTrue(isset($composerJson['require']['ext-pdo_sqlite']));
 
-        // Check README generation
         $this->assertTrue(file_exists($outDir . '/README.md'));
-        $readmeContents = file_get_contents($outDir . '/README.md');
+        $readmeContents = (string) file_get_contents($outDir . '/README.md');
         $this->assertStringContainsString('# A Server', $readmeContents);
         $this->assertStringContainsString('--ephemeral --seed', $readmeContents);
 
-        // Check standalone server generation
         $this->assertTrue(file_exists($outDir . '/server.php'));
-        $this->assertStringContainsString('php -S 127.0.0.1:8080 server.php', file_get_contents($outDir . '/server.php'));
+        $this->assertStringContainsString('php -S 127.0.0.1:8080 server.php', (string) file_get_contents($outDir . '/server.php'));
 
-        system("rm -rf " . escapeshellarg($outDir));
+        $this->removeDir($outDir);
     }
 
-    public function testEmitTargetVersion20()
+    /**
+     * Tests downgrading OpenAPI 3.2.0 to Swagger 2.0 via `target_version=2.0`.
+     *
+     * @return void
+     */
+    public function testEmitTargetVersion20(): void
     {
         $openapi = [
             'openapi' => '3.2.0',
@@ -287,19 +294,19 @@ class EmitOptionsTest extends TestCase
                             'description' => 'Body description',
                             'content' => [
                                 'application/json' => [
-                                    'schema' => ['type' => 'object']
-                                ]
-                            ]
+                                    'schema' => ['type' => 'object'],
+                                ],
+                            ],
                         ],
                         'responses' => [
                             '200' => [
                                 'content' => [
                                     'application/json' => [
-                                        'schema' => ['type' => 'string']
-                                    ]
-                                ]
-                            ]
-                        ]
+                                        'schema' => ['type' => 'string'],
+                                    ],
+                                ],
+                            ],
+                        ],
                     ],
                     'put' => [
                         'requestBody' => [
@@ -307,14 +314,14 @@ class EmitOptionsTest extends TestCase
                                 'application/x-www-form-urlencoded' => [
                                     'schema' => [
                                         'properties' => [
-                                            'formField' => ['type' => 'string']
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
+                                            'formField' => ['type' => 'string'],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
             ],
             'components' => [
                 'schemas' => ['Model' => ['type' => 'object']],
@@ -327,39 +334,28 @@ class EmitOptionsTest extends TestCase
                         'flows' => [
                             'authorizationCode' => [
                                 'authorizationUrl' => 'https://example.com/auth',
-                                'tokenUrl' => 'https://example.com/token'
-                            ]
-                        ]
-                    ],
-                    'basicAuth' => ['type' => 'http', 'scheme' => 'basic'],
-                    'oauth2_authCode' => [
-                        'type' => 'oauth2',
-                        'flows' => [
-                            'authorizationCode' => [
-                                'authorizationUrl' => 'https://example.com/auth',
-                                'tokenUrl' => 'https://example.com/token'
-                            ]
-                        ]
+                                'tokenUrl' => 'https://example.com/token',
+                            ],
+                        ],
                     ],
                     'oauth2' => [
                         'type' => 'oauth2',
                         'flows' => [
                             'clientCredentials' => [
                                 'tokenUrl' => 'https://example.com/token',
-                                'scopes' => ['read' => 'read scope']
+                                'scopes' => ['read' => 'read scope'],
                             ],
                             'authorizationCode' => [
                                 'authorizationUrl' => 'https://example.com/auth',
-                                'tokenUrl' => 'https://example.com/token'
-                            ]
-                        ]
-                    ]
-                ]
+                                'tokenUrl' => 'https://example.com/token',
+                            ],
+                        ],
+                    ],
+                ],
             ],
-            'security' => [['basicAuth' => ['type' => 'http', 'scheme' => 'basic'],
-                    'oauth2_authCode' => []]],
+            'security' => [['basicAuth' => ['type' => 'http', 'scheme' => 'basic'], 'oauth2_authCode' => []]],
             'tags' => [['name' => 'test']],
-            'externalDocs' => ['url' => 'https://example.com/docs']
+            'externalDocs' => ['url' => 'https://example.com/docs'],
         ];
 
         $options = ['target_version' => '2.0'];
@@ -374,60 +370,63 @@ class EmitOptionsTest extends TestCase
         $this->assertEquals('body', $decoded['paths']['/test']['post']['parameters'][0]['name']);
         $this->assertEquals('formData', $decoded['paths']['/test']['put']['parameters'][0]['in']);
         $this->assertEquals('oauth2', $decoded['securityDefinitions']['oauth2']['type']);
-        $this->assertEquals('application', $decoded['securityDefinitions']['oauth2']['flow']); // first flow is clientCredentials mapped to application
+        $this->assertEquals('application', $decoded['securityDefinitions']['oauth2']['flow']);
     }
 
-    public function testEmitBaseUrlCalculation()
+    /**
+     * Tests base URL path calculation for generated SDK integration tests.
+     *
+     * @return void
+     */
+    public function testEmitBaseUrlCalculation(): void
     {
         $outDir = sys_get_temp_dir() . '/cdd_test_emit_outdir3_' . uniqid();
 
-        // Test with URL without a path
         $openapiNoPath = [
             'openapi' => '3.2.0',
             'info' => ['title' => 'Test', 'version' => '1'],
-            'servers' => [['url' => 'http://127.0.0.1:8080']], // No path here
-            'paths' => []
+            'servers' => [['url' => 'http://127.0.0.1:8080']],
+            'paths' => [],
         ];
         \Cdd\Openapi\emit($openapiNoPath, $outDir, ['subcommand' => 'to_sdk', 'tests' => true]);
-        $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
+        $testCode = (string) file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
         $this->assertTrue(strpos($testCode, "new ApiClient('http://127.0.0.1:8080')") !== false);
 
-        // Test with URL with a path
         $openapiWithPath = [
             'openapi' => '3.2.0',
             'info' => ['title' => 'Test', 'version' => '1'],
             'servers' => [['url' => 'http://127.0.0.1:8080/api/v2']],
-            'paths' => []
+            'paths' => [],
         ];
         \Cdd\Openapi\emit($openapiWithPath, $outDir, ['subcommand' => 'to_sdk', 'tests' => true]);
-        $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
+        $testCode = (string) file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
         $this->assertTrue(strpos($testCode, "new ApiClient('http://127.0.0.1:8080/api/v2')") !== false);
 
-        // Test with Swagger 2.0 basePath
         $openapiBasePath = [
             'swagger' => '2.0',
             'info' => ['title' => 'Test', 'version' => '1'],
             'basePath' => '/api/v1',
-            'paths' => []
+            'paths' => [],
         ];
         \Cdd\Openapi\emit($openapiBasePath, $outDir, ['subcommand' => 'to_sdk', 'tests' => true]);
-        $testCode = file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
+        $testCode = (string) file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
         $this->assertTrue(strpos($testCode, "new ApiClient('http://127.0.0.1:8080/api/v1')") !== false);
 
-        system("rm -rf " . escapeshellarg($outDir));
+        $this->removeDir($outDir);
     }
 
-    public function testEmitJsonEncodeFailure()
+    /**
+     * Tests exception thrown when `json_encode` fails in `\Cdd\Openapi\emit`.
+     *
+     * @return void
+     */
+    public function testEmitJsonEncodeFailure(): void
     {
-        // Force json_encode to fail by providing a circular reference
         $openapi = ['openapi' => '3.2.0', 'info' => ['title' => 'A', 'version' => '1'], 'paths' => []];
-        $openapi['paths'] = &$openapi; // circular reference
+        $openapi['paths'] = &$openapi;
 
-        try {
+        $this->assertThrows(function () use (&$openapi): void {
             @\Cdd\Openapi\emit($openapi);
-            $this->assertTrue(false); // Should not reach here
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Failed to encode OpenAPI array to JSON') !== false);
-        }
+        }, \RuntimeException::class, 'Failed to encode OpenAPI array to JSON');
     }
 }

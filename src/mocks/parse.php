@@ -19,7 +19,6 @@ use PhpParser\Node\Scalar\Int_;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\Return_;
 use PhpParser\NodeFinder;
-use PhpParser\ParserFactory;
 
 /**
  * Evaluates a PhpParser AST expression node into a native PHP value without executing arbitrary code.
@@ -75,7 +74,7 @@ function evaluateAstNode(?Node $node): mixed
 function parse(string $mockCode): array
 {
     $examples = [];
-    $parser = (new ParserFactory())->createForNewestSupportedVersion();
+    $parser = \Cdd\Classes\create_parser();
     try {
         $stmts = $parser->parse($mockCode);
     } catch (\Throwable $e) {

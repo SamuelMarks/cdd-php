@@ -17,6 +17,49 @@ use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\UnionType;
 
 /**
+ * Maps a PHP scalar/builtin type name to an OpenAPI schema type name.
+ *
+ * @param string $phpType The PHP type identifier.
+ * @return string|null The OpenAPI type ('integer', 'number', 'boolean', 'string', 'array', 'object') or null if non-scalar/class.
+ */
+function php_type_to_openapi(string $phpType): ?string
+{
+    $typeMap = [
+        'int' => 'integer',
+        'integer' => 'integer',
+        'float' => 'number',
+        'double' => 'number',
+        'number' => 'number',
+        'bool' => 'boolean',
+        'boolean' => 'boolean',
+        'string' => 'string',
+        'array' => 'array',
+        'object' => 'object',
+    ];
+    return $typeMap[strtolower($phpType)] ?? null;
+}
+
+/**
+ * Maps an OpenAPI schema type name to its idiomatic PHP type hint.
+ *
+ * @param string $openApiType The OpenAPI type identifier.
+ * @param string $default Fallback PHP type when unmapped.
+ * @return string The mapped PHP type hint.
+ */
+function openapi_type_to_php(string $openApiType, string $default = 'mixed'): string
+{
+    $typeMap = [
+        'integer' => 'int',
+        'number' => 'float',
+        'boolean' => 'bool',
+        'string' => 'string',
+        'array' => 'array',
+        'object' => 'object',
+    ];
+    return $typeMap[strtolower($openApiType)] ?? $default;
+}
+
+/**
  * Parses a PHP class node into an OpenAPI Schema Object.
  *
  * @param Class_ $classNode The PHP class AST node.
@@ -71,16 +114,6 @@ function parse(Class_ $classNode): array
         }
     }
     $required = [];
-    $typeMap = [
-        'int' => 'integer',
-        'float' => 'number',
-        'bool' => 'boolean',
-        'string' => 'string',
-        'array' => 'array',
-        'object' => 'object',
-        'mixed' => 'mixed',
-    ];
-    $scalarTypes = ['integer', 'number', 'boolean', 'string', 'array', 'object'];
 
     foreach ($classNode->getProperties() as $prop) {
         if (!$prop->isPublic()) {
@@ -108,21 +141,21 @@ function parse(Class_ $classNode): array
                 $typeName = $typeNode->toString();
             }
         }
-        $openApiType = $typeMap[strtolower($typeName)] ?? $typeName;
+        $mappedScalar = php_type_to_openapi($typeName);
         foreach ($prop->props as $p) {
             $propName = $p->name->toString();
             $propSchema = [];
-            if ($openApiType === 'mixed') {
+            if (strtolower($typeName) === 'mixed') {
                 $propSchema['type'] = 'string';
-            } elseif (in_array($openApiType, $scalarTypes, true)) {
-                $propSchema['type'] = $openApiType;
+            } elseif ($mappedScalar !== null) {
+                $propSchema['type'] = $mappedScalar;
             } else {
-                $propSchema['$ref'] = "#/components/schemas/{$openApiType}";
+                $propSchema['$ref'] = "#/components/schemas/{$typeName}";
             }
             if ($nullable) {
                 $propSchema['nullable'] = true;
             }
-            if (!$nullable && $openApiType !== 'mixed') {
+            if (!$nullable && strtolower($typeName) !== 'mixed') {
                 $required[] = $propName;
             }
             $schema['properties'][$propName] = $propSchema;

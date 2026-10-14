@@ -10,24 +10,18 @@ declare(strict_types=1);
 
 namespace Cdd\Classes;
 
-use PhpParser\Node\Stmt\Class_;
+use PhpParser\Node;
+use PhpParser\Token;
 
 /**
- * Emits a PHP class from its extracted node.
+ * Extracts raw PHP source code for an AST node (including leading comments) from its token stream.
  *
- * @param array<string, mixed> $classInfo Extracted class metadata containing 'node' and 'tokens'.
- * @return string The emitted PHP class source code.
+ * @param Node $node The AST node to slice.
+ * @param array<int, Token> $tokens The parser token stream.
+ * @return string The extracted and trimmed PHP source code.
  */
-function emit(array $classInfo): string
+function extract_node_source(Node $node, array $tokens): string
 {
-    if (!isset($classInfo['node']) || !isset($classInfo['tokens'])) {
-        return '';
-    }
-
-    /** @var Class_ $node */
-    $node = $classInfo['node'];
-    $tokens = $classInfo['tokens'];
-
     $start = $node->getStartTokenPos();
     $end = $node->getEndTokenPos();
 
@@ -45,4 +39,24 @@ function emit(array $classInfo): string
     }
 
     return ltrim($code);
+}
+
+/**
+ * Emits a PHP class from its extracted node.
+ *
+ * @param array<string, mixed> $classInfo Extracted class metadata containing 'node' and 'tokens'.
+ * @return string The emitted PHP class source code.
+ */
+function emit(array $classInfo): string
+{
+    if (!isset($classInfo['node']) || !isset($classInfo['tokens'])) {
+        return '';
+    }
+
+    /** @var Node $node */
+    $node = $classInfo['node'];
+    /** @var array<int, Token> $tokens */
+    $tokens = $classInfo['tokens'];
+
+    return extract_node_source($node, $tokens);
 }

@@ -96,6 +96,16 @@ function emit(array $components, string $existingCode = ''): string
                             $nl = chr(10);
                             $doc .= " * " . str_replace($nl, $nl . " * ", (string) $compDef['description']) . $nl;
                         }
+                        if ($compType === 'mediaTypes') {
+                            if (isset($compDef['itemSchema']['$ref'])) {
+                                $refParts = explode('/', (string) $compDef['itemSchema']['$ref']);
+                                $doc .= " * @itemSchema " . end($refParts) . "\n";
+                            }
+                            if (isset($compDef['itemEncoding']) && is_array($compDef['itemEncoding'])) {
+                                $doc .= " * @itemEncoding " . ($compDef['itemEncoding']['contentType'] ?? json_encode($compDef['itemEncoding'])) . "\n";
+                                $doc .= " * @encodingPhp " . str_replace("\n", ' ', \Cdd\Encoding\emit($compDef['itemEncoding'])) . "\n";
+                            }
+                        }
                     }
                     $doc .= " */\n";
 

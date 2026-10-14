@@ -1,78 +1,83 @@
 <?php
 
+/**
+ * Tests for forbidden fields and mutual exclusivity rules in Headers, Responses, XML, and Paths (`\Cdd\Openapi\parse`).
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests extraneous or conflicting OpenAPI specification properties.
+ */
 class ParseEmitExtraneousTest extends TestCase
 {
-    public function testHeaderObjectNoNameInAllowEmptyValue()
+    /**
+     * Tests errors when Header Object specifies `name`, `in`, `allowEmptyValue`, or non-`simple` style.
+     *
+     * @return void
+     */
+    public function testHeaderObjectNoNameInAllowEmptyValue(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"H1":{"name":"test","schema":{}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Header "name" MUST NOT be specified') !== false);
-        }
+        }, \RuntimeException::class, 'Header "name" MUST NOT be specified');
 
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"H1":{"in":"query","schema":{}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Header "in" MUST NOT be specified') !== false);
-        }
+        }, \RuntimeException::class, 'Header "in" MUST NOT be specified');
 
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"H1":{"allowEmptyValue":true,"schema":{}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Header "allowEmptyValue" MUST NOT be used') !== false);
-        }
+        }, \RuntimeException::class, 'Header "allowEmptyValue" MUST NOT be used');
 
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"H1":{"style":"matrix","schema":{}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'MUST be limited to "simple"') !== false);
-        }
+        }, \RuntimeException::class, 'MUST be limited to "simple"');
     }
 
-    public function testResponsesObjectNotEmpty()
+    /**
+     * Tests error when Responses Object is empty.
+     *
+     * @return void
+     */
+    public function testResponsesObjectNotEmpty(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/p":{"get":{"responses":{}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Responses Object MUST contain at least one response code') !== false);
-        }
+        }, \RuntimeException::class, 'Responses Object MUST contain at least one response code');
     }
 
-    public function testXmlObjectMutuallyExclusive()
+    /**
+     * Tests errors when XML `nodeType` is combined with `attribute` or `wrapped`.
+     *
+     * @return void
+     */
+    public function testXmlObjectMutuallyExclusive(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":{"S1":{"xml":{"nodeType":"element","attribute":true}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'XML "attribute" MUST NOT be present if "nodeType" is present') !== false);
-        }
+        }, \RuntimeException::class, 'XML "attribute" MUST NOT be present if "nodeType" is present');
 
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":{"S1":{"xml":{"nodeType":"element","wrapped":true}}}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'XML "wrapped" MUST NOT be present if "nodeType" is present') !== false);
-        }
+        }, \RuntimeException::class, 'XML "wrapped" MUST NOT be present if "nodeType" is present');
     }
 
-    public function testDuplicatePathVariables()
+    /**
+     * Tests error when a path template contains duplicate variable names.
+     *
+     * @return void
+     */
+    public function testDuplicatePathVariables(): void
     {
-        try {
+        $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/{id}/user/{id}":{}}}');
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), 'Path template expressions MUST NOT appear more than once') !== false);
-        }
+        }, \RuntimeException::class, 'Path template expressions MUST NOT appear more than once');
     }
 }

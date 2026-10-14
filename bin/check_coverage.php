@@ -11,13 +11,14 @@
 
 declare(strict_types=1);
 
+ini_set('memory_limit', '-1');
+
 if (!function_exists('phpdbg_start_oplog')) {
     echo "Please run with phpdbg: phpdbg -qrr bin/check_coverage.php
 ";
     exit(1);
 }
 
-phpdbg_start_oplog();
 $dir = __DIR__ . '/../tests';
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../tests/framework/Runner.php';
@@ -45,6 +46,8 @@ foreach ($files as $file) {
 }
 
 $testClasses = \Cdd\Tests\Framework\Runner::discoverTestClasses($dir);
+
+phpdbg_start_oplog();
 
 $passed = 0;
 $failed = 0;

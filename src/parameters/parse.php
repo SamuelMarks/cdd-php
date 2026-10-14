@@ -22,16 +22,9 @@ namespace Cdd\Parameters;
 function parse(string $name, string $type, string $in = 'query', bool $required = true): array
 {
     $param = ['name' => $name, 'in' => $in, 'required' => $required, 'schema' => []];
-    $typeMap = [
-        'int' => 'integer',
-        'float' => 'number',
-        'bool' => 'boolean',
-        'string' => 'string',
-        'array' => 'array',
-        'object' => 'object',
-    ];
-    if (isset($typeMap[$type])) {
-        $param['schema']['type'] = $typeMap[$type];
+    $mappedType = \Cdd\Schemas\php_type_to_openapi($type);
+    if ($mappedType !== null) {
+        $param['schema']['type'] = $mappedType;
     } else {
         $param['schema']['$ref'] = "#/components/schemas/{$type}";
     }

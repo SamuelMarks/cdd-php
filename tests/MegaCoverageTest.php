@@ -1,26 +1,64 @@
 <?php
 
+/**
+ * End-to-end CLI subcommand coverage tests using a self-contained OpenAPI fixture.
+ *
+ * @package Cdd\Tests\Cli
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Cli;
 
-use Cdd\Tests\Framework\TestCase;
 use Cdd\Cli\CddCli;
+use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests CLI help, version, error handling, and full project generation modes.
+ */
 class MegaCoverageTest extends TestCase
 {
+    /**
+     * Tests `CddCli::run` across help, version, `to_docs_json`, `from_openapi`, and `serve_json_rpc`.
+     *
+     * @return void
+     */
     public function testCoverageBoost(): void
     {
-        $spec = __DIR__ . '/../cdd-openapi-test-harness/petstore.json';
-        if (!file_exists($spec)) {
-            $spec = __DIR__ . '/../../cdd-openapi-test-harness/petstore.json';
-        }
-        if (!file_exists($spec)) {
-            $spec = __DIR__ . '/../../petstore.json';
-        }
-
         $tmpBase = sys_get_temp_dir() . '/cdd_mega_cov_' . uniqid();
         mkdir($tmpBase, 0777, true);
+        $spec = "$tmpBase/petstore.json";
+        file_put_contents($spec, (string) json_encode([
+            'openapi' => '3.2.0',
+            'info' => ['title' => 'Petstore Fixture', 'version' => '1.0.0'],
+            'paths' => [
+                '/pets' => [
+                    'get' => [
+                        'operationId' => 'listPets',
+                        'parameters' => [
+                            ['name' => 'limit', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'integer']],
+                        ],
+                        'responses' => [
+                            '200' => [
+                                'description' => 'A paged array of pets',
+                                'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Pet']]],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'components' => [
+                'schemas' => [
+                    'Pet' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'id' => ['type' => 'integer'],
+                            'name' => ['type' => 'string'],
+                        ],
+                    ],
+                ],
+            ],
+        ]));
 
         try {
             ob_start();
@@ -48,7 +86,7 @@ class MegaCoverageTest extends TestCase
             $this->assertEquals(0, CddCli::run(['cdd-php', 'serve_json_rpc', '--port', '0', '--listen', '127.0.0.1', '--timeout', '0.01']));
             ob_end_clean();
         } finally {
-            exec("rm -rf " . escapeshellarg($tmpBase));
+            $this->removeDir($tmpBase);
         }
     }
 }

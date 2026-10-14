@@ -1,10 +1,28 @@
 <?php
 
+/**
+ * Tests for OpenAPI 3.2.0 specific features (`$self`, tag hierarchy, `query`, `additionalOperations`, `dataValue`, `nodeType`).
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
+declare(strict_types=1);
+
 namespace Cdd\Tests\Openapi;
 
-class ParseEmitOAS320Test extends \Cdd\Tests\Framework\TestCase
+use Cdd\Tests\Framework\TestCase;
+
+/**
+ * Tests parsing and validating OpenAPI 3.2.0 specification features.
+ */
+class ParseEmitOAS320Test extends TestCase
 {
-    public function testParseOAS320Features()
+    /**
+     * Tests parsing OpenAPI 3.2.0 fields and structures.
+     *
+     * @return void
+     */
+    public function testParseOAS320Features(): void
     {
         $json = '{
             "openapi": "3.2.0",
@@ -69,7 +87,7 @@ class ParseEmitOAS320Test extends \Cdd\Tests\Framework\TestCase
                         "dataValue": {"foo": "bar"}
                     },
                     "example2": {
-                        "serializedValue": "{\\"foo\\":\\"bar\\"}"
+                        "serializedValue": "{\"foo\":\"bar\"}"
                     }
                 },
                 "schemas": {

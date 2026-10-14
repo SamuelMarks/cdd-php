@@ -1,14 +1,28 @@
 <?php
 
+/**
+ * Tests for OpenAPI 3.2.0 Security Scheme features (`deviceAuthorization`, `mutualTLS`, `oauth2MetadataUrl`).
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Openapi;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests parsing and validating OpenAPI 3.2.0 Security Scheme extensions.
+ */
 class ParseEmitSecurityTest extends TestCase
 {
-    public function testParseSecurityDeviceAuthorization()
+    /**
+     * Tests parsing a valid OAuth2 `deviceAuthorization` flow.
+     *
+     * @return void
+     */
+    public function testParseSecurityDeviceAuthorization(): void
     {
         $json = '{
             "openapi": "3.2.0",
@@ -32,10 +46,15 @@ class ParseEmitSecurityTest extends TestCase
             }
         }';
         $parsed = \Cdd\Openapi\parse($json);
-        $this->assertEquals("https://example.com/device", $parsed['components']['securitySchemes']['oauth2']['flows']['deviceAuthorization']['deviceAuthorizationUrl']);
+        $this->assertEquals('https://example.com/device', $parsed['components']['securitySchemes']['oauth2']['flows']['deviceAuthorization']['deviceAuthorizationUrl']);
     }
 
-    public function testParseSecurityDeviceAuthorizationInvalid()
+    /**
+     * Tests error when OAuth2 `deviceAuthorization` flow is missing `deviceAuthorizationUrl`.
+     *
+     * @return void
+     */
+    public function testParseSecurityDeviceAuthorizationInvalid(): void
     {
         $json = '{
             "openapi": "3.2.0",
@@ -55,15 +74,17 @@ class ParseEmitSecurityTest extends TestCase
                 }
             }
         }';
-        try {
+        $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-            throw new \Exception('Expected exception not thrown');
-        } catch (\RuntimeException $e) {
-            $this->assertTrue(strpos($e->getMessage(), "OAuth2 deviceAuthorization flow requires a 'deviceAuthorizationUrl' string") !== false);
-        }
+        }, \RuntimeException::class, "OAuth2 deviceAuthorization flow requires a 'deviceAuthorizationUrl' string");
     }
 
-    public function testParseSecurityMutualTLS()
+    /**
+     * Tests parsing a `mutualTLS` Security Scheme.
+     *
+     * @return void
+     */
+    public function testParseSecurityMutualTLS(): void
     {
         $json = '{
             "openapi": "3.2.0",
@@ -78,10 +99,15 @@ class ParseEmitSecurityTest extends TestCase
             }
         }';
         $parsed = \Cdd\Openapi\parse($json);
-        $this->assertEquals("mutualTLS", $parsed['components']['securitySchemes']['mtls']['type']);
+        $this->assertEquals('mutualTLS', $parsed['components']['securitySchemes']['mtls']['type']);
     }
 
-    public function testParseSecurityOAuth2Metadata()
+    /**
+     * Tests parsing `oauth2MetadataUrl` on an OAuth2 Security Scheme.
+     *
+     * @return void
+     */
+    public function testParseSecurityOAuth2Metadata(): void
     {
         $json = '{
             "openapi": "3.2.0",
@@ -103,6 +129,6 @@ class ParseEmitSecurityTest extends TestCase
             }
         }';
         $parsed = \Cdd\Openapi\parse($json);
-        $this->assertEquals("https://example.com/meta", $parsed['components']['securitySchemes']['oauth2']['oauth2MetadataUrl']);
+        $this->assertEquals('https://example.com/meta', $parsed['components']['securitySchemes']['oauth2']['oauth2MetadataUrl']);
     }
 }

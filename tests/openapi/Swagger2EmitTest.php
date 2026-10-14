@@ -1,21 +1,37 @@
 <?php
 
+/**
+ * Tests for Swagger 2.0 emission and `$ref` prefix rewriting.
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Openapi;
 
-class Swagger2EmitTest extends \Cdd\Tests\Framework\TestCase
+use Cdd\Tests\Framework\TestCase;
+
+/**
+ * Tests `\Cdd\Openapi\emit` with `target_version = '2.0'`.
+ */
+class Swagger2EmitTest extends TestCase
 {
-    public function testEmitSwagger2()
+    /**
+     * Tests downgrading an OpenAPI 3.2.0 specification to Swagger 2.0.
+     *
+     * @return void
+     */
+    public function testEmitSwagger2(): void
     {
         $openapi = [
             'openapi' => '3.2.0',
             'info' => [
                 'title' => 'Test',
-                'version' => '1.0'
+                'version' => '1.0',
             ],
             'servers' => [
-                ['url' => 'https://api.example.com/v2']
+                ['url' => 'https://api.example.com/v2'],
             ],
             'paths' => [
                 '/test' => [
@@ -24,31 +40,31 @@ class Swagger2EmitTest extends \Cdd\Tests\Framework\TestCase
                             'content' => [
                                 'application/json' => [
                                     'schema' => [
-                                        '$ref' => '#/components/schemas/Input'
-                                    ]
-                                ]
-                            ]
+                                        '$ref' => '#/components/schemas/Input',
+                                    ],
+                                ],
+                            ],
                         ],
                         'responses' => [
                             '200' => [
                                 'content' => [
                                     'application/json' => [
                                         'schema' => [
-                                            '$ref' => '#/components/schemas/Output'
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
+                                            '$ref' => '#/components/schemas/Output',
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
             ],
             'components' => [
                 'schemas' => [
                     'Input' => ['type' => 'string'],
-                    'Output' => ['type' => 'string']
-                ]
-            ]
+                    'Output' => ['type' => 'string'],
+                ],
+            ],
         ];
 
         $json = \Cdd\Openapi\emit($openapi, null, ['target_version' => '2.0']);

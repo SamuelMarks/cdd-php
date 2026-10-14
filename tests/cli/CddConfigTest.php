@@ -1,15 +1,29 @@
 <?php
 
+/**
+ * Tests for `CddConfig` argument serialization.
+ *
+ * @package Cdd\Tests\Cli
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Cli;
 
-use Cdd\Tests\Framework\TestCase;
 use Cdd\Cli\CddConfig;
+use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests `CddConfig::toArgs` with all options and minimal defaults.
+ */
 class CddConfigTest extends TestCase
 {
-    public function testToArgsAllOptions()
+    /**
+     * Tests `CddConfig::toArgs` when all properties are populated.
+     *
+     * @return void
+     */
+    public function testToArgsAllOptions(): void
     {
         $config = new CddConfig();
         $config->command = 'from_openapi';
@@ -37,11 +51,16 @@ class CddConfigTest extends TestCase
             '--mcp',
             '--no-imports',
             '--no-wrapping',
-            '-t', 'class'
+            '-t', 'class',
         ], $args);
     }
 
-    public function testToArgsMinimal()
+    /**
+     * Tests `CddConfig::toArgs` with default values.
+     *
+     * @return void
+     */
+    public function testToArgsMinimal(): void
     {
         $config = new CddConfig();
         $args = $config->toArgs();

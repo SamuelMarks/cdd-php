@@ -1,14 +1,28 @@
 <?php
 
+/**
+ * Tests for Parameter Object parsing, emission, and validation.
+ *
+ * @package Cdd\Tests\Parameters
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Parameters;
 
 use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests `\Cdd\Parameters\parse`, `\Cdd\Parameters\emit`, and parameter validators.
+ */
 class ParseEmitTest extends TestCase
 {
-    public function testParseAndEmit()
+    /**
+     * Tests parsing and emitting OpenAPI Parameter Objects.
+     *
+     * @return void
+     */
+    public function testParseAndEmit(): void
     {
         $param = \Cdd\Parameters\parse('id', 'int', 'path');
 
@@ -20,21 +34,23 @@ class ParseEmitTest extends TestCase
         $emitted = \Cdd\Parameters\emit($param);
         $this->assertEquals('int $id', $emitted);
 
-        // Test coverage for unknown type (triggers $ref)
         $paramRef = \Cdd\Parameters\parse('userId', 'User', 'query', false);
         $this->assertEquals('#/components/schemas/User', $paramRef['schema']['$ref']);
 
         $emittedRef = \Cdd\Parameters\emit($paramRef);
-        // It's not required and not in path, so it gets ?
         $this->assertEquals('?User $userId', $emittedRef);
 
-        // Test coverage for parameter with no schema
         $paramNoSchema = ['name' => 'noType', 'in' => 'query'];
         $emittedNoSchema = \Cdd\Parameters\emit($paramNoSchema);
         $this->assertEquals('$noType', $emittedNoSchema);
     }
 
-    public function testValidateParameterObjectValidOptionals()
+    /**
+     * Tests validation and emission of optional Parameter Object fields.
+     *
+     * @return void
+     */
+    public function testValidateParameterObjectValidOptionals(): void
     {
         $param1 = [
             'name' => 'foo',
@@ -42,9 +58,11 @@ class ParseEmitTest extends TestCase
             'style' => 'form',
             'explode' => true,
             'allowReserved' => true,
-            'schema' => ['type' => 'string']
+            'schema' => ['type' => 'string'],
         ];
-        \Cdd\Parameters\validateParameterOrReferenceObject($param1);
+        $this->assertDoesNotThrow(function () use ($param1): void {
+            \Cdd\Parameters\validateParameterOrReferenceObject($param1);
+        });
         $this->assertEquals('?string $foo', \Cdd\Parameters\emit($param1));
 
         $param2 = [
@@ -52,15 +70,22 @@ class ParseEmitTest extends TestCase
             'in' => 'query',
             'content' => [
                 'application/json' => [
-                    'schema' => ['type' => 'string']
-                ]
-            ]
+                    'schema' => ['type' => 'string'],
+                ],
+            ],
         ];
-        \Cdd\Parameters\validateParameterOrReferenceObject($param2);
+        $this->assertDoesNotThrow(function () use ($param2): void {
+            \Cdd\Parameters\validateParameterOrReferenceObject($param2);
+        });
         $this->assertEquals('$foo', \Cdd\Parameters\emit($param2));
     }
 
-    public function testValidateParameterOrReferenceObjectErrors()
+    /**
+     * Tests validation errors and valid shapes for Parameter or Reference Objects.
+     *
+     * @return void
+     */
+    public function testValidateParameterOrReferenceObjectErrors(): void
     {
         $tests = [
             ['input' => 'string', 'error' => 'Parameter must be an object'],
@@ -86,30 +111,15 @@ class ParseEmitTest extends TestCase
         ];
 
         foreach ($tests as $test) {
-            $caught = false;
-            try {
+            $this->assertThrows(function () use ($test): void {
                 \Cdd\Parameters\validateParameterOrReferenceObject($test['input']);
-            } catch (\RuntimeException $e) {
-                $this->assertEquals($test['error'], $e->getMessage());
-                $caught = true;
-            }
-            $this->assertTrue($caught, "Expected exception: {$test['error']}");
+            }, \RuntimeException::class, $test['error']);
         }
 
-        // test $ref
-        \Cdd\Parameters\validateParameterOrReferenceObject(['$ref' => '#/components/parameters/Foo']);
-
-        // test valid
-        \Cdd\Parameters\validateParameterOrReferenceObject([
-            'name' => 'foo',
-            'in' => 'query',
-            'schema' => []
-        ]);
-
-        \Cdd\Parameters\validateParameterOrReferenceObject([
-            'name' => 'foo',
-            'in' => 'query',
-            'content' => ['application/json' => []]
-        ]);
+        $this->assertDoesNotThrow(function (): void {
+            \Cdd\Parameters\validateParameterOrReferenceObject(['$ref' => '#/components/parameters/Foo']);
+            \Cdd\Parameters\validateParameterOrReferenceObject(['name' => 'foo', 'in' => 'query', 'schema' => []]);
+            \Cdd\Parameters\validateParameterOrReferenceObject(['name' => 'foo', 'in' => 'query', 'content' => ['application/json' => []]]);
+        });
     }
 }

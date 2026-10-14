@@ -22,10 +22,11 @@ function emit(array $servers): string
     foreach ($servers as $index => $server) {
         $url = (string) ($server['url'] ?? '');
         if ($url !== '') {
-            $desc = (string) ($server['description'] ?? "Server $index");
+            $desc = str_replace('*/', '* /', (string) ($server['description'] ?? "Server $index"));
+            $exportedUrl = var_export($url, true);
             $out .= "    /** $desc */
 ";
-            $out .= "    public string \$serverUrl{$index} = '$url';
+            $out .= "    public string \$serverUrl{$index} = {$exportedUrl};
 
 ";
         }

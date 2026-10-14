@@ -19,13 +19,16 @@ namespace Cdd\RequestBodies;
  */
 function parse(string $type, string $description = ''): array
 {
+    $mappedType = \Cdd\Schemas\php_type_to_openapi($type);
+    $schema = $mappedType !== null
+        ? ['type' => $mappedType]
+        : ['$ref' => "#/components/schemas/$type"];
+
     $requestBody = [
         'required' => true,
         'content' => [
             'application/json' => [
-                'schema' => [
-                    '$ref' => "#/components/schemas/$type",
-                ],
+                'schema' => $schema,
             ],
         ],
     ];

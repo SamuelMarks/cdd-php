@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+ini_set('memory_limit', '512M');
+
 require_once __DIR__ . "/../vendor/autoload.php";
 require_once __DIR__ . '/framework/Runner.php';
 

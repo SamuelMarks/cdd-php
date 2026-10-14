@@ -1,12 +1,28 @@
 <?php
 
+/**
+ * Tests for parsing and upgrading Swagger 2.0 documents to OpenAPI 3.2.0 (`\Cdd\Openapi\parse`).
+ *
+ * @package Cdd\Tests\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Openapi;
 
-class Swagger2ParseTest extends \Cdd\Tests\Framework\TestCase
+use Cdd\Tests\Framework\TestCase;
+
+/**
+ * Tests Swagger 2.0 parsing and conversion into OpenAPI 3.2.0 structure.
+ */
+class Swagger2ParseTest extends TestCase
 {
-    public function testParseSwagger2()
+    /**
+     * Tests parsing a full Swagger 2.0 document with definitions, parameters, responses, and securityDefinitions.
+     *
+     * @return void
+     */
+    public function testParseSwagger2(): void
     {
         $json = '{
             "swagger": "2.0",
@@ -226,11 +242,15 @@ class Swagger2ParseTest extends \Cdd\Tests\Framework\TestCase
         $this->assertTrue(isset($parsed['components']['securitySchemes']['petstore_auth_accessCode']['flows']['authorizationCode']['tokenUrl']));
         $this->assertTrue(isset($parsed['paths']['/pets']['get']['responses']['200']['content']['application/json']['schema']['$ref']));
         $this->assertEquals('#/components/schemas/Pets', $parsed['paths']['/pets']['get']['responses']['200']['content']['application/json']['schema']['$ref']);
-        // $this->assertTrue(isset($parsed['paths']['/pets']['post']['requestBody']['content']['application/json']['schema']['$ref']));
         $this->assertEquals('file', $parsed['paths']['/pets']['post']['requestBody']['content']['multipart/form-data']['schema']['properties']['file']['type']);
     }
 
-    public function testParseSwagger2Empty()
+    /**
+     * Tests parsing a minimal empty Swagger 2.0 document.
+     *
+     * @return void
+     */
+    public function testParseSwagger2Empty(): void
     {
         $json = '{
             "swagger": "2.0",
@@ -245,7 +265,12 @@ class Swagger2ParseTest extends \Cdd\Tests\Framework\TestCase
         $this->assertTrue(!isset($parsed['components']));
     }
 
-    public function testParseSwagger2ExtraBranches()
+    /**
+     * Tests Swagger 2.0 body parameter fallback and header schema conversion without format.
+     *
+     * @return void
+     */
+    public function testParseSwagger2ExtraBranches(): void
     {
         $json = '{
             "swagger": "2.0",
@@ -280,7 +305,7 @@ class Swagger2ParseTest extends \Cdd\Tests\Framework\TestCase
             }
         }';
         $parsed = \Cdd\Openapi\parse($json);
-        $this->assertEquals("value", $parsed['paths']['/test']['x-custom-extension']);
+        $this->assertEquals('value', $parsed['paths']['/test']['x-custom-extension']);
         $this->assertTrue(isset($parsed['paths']['/test']['get']['requestBody']['content']['application/json']['schema']));
         $this->assertTrue(isset($parsed['paths']['/test']['get']['responses']['200']['content']['application/json']['schema']));
         $this->assertEquals('string', $parsed['paths']['/test']['get']['responses']['201']['headers']['X-NoFormat']['schema']['type']);

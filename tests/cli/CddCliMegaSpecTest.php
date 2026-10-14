@@ -1,14 +1,28 @@
 <?php
 
+/**
+ * Integration test for `CddCli` across `to_sdk_cli`, `to_sdk`, `to_server`, and `to_docs_json`.
+ *
+ * @package Cdd\Tests\Cli
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests\Cli;
 
-use Cdd\Tests\Framework\TestCase;
 use Cdd\Cli\CddCli;
+use Cdd\Tests\Framework\TestCase;
 
+/**
+ * Tests generating SDK CLI, SDK, Server, and Docs JSON from a comprehensive spec.
+ */
 class CddCliMegaSpecTest extends TestCase
 {
+    /**
+     * Tests `from_openapi` and `to_docs_json` generation targets.
+     *
+     * @return void
+     */
     public function testMegaSpec(): void
     {
         $tmpBase = sys_get_temp_dir() . '/cdd_megaspec_' . uniqid();
@@ -26,9 +40,9 @@ class CddCliMegaSpecTest extends TestCase
                         'properties' => [
                             'str' => ['type' => 'string'],
                         ],
-                        'required' => ['str']
-                    ]
-                ]
+                        'required' => ['str'],
+                    ],
+                ],
             ],
             'paths' => [
                 '/test' => [
@@ -36,25 +50,25 @@ class CddCliMegaSpecTest extends TestCase
                         'operationId' => 'testId',
                         'description' => 'A test operation',
                         'parameters' => [
-                            ['name' => 'myParam', 'in' => 'query', 'required' => true, 'description' => 'A param', 'schema' => ['type' => 'string']]
+                            ['name' => 'myParam', 'in' => 'query', 'required' => true, 'description' => 'A param', 'schema' => ['type' => 'string']],
                         ],
                         'requestBody' => [
                             'content' => [
                                 'application/json' => [
                                     'schema' => [
-                                        '$ref' => '#/components/schemas/Obj'
-                                    ]
-                                ]
-                            ]
+                                        '$ref' => '#/components/schemas/Obj',
+                                    ],
+                                ],
+                            ],
                         ],
                         'responses' => [
-                            '200' => ['description' => 'ok']
-                        ]
-                    ]
-                ]
-            ]
+                            '200' => ['description' => 'ok'],
+                        ],
+                    ],
+                ],
+            ],
         ];
-        file_put_contents($specFile, json_encode($spec));
+        file_put_contents($specFile, (string) json_encode($spec));
 
         try {
             ob_start();
@@ -69,7 +83,7 @@ class CddCliMegaSpecTest extends TestCase
             $this->assertTrue(file_exists("$tmpBase/mega_3/src/routes.php"));
             $this->assertTrue(file_exists("$tmpBase/mega_4.json"));
         } finally {
-            exec("rm -rf " . escapeshellarg($tmpBase));
+            $this->removeDir($tmpBase);
         }
     }
 }
