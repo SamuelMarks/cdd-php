@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits PHP docblock `@return` annotations from OpenAPI Responses Objects.
+ *
+ * @package Cdd\Responses
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Responses;
@@ -7,14 +13,14 @@ namespace Cdd\Responses;
 /**
  * Emits a PHP docstring @return from an OpenAPI Responses Object.
  *
- * @param array $responses The OpenAPI Responses Object
- * @return string The generated docstring segment
+ * @param array<string|int, mixed> $responses The OpenAPI Responses Object.
+ * @return string The generated docstring segment.
  */
 function emit(array $responses): string
 {
     $out = '';
 
-    foreach ($responses as $statusCode => $response) {
+    foreach ($responses as $response) {
         $schema = $response['content']['application/json']['schema'] ?? [];
 
         $type = 'mixed';
@@ -29,11 +35,12 @@ function emit(array $responses): string
             ];
             $type = $typeMap[$schema['type']] ?? 'mixed';
         } elseif (isset($schema['$ref'])) {
-            $parts = explode('/', $schema['$ref']);
-            $type = end($parts);
+            $parts = explode('/', (string) $schema['$ref']);
+            $type = (string) end($parts);
         }
 
-        $out .= " * @return $type\n";
+        $out .= " * @return $type
+";
     }
 
     return $out;

@@ -55,5 +55,19 @@ class ResolveRefsTest extends TestCase
         $resolved = \Cdd\Openapi\resolve_refs($structure, $components);
 
         $this->assertEquals('#/components/schemas/NonExistent', $resolved['schema']['$ref']);
+
+        $circularComponents = [
+            'schemas' => [
+                'Node' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'parent' => ['$ref' => '#/components/schemas/Node'],
+                    ],
+                ],
+            ],
+        ];
+        $circularResolved = \Cdd\Openapi\resolve_refs(['$ref' => '#/components/schemas/Node'], $circularComponents);
+        $this->assertEquals('object', $circularResolved['type']);
+        $this->assertEquals('#/components/schemas/Node', $circularResolved['properties']['parent']['$ref']);
     }
 }

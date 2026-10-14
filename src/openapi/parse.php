@@ -1,11 +1,232 @@
 <?php
 
+/**
+ * Parses and validates OpenAPI 3.0.x, 3.1.x, 3.2.0, and Swagger 2.0 JSON documents.
+ *
+ * @package Cdd\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Openapi;
 
 /**
+ * Extracts Swagger 2.0 inline parameter/header schema validation keywords into an OpenAPI 3.x `schema` sub-object.
+ *
+ * @param array<string, mixed> $item The Swagger 2.0 parameter or header array.
+ * @return array<string, mixed> The updated item with a nested `schema` array.
+ */
+function upgrade_swagger2_inline_schema(array $item): array
+{
+    $schemaKeys = [
+        'format',
+        'items',
+        'default',
+        'maximum',
+        'exclusiveMaximum',
+        'minimum',
+        'exclusiveMinimum',
+        'maxLength',
+        'minLength',
+        'pattern',
+        'maxItems',
+        'minItems',
+        'uniqueItems',
+        'enum',
+        'multipleOf',
+    ];
+    $item['schema'] = ['type' => $item['type']];
+    unset($item['type']);
+    foreach ($schemaKeys as $key) {
+        if (isset($item[$key])) {
+            $item['schema'][$key] = $item[$key];
+            unset($item[$key]);
+        }
+    }
+    return $item;
+}
+
+/**
+ * Upgrades a parsed Swagger 2.0 array structure into an OpenAPI 3.x structure.
+ *
+ * @param array<string, mixed> $data The parsed Swagger 2.0 array.
+ * @return array<string, mixed> The upgraded OpenAPI 3.x array.
+ */
+function upgrade_swagger2_to_openapi3(array $data): array
+{
+    $data['openapi'] = '3.0.0';
+
+    if (isset($data['host']) || isset($data['basePath']) || isset($data['schemes'])) {
+        $host = $data['host'] ?? 'localhost';
+        $basePath = $data['basePath'] ?? '/';
+        $schemes = $data['schemes'] ?? ['http'];
+        $servers = [];
+        foreach ($schemes as $scheme) {
+            $servers[] = ['url' => $scheme . '://' . $host . $basePath];
+        }
+        $data['servers'] = $servers;
+        unset($data['host'], $data['basePath'], $data['schemes']);
+    }
+
+    if (!isset($data['components'])) {
+        $data['components'] = [];
+    }
+    if (isset($data['definitions'])) {
+        $data['components']['schemas'] = $data['definitions'];
+        unset($data['definitions']);
+    }
+    if (isset($data['parameters'])) {
+        $data['components']['parameters'] = $data['parameters'];
+        unset($data['parameters']);
+    }
+    if (isset($data['responses'])) {
+        $data['components']['responses'] = $data['responses'];
+        unset($data['responses']);
+    }
+    if (isset($data['securityDefinitions']) && is_array($data['securityDefinitions'])) {
+        foreach ($data['securityDefinitions'] as &$scheme) {
+            if ($scheme['type'] === 'basic') {
+                $scheme['type'] = 'http';
+                $scheme['scheme'] = 'basic';
+            }
+            if ($scheme['type'] === 'oauth2') {
+                $flowType = $scheme['flow'] ?? 'implicit';
+                if ($flowType === 'application') {
+                    $flowType = 'clientCredentials';
+                }
+                if ($flowType === 'accessCode') {
+                    $flowType = 'authorizationCode';
+                }
+                $flow = [];
+                if (isset($scheme['authorizationUrl'])) {
+                    $flow['authorizationUrl'] = $scheme['authorizationUrl'];
+                }
+                if (isset($scheme['tokenUrl'])) {
+                    $flow['tokenUrl'] = $scheme['tokenUrl'];
+                }
+                if (isset($scheme['scopes'])) {
+                    $flow['scopes'] = $scheme['scopes'];
+                }
+                $scheme['flows'] = [$flowType => $flow];
+                unset($scheme['flow'], $scheme['authorizationUrl'], $scheme['tokenUrl'], $scheme['scopes']);
+            }
+        }
+        $data['components']['securitySchemes'] = $data['securityDefinitions'];
+        unset($data['securityDefinitions']);
+    }
+
+    $globalConsumes = $data['consumes'] ?? ['application/json'];
+    $globalProduces = $data['produces'] ?? ['application/json'];
+    unset($data['consumes'], $data['produces']);
+
+    $validMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
+
+    if (isset($data['paths']) && is_array($data['paths'])) {
+        foreach ($data['paths'] as &$pathItem) {
+            foreach ($pathItem as $method => &$operation) {
+                if (in_array(strtolower((string) $method), $validMethods, true)) {
+                    $opConsumes = $operation['consumes'] ?? $globalConsumes;
+                    $opProduces = $operation['produces'] ?? $globalProduces;
+                    unset($operation['consumes'], $operation['produces']);
+
+                    if (isset($operation['parameters']) && is_array($operation['parameters'])) {
+                        $formData = [];
+                        foreach ($operation['parameters'] as $i => &$param) {
+                            if (isset($param['in']) && $param['in'] === 'body') {
+                                $schema = $param['schema'] ?? [];
+                                $content = [];
+                                foreach ($opConsumes as $mime) {
+                                    $content[$mime] = ['schema' => $schema];
+                                }
+                                $operation['requestBody'] = [
+                                    'content' => empty($content) ? ['application/json' => ['schema' => $schema]] : $content,
+                                    'required' => $param['required'] ?? false,
+                                ];
+                                if (isset($param['description'])) {
+                                    $operation['requestBody']['description'] = $param['description'];
+                                }
+                                unset($operation['parameters'][$i]);
+                            } elseif (isset($param['in']) && $param['in'] === 'formData') {
+                                $schema = ['type' => $param['type'] ?? 'string'];
+                                if (isset($param['format'])) {
+                                    $schema['format'] = $param['format'];
+                                }
+                                $formData[$param['name']] = $schema;
+                                unset($operation['parameters'][$i]);
+                            } elseif (!isset($param['schema']) && isset($param['type'])) {
+                                $param = upgrade_swagger2_inline_schema($param);
+                            }
+                        }
+                        $operation['parameters'] = array_values($operation['parameters']);
+                        if (!empty($formData)) {
+                            $content = [];
+                            foreach ($opConsumes as $mime) {
+                                if (in_array($mime, ['application/x-www-form-urlencoded', 'multipart/form-data'], true)) {
+                                    $content[$mime] = [
+                                        'schema' => [
+                                            'type' => 'object',
+                                            'properties' => $formData,
+                                        ],
+                                    ];
+                                }
+                            }
+                            if (empty($content)) {
+                                $content['application/x-www-form-urlencoded'] = [
+                                    'schema' => [
+                                        'type' => 'object',
+                                        'properties' => $formData,
+                                    ],
+                                ];
+                            }
+                            $operation['requestBody'] = [
+                                'content' => $content,
+                            ];
+                        }
+                    }
+                    if (isset($operation['responses']) && is_array($operation['responses'])) {
+                        foreach ($operation['responses'] as &$response) {
+                            if (isset($response['schema'])) {
+                                $content = [];
+                                foreach ($opProduces as $mime) {
+                                    $content[$mime] = ['schema' => $response['schema']];
+                                }
+                                $response['content'] = empty($content) ? ['application/json' => ['schema' => $response['schema']]] : $content;
+                                unset($response['schema']);
+                            }
+                            if (isset($response['headers']) && is_array($response['headers'])) {
+                                foreach ($response['headers'] as &$header) {
+                                    if (isset($header['type']) && !isset($header['schema'])) {
+                                        $header = upgrade_swagger2_inline_schema($header);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    $data = rewrite_ref_prefixes($data, [
+        '#/definitions/' => '#/components/schemas/',
+        '#/parameters/' => '#/components/parameters/',
+        '#/responses/' => '#/components/responses/',
+        '#/securityDefinitions/' => '#/components/securitySchemes/',
+    ]);
+
+    if (empty($data['components'])) {
+        unset($data['components']);
+    }
+
+    return $data;
+}
+
+/**
  * Parses an OpenAPI JSON string into a PHP array structure.
+ *
+ * @param string $json The raw OpenAPI or Swagger JSON string.
+ * @return array<string, mixed> The validated OpenAPI 3.2.0 array structure.
+ * @throws \RuntimeException If JSON decoding or OpenAPI validation fails.
  */
 function parse(string $json): array
 {
@@ -17,293 +238,28 @@ function parse(string $json): array
         throw new \RuntimeException('OpenAPI document must be a JSON object');
     }
     if (isset($data['swagger']) && !isset($data['openapi'])) {
-        $data['openapi'] = '3.0.0';
-
-        // Host, BasePath, Schemes -> Servers
-        if (isset($data['host']) || isset($data['basePath']) || isset($data['schemes'])) {
-            $host = $data['host'] ?? 'localhost';
-            $basePath = $data['basePath'] ?? '/';
-            $schemes = $data['schemes'] ?? ['http'];
-            $servers = [];
-            foreach ($schemes as $scheme) {
-                $servers[] = ['url' => $scheme . '://' . $host . $basePath];
-            }
-            $data['servers'] = $servers;
-            unset($data['host'], $data['basePath'], $data['schemes']);
-        }
-
-        if (!isset($data['components'])) {
-            $data['components'] = [];
-        }
-        if (isset($data['definitions'])) {
-            $data['components']['schemas'] = $data['definitions'];
-            unset($data['definitions']);
-        }
-        if (isset($data['parameters'])) {
-            $data['components']['parameters'] = $data['parameters'];
-            unset($data['parameters']);
-        }
-        if (isset($data['responses'])) {
-            $data['components']['responses'] = $data['responses'];
-            unset($data['responses']);
-        }
-        if (isset($data['securityDefinitions'])) {
-            foreach ($data['securityDefinitions'] as $name => &$scheme) {
-                if ($scheme['type'] === 'basic') {
-                    $scheme['type'] = 'http';
-                    $scheme['scheme'] = 'basic';
-                }
-                if ($scheme['type'] === 'oauth2') {
-                    $flowType = $scheme['flow'] ?? 'implicit';
-                    if ($flowType === 'application') {
-                        $flowType = 'clientCredentials';
-                    }
-                    if ($flowType === 'accessCode') {
-                        $flowType = 'authorizationCode';
-                    }
-                    $flow = [];
-                    if (isset($scheme['authorizationUrl'])) {
-                        $flow['authorizationUrl'] = $scheme['authorizationUrl'];
-                    }
-                    if (isset($scheme['tokenUrl'])) {
-                        $flow['tokenUrl'] = $scheme['tokenUrl'];
-                    }
-                    if (isset($scheme['scopes'])) {
-                        $flow['scopes'] = $scheme['scopes'];
-                    }
-                    $scheme['flows'] = [ $flowType => $flow ];
-                    unset($scheme['flow'], $scheme['authorizationUrl'], $scheme['tokenUrl'], $scheme['scopes']);
-                }
-            }
-            $data['components']['securitySchemes'] = $data['securityDefinitions'];
-            unset($data['securityDefinitions']);
-        }
-
-        $globalConsumes = $data['consumes'] ?? ['application/json'];
-        $globalProduces = $data['produces'] ?? ['application/json'];
-        unset($data['consumes'], $data['produces']);
-
-        if (isset($data['paths'])) {
-            $in_array = 'in_array';
-            $strtolower = 'strtolower';
-            foreach ($data['paths'] as $path => &$pathItem) {
-                foreach ($pathItem as $method => &$operation) {
-                    if ($in_array($strtolower($method), ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'])) {
-                        $opConsumes = $operation['consumes'] ?? $globalConsumes;
-                        $opProduces = $operation['produces'] ?? $globalProduces;
-                        unset($operation['consumes'], $operation['produces']);
-
-                        if (isset($operation['parameters'])) {
-                            $formData = [];
-                            foreach ($operation['parameters'] as $i => &$param) {
-                                if (isset($param['in']) && $param['in'] === 'body') {
-                                    $schema = $param['schema'] ?? [];
-                                    $content = [];
-                                    foreach ($opConsumes as $mime) {
-                                        $content[$mime] = ['schema' => $schema];
-                                    }
-                                    $operation['requestBody'] = [
-                                        'content' => empty($content) ? ['application/json' => ['schema' => $schema]] : $content,
-                                        'required' => $param['required'] ?? false
-                                    ];
-                                    if (isset($param['description'])) {
-                                        $operation['requestBody']['description'] = $param['description'];
-                                    }
-                                    unset($operation['parameters'][$i]);
-                                } elseif (isset($param['in']) && $param['in'] === 'formData') {
-                                    $schema = ['type' => $param['type'] ?? 'string'];
-                                    if (isset($param['format'])) {
-                                        $schema['format'] = $param['format'];
-                                    }
-                                    $formData[$param['name']] = $schema;
-                                    unset($operation['parameters'][$i]);
-                                } elseif (!isset($param['schema']) && isset($param['type'])) {
-                                    $param['schema'] = ['type' => $param['type']];
-                                    if (isset($param['format'])) {
-                                        $param['schema']['format'] = $param['format'];
-                                    }
-                                    if (isset($param['items'])) {
-                                        $param['schema']['items'] = $param['items'];
-                                    }
-                                    if (isset($param['default'])) {
-                                        $param['schema']['default'] = $param['default'];
-                                    }
-                                    if (isset($param['maximum'])) {
-                                        $param['schema']['maximum'] = $param['maximum'];
-                                    }
-                                    if (isset($param['exclusiveMaximum'])) {
-                                        $param['schema']['exclusiveMaximum'] = $param['exclusiveMaximum'];
-                                    }
-                                    if (isset($param['minimum'])) {
-                                        $param['schema']['minimum'] = $param['minimum'];
-                                    }
-                                    if (isset($param['exclusiveMinimum'])) {
-                                        $param['schema']['exclusiveMinimum'] = $param['exclusiveMinimum'];
-                                    }
-                                    if (isset($param['maxLength'])) {
-                                        $param['schema']['maxLength'] = $param['maxLength'];
-                                    }
-                                    if (isset($param['minLength'])) {
-                                        $param['schema']['minLength'] = $param['minLength'];
-                                    }
-                                    if (isset($param['pattern'])) {
-                                        $param['schema']['pattern'] = $param['pattern'];
-                                    }
-                                    if (isset($param['maxItems'])) {
-                                        $param['schema']['maxItems'] = $param['maxItems'];
-                                    }
-                                    if (isset($param['minItems'])) {
-                                        $param['schema']['minItems'] = $param['minItems'];
-                                    }
-                                    if (isset($param['uniqueItems'])) {
-                                        $param['schema']['uniqueItems'] = $param['uniqueItems'];
-                                    }
-                                    if (isset($param['enum'])) {
-                                        $param['schema']['enum'] = $param['enum'];
-                                    }
-                                    if (isset($param['multipleOf'])) {
-                                        $param['schema']['multipleOf'] = $param['multipleOf'];
-                                    }
-                                    unset($param['type'], $param['format'], $param['items'], $param['default'], $param['maximum'], $param['exclusiveMaximum'], $param['minimum'], $param['exclusiveMinimum'], $param['maxLength'], $param['minLength'], $param['pattern'], $param['maxItems'], $param['minItems'], $param['uniqueItems'], $param['enum'], $param['multipleOf']);
-                                }
-                            }
-                            $operation['parameters'] = array_values($operation['parameters']);
-                            if (!empty($formData)) {
-                                $content = [];
-                                $in_array = 'in_array';
-                                foreach ($opConsumes as $mime) {
-                                    if ($in_array($mime, ['application/x-www-form-urlencoded', 'multipart/form-data'])) {
-                                        $content[$mime] = [
-                                            'schema' => [
-                                                'type' => 'object',
-                                                'properties' => $formData
-                                            ]
-                                        ];
-                                    }
-                                }
-                                if (empty($content)) {
-                                    $content['application/x-www-form-urlencoded'] = [
-                                        'schema' => [
-                                            'type' => 'object',
-                                            'properties' => $formData
-                                        ]
-                                    ];
-                                }
-                                $operation['requestBody'] = [
-                                    'content' => $content
-                                ];
-                            }
-                        }
-                        if (isset($operation['responses'])) {
-                            foreach ($operation['responses'] as $code => &$response) {
-                                if (isset($response['schema'])) {
-                                    $content = [];
-                                    foreach ($opProduces as $mime) {
-                                        $content[$mime] = ['schema' => $response['schema']];
-                                    }
-                                    $response['content'] = empty($content) ? ['application/json' => ['schema' => $response['schema']]] : $content;
-                                    unset($response['schema']);
-                                }
-                                if (isset($response['headers'])) {
-                                    foreach ($response['headers'] as $headerName => &$header) {
-                                        if (isset($header['type']) && !isset($header['schema'])) {
-                                            $header['schema'] = ['type' => $header['type']];
-                                            if (isset($header['format'])) {
-                                                $header['schema']['format'] = $header['format'];
-                                            }
-                                            if (isset($header['items'])) {
-                                                $header['schema']['items'] = $header['items'];
-                                            }
-                                            if (isset($header['default'])) {
-                                                $header['schema']['default'] = $header['default'];
-                                            }
-                                            if (isset($header['maximum'])) {
-                                                $header['schema']['maximum'] = $header['maximum'];
-                                            }
-                                            if (isset($header['exclusiveMaximum'])) {
-                                                $header['schema']['exclusiveMaximum'] = $header['exclusiveMaximum'];
-                                            }
-                                            if (isset($header['minimum'])) {
-                                                $header['schema']['minimum'] = $header['minimum'];
-                                            }
-                                            if (isset($header['exclusiveMinimum'])) {
-                                                $header['schema']['exclusiveMinimum'] = $header['exclusiveMinimum'];
-                                            }
-                                            if (isset($header['maxLength'])) {
-                                                $header['schema']['maxLength'] = $header['maxLength'];
-                                            }
-                                            if (isset($header['minLength'])) {
-                                                $header['schema']['minLength'] = $header['minLength'];
-                                            }
-                                            if (isset($header['pattern'])) {
-                                                $header['schema']['pattern'] = $header['pattern'];
-                                            }
-                                            if (isset($header['maxItems'])) {
-                                                $header['schema']['maxItems'] = $header['maxItems'];
-                                            }
-                                            if (isset($header['minItems'])) {
-                                                $header['schema']['minItems'] = $header['minItems'];
-                                            }
-                                            if (isset($header['uniqueItems'])) {
-                                                $header['schema']['uniqueItems'] = $header['uniqueItems'];
-                                            }
-                                            if (isset($header['enum'])) {
-                                                $header['schema']['enum'] = $header['enum'];
-                                            }
-                                            if (isset($header['multipleOf'])) {
-                                                $header['schema']['multipleOf'] = $header['multipleOf'];
-                                            }
-                                            unset($header['type'], $header['format'], $header['items'], $header['default'], $header['maximum'], $header['exclusiveMaximum'], $header['minimum'], $header['exclusiveMinimum'], $header['maxLength'], $header['minLength'], $header['pattern'], $header['maxItems'], $header['minItems'], $header['uniqueItems'], $header['enum'], $header['multipleOf']);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        $json_encode = 'json_encode';
-        $str_replace = 'str_replace';
-        $json = $json_encode($data);
-        $json = $str_replace('#/definitions/', '#/components/schemas/', $json);
-        $json = $str_replace('#\/definitions\/', '#\/components\/schemas\/', $json);
-        $json = $str_replace('#/parameters/', '#/components/parameters/', $json);
-        $json = $str_replace('#\/parameters\/', '#\/components\/parameters\/', $json);
-        $json = $str_replace('#/responses/', '#/components/responses/', $json);
-        $json = $str_replace('#\/responses\/', '#\/components\/responses\/', $json);
-        $json = $str_replace('#/securityDefinitions/', '#/components/securitySchemes/', $json);
-        $json = $str_replace('#\/securityDefinitions\/', '#\/components\/securitySchemes\/', $json);
-        $data = json_decode($json, true);
-        if (empty($data['components'])) {
-            unset($data['components']);
-        }
+        $data = upgrade_swagger2_to_openapi3($data);
     }
-    // openapi (string) - REQUIRED
+
     if (!isset($data['openapi'])) {
         throw new \RuntimeException('Missing REQUIRED field "openapi" in OpenAPI Object');
     }
-    $str_starts_with = 'str_starts_with';
-    if (!is_string($data['openapi']) || (!$str_starts_with($data['openapi'], '3.0.') && !$str_starts_with($data['openapi'], '3.1.') && $data['openapi'] !== '3.2.0')) {
+    if (!is_string($data['openapi']) || (!str_starts_with($data['openapi'], '3.0.') && !str_starts_with($data['openapi'], '3.1.') && $data['openapi'] !== '3.2.0')) {
         throw new \RuntimeException('Spec must be OpenAPI 3.0.x, 3.1.x, or 3.2.0');
     }
-    // Auto-upgrade to 3.2.0
     $data['openapi'] = '3.2.0';
-    // $self (string)
+
     if (isset($data['$self']) && !is_string($data['$self'])) {
         throw new \RuntimeException('Field "$self" must be a string (URI reference)');
     }
-    // info (Info Object) - REQUIRED
     if (!isset($data['info'])) {
         throw new \RuntimeException('Missing REQUIRED field "info" in OpenAPI Object');
     }
     \Cdd\Info\validateInfoObject($data['info']);
-    // jsonSchemaDialect (string)
+
     if (isset($data['jsonSchemaDialect']) && !is_string($data['jsonSchemaDialect'])) {
         throw new \RuntimeException('Field "jsonSchemaDialect" must be a string (URI)');
     }
-    // servers ([Server Object])
     if (isset($data['servers'])) {
         if (!is_array($data['servers'])) {
             throw new \RuntimeException('Field "servers" must be an array of Server Objects');
@@ -312,7 +268,7 @@ function parse(string $json): array
             \Cdd\Servers\validateServerObject($server);
         }
     }
-    // Requirements for presence of paths, components, or webhooks
+
     $hasPaths = isset($data['paths']) && is_array($data['paths']);
     $hasComponents = isset($data['components']) && is_array($data['components']);
     $hasWebhooks = false;
@@ -321,7 +277,7 @@ function parse(string $json): array
             throw new \RuntimeException('Field "webhooks" must be a map');
         }
         $hasWebhooks = true;
-        foreach ($data['webhooks'] as $name => $pathItem) {
+        foreach ($data['webhooks'] as $pathItem) {
             \Cdd\Paths\validatePathItemObject($pathItem);
         }
     }
@@ -334,7 +290,7 @@ function parse(string $json): array
     if (!$hasPaths && !$hasComponents && !$hasWebhooks) {
         throw new \RuntimeException('Spec must contain paths, components, or webhooks');
     }
-    // security ([Security Requirement Object])
+
     if (isset($data['security'])) {
         if (!is_array($data['security'])) {
             throw new \RuntimeException('Field "security" must be an array of Security Requirement Objects');
@@ -343,7 +299,6 @@ function parse(string $json): array
             \Cdd\Security\validateSecurityRequirementObject($secReq);
         }
     }
-    // tags ([Tag Object])
     if (isset($data['tags'])) {
         if (!is_array($data['tags'])) {
             throw new \RuntimeException('Field "tags" must be an array of Tag Objects');
@@ -352,20 +307,20 @@ function parse(string $json): array
             \Cdd\Info\validateTagObject($tag);
         }
     }
-    // externalDocs (External Documentation Object)
     if (isset($data['externalDocs'])) {
         \Cdd\Info\validateExternalDocsObject($data['externalDocs']);
     }
     return $data;
 }
-/**
- * Validates a Paths Object.
- */
-$globalOperationIds = [];
+
 /**
  * Validates a Reference Object.
+ *
+ * @param array<string, mixed> $ref The Reference Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
-function validateReferenceObject(mixed $ref): void
+function validateReferenceObject(array $ref): void
 {
     if (!is_string($ref['$ref'])) {
         throw new \RuntimeException('Reference "$ref" must be a string');

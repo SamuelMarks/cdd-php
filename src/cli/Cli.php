@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Core CLI application wrapper for programmatic and JSON-RPC execution.
+ *
+ * @package Cdd\Cli
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Cli;
@@ -12,17 +18,17 @@ namespace Cdd\Cli;
 class Application
 {
     /**
-     * Serve JSON-RPC over stdio.
+     * Serve JSON-RPC or execute CLI commands programmatically.
      *
-     * @param array $argv The command line arguments
-     * @param int $argc The number of arguments
-     * @return int The exit status code
+     * @param array<int, string> $argv The command line arguments.
+     * @param int $argc The number of arguments.
+     * @return int The exit status code.
      */
     public static function serveJsonRpc(array $argv, int $argc): int
     {
-        // Use shell execution of bin/cdd-php to prevent rewriting the whole CLI router?
-        // No, the task requires programmatic SDK: "Extract the execution logic into a dedicated module/class level method (Cdd\Cli) that can be required or instantiated."
-        // We will move the routing logic here.
-        return 0;
+        if ($argc <= 1) {
+            return 0;
+        }
+        return CddCli::run($argv);
     }
 }

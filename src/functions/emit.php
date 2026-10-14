@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits standalone PHP functions from extracted AST nodes and tokens.
+ *
+ * @package Cdd\Functions
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Functions;
@@ -8,6 +14,9 @@ use PhpParser\Node\Stmt\Function_;
 
 /**
  * Emits a PHP function from its extracted node.
+ *
+ * @param array<string, mixed> $functionInfo Extracted function metadata containing 'node' and 'tokens'.
+ * @return string The emitted PHP function source code.
  */
 function emit(array $functionInfo): string
 {
@@ -23,14 +32,10 @@ function emit(array $functionInfo): string
     $end = $node->getEndTokenPos();
 
     $comments = $node->getAttribute('comments');
-    if ($comments && count($comments) > 0) {
+    if (is_array($comments) && count($comments) > 0) {
         $firstCommentStart = $comments[0]->getStartTokenPos();
         if ($firstCommentStart !== -1 && $firstCommentStart < $start) {
             $start = $firstCommentStart;
-            // Include leading whitespace if available
-            if ($start > 0 && $tokens[$start - 1]->id === T_WHITESPACE) {
-                // We keep it tight for exact reproduction where applicable
-            }
         }
     }
 

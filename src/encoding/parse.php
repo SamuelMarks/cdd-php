@@ -1,25 +1,32 @@
 <?php
 
-declare(strict_types=1);
+/**
+ * Parses and validates OpenAPI Encoding and Media Type Objects.
+ *
+ * @package Cdd\Encoding
+ */
 
-declare (strict_types=1);
+declare(strict_types=1);
 
 namespace Cdd\Encoding;
 
 /**
  * Parses an Encoding Object from a PHP array definition.
  *
- * @param array $encoding The PHP array representing the Encoding object.
- * @return array The validated and parsed Encoding object.
+ * @param array<string, mixed> $encoding The PHP array representing the Encoding object.
+ * @return array<string, mixed> The validated and parsed Encoding object.
  */
 function parse(array $encoding): array
 {
-    // In a full implementation, this could map specialized PHP annotations to Encoding.
-    // For now, it simply returns the encoding array as a placeholder for further processing.
     return $encoding;
 }
+
 /**
  * Validates a Media Type Object or Reference Object.
+ *
+ * @param mixed $mediaTypeObj The Media Type or Reference Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateMediaTypeOrReferenceObject(mixed $mediaTypeObj): void
 {
@@ -46,7 +53,7 @@ function validateMediaTypeOrReferenceObject(mixed $mediaTypeObj): void
         if (!is_array($mediaTypeObj['encoding'])) {
             throw new \RuntimeException('Media Type "encoding" must be a map');
         }
-        foreach ($mediaTypeObj['encoding'] as $prop => $encodingObj) {
+        foreach ($mediaTypeObj['encoding'] as $encodingObj) {
             \Cdd\Encoding\validateEncodingObject($encodingObj);
         }
     }
@@ -68,8 +75,13 @@ function validateMediaTypeOrReferenceObject(mixed $mediaTypeObj): void
         throw new \RuntimeException('Media Type "encoding" cannot be present with "prefixEncoding" or "itemEncoding"');
     }
 }
+
 /**
  * Validates an Encoding Object.
+ *
+ * @param mixed $encodingObj The Encoding Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateEncodingObject(mixed $encodingObj): void
 {

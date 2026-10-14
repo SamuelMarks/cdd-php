@@ -1,41 +1,52 @@
 <?php
 
+/**
+ * Emits PHP mock files for OpenAPI Example Objects.
+ *
+ * @package Cdd\Mocks
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Mocks;
 
 /**
  * Emits PHP code for the given OpenAPI Example Objects.
- * @param array $examples The examples to emit.
- * @param string $existingCode Unused in this simplified version.
+ *
+ * @param array<string, mixed> $examples The examples to emit.
+ * @param string $existingCode Unused existing code parameter.
  * @return string The emitted PHP code.
  */
 function emit(array $examples, string $existingCode = ''): string
 {
-    $out = "<?php\n\n// Auto-generated mock\n\nreturn [\n";
+    $nl = chr(10);
+    $out = "<?php" . $nl . $nl . "// Auto-generated mock" . $nl . $nl . "return [" . $nl;
     foreach ($examples as $name => $example) {
-        // Output the full Example Object structure
         $encoded = var_export($example, true);
-        // indent
-        $str_replace = 'str_replace';
-        $encoded = $str_replace("\n", "\n    ", $encoded);
-        $out .= "    '$name' => $encoded,\n";
+        $encoded = str_replace($nl, $nl . "    ", $encoded);
+        $out .= "    '$name' => $encoded," . $nl;
     }
-    $out .= "];\n";
+    $out .= "];" . $nl;
     return $out;
 }
 
 /**
  * Emits modular PHP mock files for the given OpenAPI Example Objects.
- * @param array $examples The examples to emit.
- * @return array The emitted PHP files.
+ *
+ * @param array<string, mixed> $examples The examples to emit.
+ * @return array<string, string> Map of filenames to emitted PHP code.
  */
 function emit_modular(array $examples): array
 {
     $files = [];
     foreach ($examples as $name => $example) {
         $encoded = var_export($example, true);
-        $files["{$name}Mock.php"] = "<?php\n\n// Auto-generated mock\n\nreturn $encoded;\n";
+        $files["{$name}Mock.php"] = "<?php
+
+// Auto-generated mock
+
+return $encoded;
+";
     }
     return $files;
 }

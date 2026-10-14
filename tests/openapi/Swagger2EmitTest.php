@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Cdd\Tests\Openapi;
 
 class Swagger2EmitTest extends \Cdd\Tests\Framework\TestCase

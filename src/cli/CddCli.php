@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Command-line interface and programmatic SDK dispatcher for cdd-php.
+ *
+ * @package Cdd\Cli
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Cli;
@@ -14,16 +20,28 @@ namespace Cdd\Cli;
  */
 class CddCli
 {
-    public static $testInStream = null;
-    public static $testOutStream = null;
+    /**
+     * @var resource|null Optional input stream override for testing MCP stdio.
+     */
+    public static mixed $testInStream = null;
+
+    /**
+     * @var resource|null Optional output stream override for testing MCP stdio.
+     */
+    public static mixed $testOutStream = null;
+
+    /**
+     * @var resource|null Optional pre-connected stream for testing serve_json_rpc accept loop.
+     */
+    public static mixed $testSocketConn = null;
 
     /**
      * Generate code from an OpenAPI specification.
      *
-     * @param array|CddConfig $args The command line arguments or config object
+     * @param array<int, string>|CddConfig $args The command line arguments or config object
      * @return int The exit status code
      */
-    public static function generate_from_openapi($args): int
+    public static function generate_from_openapi(array|CddConfig $args): int
     {
         if ($args instanceof CddConfig) {
             $args->command = 'from_openapi';
@@ -35,10 +53,10 @@ class CddCli
     /**
      * Generate an OpenAPI specification from source code.
      *
-     * @param array|CddConfig $args The command line arguments or config object
+     * @param array<int, string>|CddConfig $args The command line arguments or config object
      * @return int The exit status code
      */
-    public static function generate_to_openapi($args): int
+    public static function generate_to_openapi(array|CddConfig $args): int
     {
         if ($args instanceof CddConfig) {
             $args->command = 'to_openapi';
@@ -50,10 +68,10 @@ class CddCli
     /**
      * Generate JSON documentation with code snippets for an OpenAPI specification.
      *
-     * @param array|CddConfig $args The command line arguments or config object
+     * @param array<int, string>|CddConfig $args The command line arguments or config object
      * @return int The exit status code
      */
-    public static function generate_docs_json($args): int
+    public static function generate_docs_json(array|CddConfig $args): int
     {
         if ($args instanceof CddConfig) {
             $args->command = 'to_docs_json';
@@ -65,10 +83,10 @@ class CddCli
     /**
      * Expose CLI interface as a JSON-RPC server.
      *
-     * @param array|CddConfig $args The command line arguments or config object
+     * @param array<int, string>|CddConfig $args The command line arguments or config object
      * @return int The exit status code
      */
-    public static function serve_json_rpc($args): int
+    public static function serve_json_rpc(array|CddConfig $args): int
     {
         if ($args instanceof CddConfig) {
             $args->command = 'serve_json_rpc';
@@ -80,29 +98,29 @@ class CddCli
     /**
      * Executes an MCP sampling request back to the client over stdio.
      *
-     * @param array $messages The chat messages for the LLM
+     * @param array<int, array<string, mixed>> $messages The chat messages for the LLM
      * @param int $maxTokens The maximum number of tokens to generate
      * @param string $systemPrompt The system prompt
-     * @return mixed The sampling result or null on failure
+     * @return array<string, mixed>|null The sampling result or null on failure
+     * @throws \Exception If the client returns an MCP error response
      */
-    public static function sample_llm(array $messages, int $maxTokens = 100, string $systemPrompt = '')
+    public static function sample_llm(array $messages, int $maxTokens = 100, string $systemPrompt = ''): ?array
     {
         $id = uniqid();
         $req = ['jsonrpc' => '2.0', 'id' => $id, 'method' => 'sampling/createMessage', 'params' => ['messages' => $messages, 'maxTokens' => $maxTokens]];
         if ($systemPrompt !== '') {
             $req['params']['systemPrompt'] = $systemPrompt;
         }
-        $outStream = self::$testOutStream ?: (defined('CDD_TEST_STDOUT') ? CDD_TEST_STDOUT : STDOUT);
+        $outStream = self::$testOutStream ?: STDOUT;
         fwrite($outStream, json_encode($req) . "\n");
         fflush($outStream);
 
-        $inStream = self::$testInStream ?: (defined('CDD_TEST_STDIN') ? CDD_TEST_STDIN : STDIN);
-        // Wait for response synchronously
+        $inStream = self::$testInStream ?: STDIN;
         while (($line = fgets($inStream)) !== false) {
             $res = json_decode($line, true);
             if ($res && isset($res['id']) && $res['id'] === $id) {
                 if (isset($res['error'])) {
-                    /*cov_ignore*/                     throw new \Exception($res['error']['message'] ?? 'Sampling failed');
+                    throw new \Exception($res['error']['message'] ?? 'Sampling failed');
                 }
                 return $res['result'] ?? null;
             }
@@ -111,37 +129,100 @@ class CddCli
     }
 
     /**
+     * Merges operation metadata map (`operationId => metadata`) into an OpenAPI Paths array.
+     *
+     * @param array<string, array<string, mixed>> $paths OpenAPI paths map.
+     * @param array<string, array<string, mixed>> $opMap Map of operationId (or `/cli/<opId>`) to operation metadata.
+     * @param string $keyPrefix Prefix to prepend to operationId when looking up in `$opMap`.
+     * @return array<string, array<string, mixed>> Updated OpenAPI paths map.
+     */
+    public static function mergeOperationMetadata(array $paths, array $opMap, string $keyPrefix = ''): array
+    {
+        if (empty($opMap) || empty($paths)) {
+            return $paths;
+        }
+        foreach ($paths as &$methods) {
+            foreach ($methods as &$operation) {
+                $opId = (string) ($operation['operationId'] ?? '');
+                $lookupKey = $keyPrefix . $opId;
+                if ($opId !== '' && isset($opMap[$lookupKey])) {
+                    $operation = array_replace_recursive((array) $operation, $opMap[$lookupKey]);
+                }
+            }
+        }
+        return $paths;
+    }
+
+    /**
+     * Processes a single HTTP JSON-RPC connection stream.
+     *
+     * @param resource $conn The accepted socket stream connection.
+     * @param int $chunkSize Read buffer chunk size in bytes.
+     * @return void
+     */
+    public static function handleJsonRpcConnection(mixed $conn, int $chunkSize = 8192): void
+    {
+        $request = '';
+        while (($data = fread($conn, $chunkSize)) !== false && $data !== '') {
+            $request .= $data;
+            if (strpos($request, "\r\n\r\n") !== false) {
+                break;
+            }
+        }
+        $headersEnd = strpos($request, "\r\n\r\n");
+
+        $body = $request;
+        if ($headersEnd !== false) {
+            $body = substr($request, $headersEnd + 4);
+            if (preg_match('/Content-Length:\s*(\d+)/i', $request, $m)) {
+                $len = (int) $m[1];
+                while (strlen($body) < $len && ($chunk = fread($conn, $chunkSize)) !== false && $chunk !== '') {
+                    $body .= $chunk;
+                }
+            }
+        }
+
+        $reqData = json_decode($body, true);
+        $res = ['jsonrpc' => '2.0', 'id' => $reqData['id'] ?? null];
+
+        if (!is_array($reqData) || !isset($reqData['method']) || !is_string($reqData['method'])) {
+            $res['error'] = ['code' => -32600, 'message' => 'Invalid Request'];
+        } else {
+            $m = $reqData['method'];
+            $p = $reqData['params'] ?? [];
+            $cmdArgs = ['cdd-php', $m];
+            if (is_array($p)) {
+                foreach ($p as $k => $v) {
+                    if (is_int($k)) {
+                        $cmdArgs[] = (string) $v;
+                    } else {
+                        $cmdArgs[] = '--' . $k;
+                        $cmdArgs[] = (string) $v;
+                    }
+                }
+            }
+            ob_start();
+            self::run($cmdArgs);
+            $res['result'] = (string) ob_get_clean();
+        }
+        $resBody = (string) json_encode($res);
+        $response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " . strlen($resBody) . "\r\n\r\n" . $resBody;
+        fwrite($conn, $response);
+        fclose($conn);
+    }
+
+    /**
      * Runs the CLI application.
      *
-     * @param array $argv The command line arguments
+     * @param array<int, string> $argv The command line arguments
      * @return int The exit status code (0 for success, non-zero for failure)
      */
     public static function run(array $argv): int
     {
         $argc = count($argv);
-        $baseDir = dirname(__DIR__);
 
-        if (!defined('STDIN')) {
-            /*cov_ignore*/             define('STDIN', @fopen('php://stdin', 'r'));
-        }
-        if (!defined('STDOUT')) {
-            /*cov_ignore*/             define('STDOUT', @fopen('php://stdout', 'w'));
-        }
-        if (!defined('STDERR')) {
-            /*cov_ignore*/             define('STDERR', @fopen('php://stderr', 'w'));
-        }
-
-        if (file_exists("$baseDir/vendor/autoload.php")) {
-            /*cov_ignore*/             require_once "$baseDir/vendor/autoload.php";
-        }
-
-        // Simple autoloader for src directory
-
-
-        // php-cgi changes cwd to the script's directory.
-        // We resolve relative paths against PWD environment variable if available.
-        $originalPwd = getenv('PWD') ?: getcwd();
-        $resolvePath = function ($path) use ($originalPwd) {
+        $originalPwd = (string) (getenv('PWD') ?: getcwd());
+        $resolvePath = function (string $path) use ($originalPwd): string {
             if ($path === '' || $path[0] === '/') {
                 return $path;
             }
@@ -293,7 +374,7 @@ class CddCli
                             ['uri' => 'cdd://schema', 'name' => 'Schema Inspection Resource', 'mimeType' => 'application/json']
                         ];
                         $cursor = $req['params']['cursor'] ?? null;
-                        $limit = 50;
+                        $limit = (int) ($req['params']['limit'] ?? 50);
                         $offset = $cursor ? (int)$cursor : 0;
                         $sliced = array_slice($resources, $offset, $limit);
                         $nextOffset = $offset + $limit;
@@ -301,7 +382,7 @@ class CddCli
 
                         $res['result'] = ['resources' => $sliced];
                         if ($nextCursor) {
-                            /*cov_ignore*/                             $res['result']['nextCursor'] = $nextCursor;
+                            $res['result']['nextCursor'] = $nextCursor;
                         }
                     } elseif ($req['method'] === 'resources/read') {
                         $uri = $req['params']['uri'] ?? '';
@@ -313,7 +394,7 @@ class CddCli
                                 ob_end_clean();
                                 $text = file_exists($tmpFile) ? file_get_contents($tmpFile) : '{}';
                             } else {
-                                $text = '{}'; // Still dummy for AST since it's hard to serialize full AST simply
+                                $text = '{}';
                             }
                             @unlink($tmpFile);
                             $res['result'] = ['contents' => [['uri' => $uri, 'mimeType' => 'text/plain', 'text' => $text]]];
@@ -349,7 +430,7 @@ class CddCli
                         ];
 
                         $cursor = $req['params']['cursor'] ?? null;
-                        $limit = 50;
+                        $limit = (int) ($req['params']['limit'] ?? 50);
                         $offset = $cursor ? (int)$cursor : 0;
                         $slicedTools = array_slice($tools, $offset, $limit);
                         $nextOffset = $offset + $limit;
@@ -357,7 +438,7 @@ class CddCli
 
                         $res['result'] = ['tools' => $slicedTools];
                         if ($nextCursor) {
-                            /*cov_ignore*/                             $res['result']['nextCursor'] = $nextCursor;
+                            $res['result']['nextCursor'] = $nextCursor;
                         }
                     } elseif ($req['method'] === 'tools/call') {
                         $name = $req['params']['name'] ?? '';
@@ -365,22 +446,21 @@ class CddCli
                         try {
                             ob_start();
                             if ($name === 'from_openapi') {
-                                /*cov_ignore*/                                 self::run(['cdd-php', 'from_openapi', '-i', $args['input'], '-o', $args['output']]);
+                                self::run(['cdd-php', 'from_openapi', '-i', $args['input'], '-o', $args['output']]);
                             } elseif ($name === 'to_openapi') {
-                                /*cov_ignore*/                                 self::run(['cdd-php', 'to_openapi', '-i', $args['input'], '-o', $args['output']]);
+                                self::run(['cdd-php', 'to_openapi', '-i', $args['input'], '-o', $args['output']]);
                             } elseif ($name === 'sync') {
-                                /*cov_ignore*/                                 $syncArgs = ['cdd-php', 'sync', '-i', $args['input']];
-                                /*cov_ignore*/                                 if (isset($args['truth'])) {
-                                    /*cov_ignore*/                                     $syncArgs[] = '-t';
-                                    /*cov_ignore*/                                     $syncArgs[] = $args['truth'];
-                                    /*cov_ignore*/
+                                $syncArgs = ['cdd-php', 'sync', '-i', $args['input']];
+                                if (isset($args['truth'])) {
+                                    $syncArgs[] = '-t';
+                                    $syncArgs[] = $args['truth'];
                                 }
-                                /*cov_ignore*/                                 self::run($syncArgs);
+                                self::run($syncArgs);
                             } else {
                                 throw new \Exception('Unknown tool');
                             }
-                            /*cov_ignore*/                             $output = ob_get_clean();
-                            /*cov_ignore*/                             $res['result'] = ['content' => [['type' => 'text', 'text' => $output]]];
+                            $output = ob_get_clean();
+                            $res['result'] = ['content' => [['type' => 'text', 'text' => $output]]];
                         } catch (\Throwable $e) {
                             ob_end_clean();
                             $res['result'] = ['content' => [['type' => 'text', 'text' => 'Error: ' . $e->getMessage()]], 'isError' => true];
@@ -399,90 +479,34 @@ class CddCli
         if ($command === "serve_json_rpc") {
             $port = (int)($_ENV["CDD_PORT"] ?? 8080);
             $listen = $_ENV["CDD_LISTEN"] ?? "127.0.0.1";
-            /*cov_ignore*/ $timeout = (float)ini_get("default_socket_timeout");
+            $timeout = (float)($_ENV["CDD_TIMEOUT"] ?? ini_get("default_socket_timeout"));
             for ($i = 2; $i < $argc; $i++) {
                 if (($argv[$i] === "--port" || $argv[$i] === "-p") && isset($argv[$i + 1])) {
                     $port = (int)$argv[++$i];
-                    /*cov_ignore*/
                 } elseif (($argv[$i] === "--listen" || $argv[$i] === "-l") && isset($argv[$i + 1])) {
-                    /*cov_ignore*/                     $listen = $argv[++$i];
+                    $listen = $argv[++$i];
                 } elseif ($argv[$i] === "--timeout" && isset($argv[$i + 1])) {
                     $timeout = (float)$argv[++$i];
                 }
             }
             $serverUrl = "tcp://$listen:$port";
-            $socket = stream_socket_server($serverUrl, $errno, $errstr);
+            $socket = @stream_socket_server($serverUrl, $errno, $errstr);
             if (!$socket) {
-                /*cov_ignore*/                 fwrite(STDERR, "Error starting server: $errstr ($errno)\n");
-                /*cov_ignore*/                 return 1;
+                fwrite(STDERR, "Error starting server: $errstr ($errno)\n");
+                return 1;
             }
-            echo "JSON-RPC server listening on $serverUrl
-";
-            while ($conn = @stream_socket_accept($socket, $timeout)) {
-                /*cov_ignore*/                 $request = "";
-                /*cov_ignore*/                 while ($data = fread($conn, 8192)) {
-                    /*cov_ignore*/                     $request .= $data;
-                    /*cov_ignore*/                     if (strpos($request, "
-
-/*cov_ignore*/ ") !== false) {
-                        /*cov_ignore*/                         break;
-                    }
+            echo "JSON-RPC server listening on $serverUrl\n";
+            while (true) {
+                $conn = self::$testSocketConn;
+                self::$testSocketConn = null;
+                $conn = $conn ?: @stream_socket_accept($socket, $timeout);
+                if (!$conn) {
+                    break;
                 }
-                /*cov_ignore*/                 $headersEnd = strpos($request, "\r\n\r\n");
-
-                /*cov_ignore*/                 $body = "";
-                /*cov_ignore*/                 if ($headersEnd !== false) {
-                    /*cov_ignore*/                     if (preg_match("/Content-Length:\s*(\d+)/i", $request, $m)) {
-                        /*cov_ignore*/                         $len = (int)$m[1];
-                        /*cov_ignore*/                         $body = substr($request, $headersEnd + 4);
-                        /*cov_ignore*/                         while (strlen($body) < $len) {
-                            /*cov_ignore*/                             $body .= fread($conn, 8192);
-                        }
-                    }
-                }
-
-                /*cov_ignore*/                 $reqData = json_decode($body, true);
-                /*cov_ignore*/                 $res = ["jsonrpc" => "2.0", "id" => $reqData["id"] ?? null];
-
-                /*cov_ignore*/                 if (!$reqData || !isset($reqData["method"])) {
-                    /*cov_ignore*/                     $res["error"] = ["code" => -32600, "message" => "Invalid Request"];
-                } else {
-                    /*cov_ignore*/                     $m = $reqData["method"];
-                    /*cov_ignore*/                     $p = $reqData["params"] ?? [];
-                    /*cov_ignore*/                     $cmdArgs = [];
-                    /*cov_ignore*/                     if (is_array($p)) {
-                        /*cov_ignore*/                         foreach ($p as $k => $v) {
-                            /*cov_ignore*/                             if (is_int($k)) {
-                                /*cov_ignore*/                                 $cmdArgs[] = escapeshellarg((string)$v);
-                            } else {
-                                /*cov_ignore*/                                 $cmdArgs[] = "--" . escapeshellarg((string)$k) . " " . escapeshellarg((string)$v);
-                            }
-                        }
-                    }
-                    /*cov_ignore*/                     $binPath = class_exists('\Phar') && \Phar::running(false) ? \Phar::running(false) : __FILE__;
-                    /*cov_ignore*/                     $cmd = "php " . escapeshellarg($binPath) . " " . escapeshellarg($m) . " " . implode(" ", $cmdArgs);
-                    /*cov_ignore*/                     $res["result"] = shell_exec($cmd);
-                }
-                /*cov_ignore*/                 $resBody = json_encode($res);
-                /*cov_ignore*/                 $response = "HTTP/1.1 200 OK
-Content-Type: application/json
-/*cov_ignore*/ Content-Length: " . strlen($resBody) . "
-
-/*cov_ignore*/ " . $resBody;
-                /*cov_ignore*/                 fwrite($conn, $response);
-                /*cov_ignore*/                 fclose($conn);
+                self::handleJsonRpcConnection($conn);
             }
+            fclose($socket);
             return 0;
-        }
-
-        if ($command === 'test') {
-            /*cov_ignore*/             require_once dirname($baseDir) . "/tests/framework/Runner.php";
-            /*cov_ignore*/             $testDir = dirname($baseDir) . "/tests";
-            /*cov_ignore*/             if (isset($argv[2])) {
-                /*cov_ignore*/                 $testDir = $resolvePath($argv[2]);
-            }
-            /*cov_ignore*/             \Cdd\Tests\Framework\Runner::run($testDir);
-            /*cov_ignore*/             return 0;
         }
 
         if ($command === 'sync') {
@@ -495,12 +519,8 @@ Content-Type: application/json
                 } elseif (($argv[$i] === '-t' || $argv[$i] === '--truth') && isset($argv[$i + 1])) {
                     $truth = $argv[$i + 1];
                     $i++;
-                    /*cov_ignore*/
-                    /*cov_ignore*/
-                    /*cov_ignore*/
-                    /*cov_ignore*/
-                } elseif ($argv[$i] !== '-i' && $argv[$i] !== '--input' && $argv[$i] !== '-t' && $argv[$i] !== '--truth' && $dir === '') { // @codeCoverageIgnore
-                    /*cov_ignore*/                     $dir = $resolvePath($argv[$i]);
+                } elseif ($dir === '') {
+                    $dir = $resolvePath($argv[$i]);
                 }
             }
 
@@ -509,7 +529,6 @@ Content-Type: application/json
                 return 1;
             }
 
-            // Core syncing logic: read the whole out directory, parse components, merge, and re-emit.
             $openapi = [
                 'openapi' => '3.2.0',
                 'info' => ['title' => 'Synced API', 'version' => '0.0.3'],
@@ -517,333 +536,86 @@ Content-Type: application/json
                 'components' => ['schemas' => []]
             ];
 
-            // If api_metadata.php exists, merge it
+            if ($truth === 'spec' && file_exists("$dir/openapi.json")) {
+                $openapi = \Cdd\Openapi\parse((string) file_get_contents("$dir/openapi.json"));
+            }
+
             if (file_exists("$dir/src/api_metadata.php")) {
-                /*cov_ignore*/                 $metadata = include "$dir/src/api_metadata.php";
-                /*cov_ignore*/                 if (is_array($metadata)) {
-                    /*cov_ignore*/                     foreach (['info', 'jsonSchemaDialect', 'externalDocs', 'tags', 'security'] as $key) {
-                        /*cov_ignore*/                         if (isset($metadata[$key])) {
-                            /*cov_ignore*/                             $openapi[$key] = $metadata[$key];
+                $metadata = include "$dir/src/api_metadata.php";
+                if (is_array($metadata)) {
+                    foreach (['info', 'jsonSchemaDialect', 'externalDocs', 'tags', 'security'] as $key) {
+                        if (isset($metadata[$key])) {
+                            $openapi[$key] = $metadata[$key];
                         }
                     }
                 }
             }
 
-            // If routes.php exists, parse it
             if (file_exists("$dir/src/routes.php")) {
-                $code = file_get_contents("$dir/src/routes.php");
-                $routes = function_exists('\Cdd\Routes\parse') ? \Cdd\Routes\parse($code) : [];
+                $routes = \Cdd\Routes\parse((string) file_get_contents("$dir/src/routes.php"));
                 if (!empty($routes)) {
-                    /*cov_ignore*/                     $openapi['paths'] = array_replace_recursive((array)$openapi['paths'], $routes);
+                    $openapi['paths'] = array_replace_recursive((array)$openapi['paths'], $routes);
                 }
             }
 
-            // If ApiClient.php exists, parse it and merge
             if (file_exists("$dir/src/ApiClient.php")) {
-                /*cov_ignore*/                 $clientPaths = \Cdd\Client\parse(file_get_contents("$dir/src/ApiClient.php"));
-                /*cov_ignore*/                 if (!empty($clientPaths)) {
-                    /*cov_ignore*/                     $openapi['paths'] = array_replace_recursive((array)$openapi['paths'], $clientPaths);
+                $clientPaths = \Cdd\Client\parse((string) file_get_contents("$dir/src/ApiClient.php"));
+                if (!empty($clientPaths)) {
+                    $openapi['paths'] = array_replace_recursive((array)$openapi['paths'], $clientPaths);
                 }
             }
 
-            // If ApiController.php exists, parse it and merge into paths
-            if (file_exists("$dir/src/ApiController.php") && function_exists('\Cdd\Controllers\parse')) {
-                /*cov_ignore*/                 $controllerOps = \Cdd\Controllers\parse(file_get_contents("$dir/src/ApiController.php"));
-                /*cov_ignore*/                 if (!empty($controllerOps) && isset($openapi['paths'])) {
-                    /*cov_ignore*/                     foreach ($openapi['paths'] as $path => &$methods) {
-                        /*cov_ignore*/                         foreach ($methods as $method => &$operation) {
-                            /*cov_ignore*/                             $opId = $operation['operationId'] ?? '';
-                            /*cov_ignore*/                             if (isset($controllerOps[$opId])) {
-                                /*cov_ignore*/                                 $operation = array_replace_recursive((array)$operation, $controllerOps[$opId]);
-                            }
-                        }
-                    }
-                }
+            if (file_exists("$dir/src/ApiController.php")) {
+                $controllerOps = \Cdd\Controllers\parse((string) file_get_contents("$dir/src/ApiController.php"));
+                $openapi['paths'] = self::mergeOperationMetadata((array) $openapi['paths'], $controllerOps);
             }
 
-            // If api_cli.php exists, parse it and merge into paths
-            if (file_exists("$dir/src/api_cli.php") && function_exists('\Cdd\Cli\parse')) {
-                /*cov_ignore*/                 $cliOps = \Cdd\Cli\parse(file_get_contents("$dir/src/api_cli.php"));
-                /*cov_ignore*/                 if (!empty($cliOps) && isset($openapi['paths'])) {
-                    /*cov_ignore*/                     foreach ($openapi['paths'] as $path => &$methods) {
-                        /*cov_ignore*/                         foreach ($methods as $method => &$operation) {
-                            /*cov_ignore*/                             $opId = $operation['operationId'] ?? '';
-                            /*cov_ignore*/                             if (isset($cliOps["/cli/".$opId])) {
-                                /*cov_ignore*/                                 $operation = array_replace_recursive((array)$operation, $cliOps["/cli/".$opId]);
-                            }
-                        }
-                    }
-                }
+            if (file_exists("$dir/src/api_cli.php")) {
+                $cliOps = \Cdd\Cli\parse((string) file_get_contents("$dir/src/api_cli.php"));
+                $openapi['paths'] = self::mergeOperationMetadata((array) $openapi['paths'], $cliOps, '/cli/');
             }
 
-            // If Models.php exists, parse classes
             if (file_exists("$dir/src/Models.php")) {
-                $code = file_get_contents("$dir/src/Models.php");
-                $classes = function_exists('\Cdd\Classes\parse') ? \Cdd\Classes\parse($code) : [];
+                $classes = \Cdd\Classes\parse((string) file_get_contents("$dir/src/Models.php"));
                 if (!empty($classes)) {
-                    foreach ($classes as $c) {
-                        $schema = \Cdd\Schemas\parse($c['node']);
-                        $type = $c['componentType'] ?? 'schemas';
-                        if (!isset($openapi['components'][$type])) {
-                            /*cov_ignore*/                             $openapi['components'][$type] = [];
-                        }
-                        if ($type === 'mediaTypes') {
-                            /*cov_ignore*/                             $mediaType = ['schema' => $schema];
-
-                            // Parse extra docblock tags for Media Type Objects (3.2.0)
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['itemSchema'])) {
-                                    /*cov_ignore*/                                     $mediaType['itemSchema'] = ['$ref' => '#/components/schemas/' . trim($parsedDoc['tags']['itemSchema'][0])];
-                                }
-                                // Simplified encoding representation
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['itemEncoding'])) {
-                                    /*cov_ignore*/                                     $mediaType['itemEncoding'] = ['contentType' => trim($parsedDoc['tags']['itemEncoding'][0])];
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = $mediaType;
-                        } elseif ($type === 'parameters') {
-                            /*cov_ignore*/                             $paramName = $c['name'];
-                            /*cov_ignore*/                             $in = 'query';
-                            /*cov_ignore*/                             $required = false;
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['in'])) {
-                                    /*cov_ignore*/                                     $in = trim($parsedDoc['tags']['in'][0]);
-                                }
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['name'])) {
-                                    /*cov_ignore*/                                     $paramName = trim($parsedDoc['tags']['name'][0]);
-                                }
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['required'])) {
-                                    /*cov_ignore*/                                     $required = true;
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'name' => $paramName,
-                            /*cov_ignore*/                                 'in' => $in,
-                            /*cov_ignore*/                                 'required' => $required,
-                            /*cov_ignore*/                                 'schema' => $schema
-                                                        ];
-                        } elseif ($type === 'responses') {
-                            /*cov_ignore*/                             $desc = $c['name'];
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if ($parsedDoc['description'] !== '') {
-                                    /*cov_ignore*/                                     $desc = explode("\n", $parsedDoc['description'])[0];
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'description' => $desc,
-                            /*cov_ignore*/                                 'content' => ['application/json' => ['schema' => $schema]]
-                                                        ];
-                        } elseif ($type === 'requestBodies') {
-                            /*cov_ignore*/                             $desc = '';
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if ($parsedDoc['description'] !== '') {
-                                    /*cov_ignore*/                                     $desc = explode("\n", $parsedDoc['description'])[0];
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'description' => $desc,
-                            /*cov_ignore*/                                 'content' => ['application/json' => ['schema' => $schema]]
-                                                        ];
-                        } elseif ($type === 'headers') {
-                            /*cov_ignore*/                             $desc = '';
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if ($parsedDoc['description'] !== '') {
-                                    /*cov_ignore*/                                     $desc = explode("\n", $parsedDoc['description'])[0];
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'description' => $desc,
-                            /*cov_ignore*/                                 'schema' => $schema
-                                                        ];
-                        } elseif ($type === 'securitySchemes') {
-                            /*cov_ignore*/                             $schemeType = 'http';
-                            /*cov_ignore*/                             $scheme = 'bearer';
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['type'])) {
-                                    /*cov_ignore*/                                     $schemeType = trim($parsedDoc['tags']['type'][0]);
-                                }
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['scheme'])) {
-                                    /*cov_ignore*/                                     $scheme = trim($parsedDoc['tags']['scheme'][0]);
-                                }
-                            }
-                            /*cov_ignore*/                             $secScheme = ['type' => $schemeType];
-                            /*cov_ignore*/                             if ($schemeType === 'http') {
-                                /*cov_ignore*/                                 $secScheme['scheme'] = $scheme;
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                            } elseif ($schemeType === 'apiKey') { // @codeCoverageIgnore
-                                /*cov_ignore*/                                 $secScheme['in'] = 'header';
-                                /*cov_ignore*/                                 $secScheme['name'] = 'X-API-Key';
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['in'])) {
-                                    /*cov_ignore*/                                     $secScheme['in'] = trim($parsedDoc['tags']['in'][0]);
-                                }
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['name'])) {
-                                    /*cov_ignore*/                                     $secScheme['name'] = trim($parsedDoc['tags']['name'][0]);
-                                }
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                            } elseif ($schemeType === 'oauth2') { // @codeCoverageIgnore
-                                /*cov_ignore*/                                 $secScheme['flows'] = [];
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['flow'])) {
-                                    /*cov_ignore*/                                     foreach ($parsedDoc['tags']['flow'] as $flowStr) {
-                                        /*cov_ignore*/                                         $parts = explode(' ', $flowStr, 2);
-                                        /*cov_ignore*/                                         if (isset($parts[1])) {
-                                            /*cov_ignore*/                                             $secScheme['flows'][$parts[0]] = json_decode($parts[1], true);
-                                        }
-                                    }
-                                }
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                            } elseif ($schemeType === 'openIdConnect') { // @codeCoverageIgnore
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['openIdConnectUrl'])) {
-                                    /*cov_ignore*/                                     $secScheme['openIdConnectUrl'] = trim($parsedDoc['tags']['openIdConnectUrl'][0]);
-                                }
-                            }
-                            /*cov_ignore*/                             if (isset($parsedDoc['tags']['bearerFormat'])) {
-                                /*cov_ignore*/                                 $secScheme['bearerFormat'] = trim($parsedDoc['tags']['bearerFormat'][0]);
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = $secScheme;
-                        } elseif ($type === 'pathItems') {
-                            /*cov_ignore*/                             $desc = '';
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if ($parsedDoc['description'] !== '') {
-                                    /*cov_ignore*/                                     $desc = explode("\n", $parsedDoc['description'])[0];
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'description' => $desc
-                                                        ];
-                        } elseif ($type === 'callbacks') {
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                                                            '{$request.query.callbackUrl}' => [
-                                                                'post' => [
-                                                                    'requestBody' => [
-                            /*cov_ignore*/                                             'content' => ['application/json' => ['schema' => $schema]]
-                                                                    ],
-                                                                    'responses' => [
-                                                                        '200' => ['description' => 'ok']
-                                                                    ]
-                                                                ]
-                                                            ]
-                                                        ];
-                        } elseif ($type === 'links') {
-                            /*cov_ignore*/                             $desc = '';
-                            /*cov_ignore*/                             $opId = 'linkOperation';
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if ($parsedDoc['description'] !== '') {
-                                    /*cov_ignore*/                                     $desc = explode("\n", $parsedDoc['description'])[0];
-                                }
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['operationId'])) {
-                                    /*cov_ignore*/                                     $opId = trim($parsedDoc['tags']['operationId'][0]);
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'operationId' => $opId,
-                            /*cov_ignore*/                                 'description' => $desc
-                                                        ];
-                        } else {
-                            $openapi['components'][$type][$c['name']] = $schema;
-                        }
-                    }
+                    $openapi['components'] = \Cdd\Components\parse_classes($classes, (array) $openapi['components']);
                 }
             }
 
-            // If mocks.php exists, parse it
             if (file_exists("$dir/src/mocks.php")) {
-                /*cov_ignore*/                 $mocks = \Cdd\Mocks\parse(file_get_contents("$dir/src/mocks.php"));
-                /*cov_ignore*/                 if (!empty($mocks)) {
-                    /*cov_ignore*/                     $openapi['components']['examples'] = $mocks;
-                    // update schema to match mocks (if I edit a mock, update the rest to match)
-                    /*cov_ignore*/                     foreach ($mocks as $name => $example) {
-                        /*cov_ignore*/                         if (isset($example['dataValue']) && is_array($example['dataValue'])) {
-                            /*cov_ignore*/                             $schemaName = ucfirst($name) . 'Model';
-                            /*cov_ignore*/                             if (!isset($openapi['components']['schemas'][$schemaName])) {
-                                /*cov_ignore*/                                 $properties = [];
-                                /*cov_ignore*/                                 foreach ($example['dataValue'] as $key => $val) {
-                                    /*cov_ignore*/                                     $type = gettype($val);
-                                    /*cov_ignore*/                                     if ($type === 'integer') {
-                                        /*cov_ignore*/                                         $properties[$key] = ['type' => 'integer'];
-                                        /*cov_ignore*/
-                                        /*cov_ignore*/
-                                        /*cov_ignore*/
-                                        /*cov_ignore*/
-                                    } elseif ($type === 'double') { // @codeCoverageIgnore
-                                        /*cov_ignore*/                                         $properties[$key] = ['type' => 'number'];
-                                        /*cov_ignore*/
-                                        /*cov_ignore*/
-                                        /*cov_ignore*/
-                                        /*cov_ignore*/
-                                    } elseif ($type === 'boolean') { // @codeCoverageIgnore
-                                        /*cov_ignore*/                                         $properties[$key] = ['type' => 'boolean'];
-                                        /*cov_ignore*/
-                                        /*cov_ignore*/
-                                        /*cov_ignore*/
-                                        /*cov_ignore*/
-                                    } elseif ($type === 'array') { // @codeCoverageIgnore
-                                        /*cov_ignore*/                                         $properties[$key] = ['type' => 'array', 'items' => ['type' => 'string']];
-                                    } else {
-                                        /*cov_ignore*/                                         $properties[$key] = ['type' => 'string'];
-                                    }
-                                }
-                                /*cov_ignore*/                                 $openapi['components']['schemas'][$schemaName] = [
-                                /*cov_ignore*/                                     'type' => 'object',
-                                /*cov_ignore*/                                     'properties' => $properties
-                                                                ];
-                            }
-                        }
-                    }
+                $mocks = \Cdd\Mocks\parse((string) file_get_contents("$dir/src/mocks.php"));
+                if (!empty($mocks)) {
+                    $openapi['components']['examples'] = $mocks;
+                    $openapi['components']['schemas'] = \Cdd\Components\infer_schemas_from_mocks(
+                        $mocks,
+                        (array) ($openapi['components']['schemas'] ?? [])
+                    );
                 }
             }
 
-            // If ApiServers.php exists, parse it
             if (file_exists("$dir/src/ApiServers.php")) {
-                /*cov_ignore*/                 $parsedServers = \Cdd\Servers\parse(file_get_contents("$dir/src/ApiServers.php"));
-                /*cov_ignore*/                 if (!empty($parsedServers)) {
-                    /*cov_ignore*/                     $openapi['servers'] = $parsedServers;
+                $parsedServers = \Cdd\Servers\parse((string) file_get_contents("$dir/src/ApiServers.php"));
+                if (!empty($parsedServers)) {
+                    $openapi['servers'] = $parsedServers;
                 }
             }
 
-            // If Webhooks.php exists, parse it
-            if (file_exists("$dir/Webhooks.php") && function_exists('\Cdd\Webhooks\parse')) {
-                /*cov_ignore*/                 $webhooks = \Cdd\Webhooks\parse(file_get_contents("$dir/Webhooks.php"));
-                /*cov_ignore*/                 if (!empty($webhooks)) {
-                    /*cov_ignore*/                     $openapi['webhooks'] = $webhooks;
+            if (file_exists("$dir/Webhooks.php")) {
+                $webhooks = \Cdd\Webhooks\parse((string) file_get_contents("$dir/Webhooks.php"));
+                if (!empty($webhooks)) {
+                    $openapi['webhooks'] = $webhooks;
                 }
             }
 
-            // If ApiTests.php or ComposableTests.php exists, parse it
             if (file_exists("$dir/src/ComposableTests.php")) {
-                /*cov_ignore*/                 $tests = \Cdd\Tests\parse(file_get_contents("$dir/src/ComposableTests.php"));
+                \Cdd\Tests\parse((string) file_get_contents("$dir/src/ComposableTests.php"));
             } elseif (file_exists("$dir/src/ApiTests.php")) {
-                /*cov_ignore*/                 $tests = \Cdd\Tests\parse(file_get_contents("$dir/src/ApiTests.php"));
+                \Cdd\Tests\parse((string) file_get_contents("$dir/src/ApiTests.php"));
             }
 
-            // Emitting back to sync the project and OpenAPI json
             $options = [];
             if (file_exists("$dir/src/ComposableTests.php") || file_exists("$dir/src/ApiTests.php") || file_exists("$dir/src/mocks.php")) {
-                /*cov_ignore*/                 $options['tests'] = true;
+                $options['tests'] = true;
             }
             $json = \Cdd\Openapi\emit($openapi, $dir, $options);
             file_put_contents("$dir/openapi.json", $json);
@@ -862,12 +634,8 @@ Content-Type: application/json
                 } elseif (($argv[$i] === '-o' || $argv[$i] === '--output') && isset($argv[$i + 1])) {
                     $outFile = $resolvePath($argv[$i + 1]);
                     $i++;
-                    /*cov_ignore*/
-                    /*cov_ignore*/
-                    /*cov_ignore*/
-                    /*cov_ignore*/
-                } elseif ($argv[$i] !== '-i' && $argv[$i] !== '--input' && $argv[$i] !== '-o' && $argv[$i] !== '--output' && $file === '') { // @codeCoverageIgnore
-                    /*cov_ignore*/                     $file = $resolvePath($argv[$i]);
+                } elseif ($file === '') {
+                    $file = $resolvePath($argv[$i]);
                 }
             }
 
@@ -875,7 +643,8 @@ Content-Type: application/json
                 echo "Error: File not found.\n";
                 return 1;
             }
-            $code = is_dir($file) ? '' : file_get_contents($file);
+
+            $code = is_dir($file) ? '' : (string) file_get_contents($file);
 
             $openapi = [
                 'openapi' => '3.2.0',
@@ -887,260 +656,54 @@ Content-Type: application/json
                 'components' => ['schemas' => []]
             ];
 
-            $dir = dirname($file);
+            $dir = is_dir($file) ? $file : dirname($file);
             if (file_exists("$dir/src/api_metadata.php")) {
-                /*cov_ignore*/                 $metadata = include "$dir/src/api_metadata.php";
-                /*cov_ignore*/                 if (is_array($metadata)) {
-                    /*cov_ignore*/                     foreach (['info', 'jsonSchemaDialect', 'externalDocs', 'tags', 'security'] as $key) {
-                        /*cov_ignore*/                         if (isset($metadata[$key])) {
-                            /*cov_ignore*/                             $openapi[$key] = $metadata[$key];
+                $metadata = include "$dir/src/api_metadata.php";
+                if (is_array($metadata)) {
+                    foreach (['info', 'jsonSchemaDialect', 'externalDocs', 'tags', 'security'] as $key) {
+                        if (isset($metadata[$key])) {
+                            $openapi[$key] = $metadata[$key];
                         }
                     }
                 }
             }
 
             if (strpos($code, 'curl_exec') !== false) {
-                /*cov_ignore*/                 $openapi['paths'] = \Cdd\Client\parse($code);
+                $openapi['paths'] = \Cdd\Client\parse($code);
             } else {
-
-                $routes = function_exists('\Cdd\Routes\parse') ? \Cdd\Routes\parse($code) : [];
+                $routes = \Cdd\Routes\parse($code);
                 if (!empty($routes)) {
-                    /*cov_ignore*/                     $openapi['paths'] = $routes;
+                    $openapi['paths'] = $routes;
                 }
 
-                if (function_exists('\Cdd\Controllers\parse') && !empty($openapi['paths'])) {
-                    /*cov_ignore*/                     $controllerOps = \Cdd\Controllers\parse($code);
-                    /*cov_ignore*/                     foreach ($openapi['paths'] as $path => &$methods) {
-                        /*cov_ignore*/                         foreach ($methods as $method => &$operation) {
-                            /*cov_ignore*/                             $opId = $operation['operationId'] ?? '';
-                            /*cov_ignore*/                             if (isset($controllerOps[$opId])) {
-                                /*cov_ignore*/                                 $operation = array_replace_recursive((array)$operation, $controllerOps[$opId]);
-                            }
-                        }
-                    }
+                if (!empty($openapi['paths'])) {
+                    $controllerOps = \Cdd\Controllers\parse($code);
+                    $openapi['paths'] = self::mergeOperationMetadata((array) $openapi['paths'], $controllerOps);
+
+                    $cliOps = \Cdd\Cli\parse($code);
+                    $openapi['paths'] = self::mergeOperationMetadata((array) $openapi['paths'], $cliOps, '/cli/');
                 }
 
-                if (function_exists('\Cdd\Cli\parse') && !empty($openapi['paths'])) {
-                    /*cov_ignore*/                     $cliOps = \Cdd\Cli\parse($code);
-                    /*cov_ignore*/                     foreach ($openapi['paths'] as $path => &$methods) {
-                        /*cov_ignore*/                         foreach ($methods as $method => &$operation) {
-                            /*cov_ignore*/                             $opId = $operation['operationId'] ?? '';
-                            /*cov_ignore*/                             if (isset($cliOps["/cli/".$opId])) {
-                                /*cov_ignore*/                                 $operation = array_replace_recursive((array)$operation, $cliOps["/cli/".$opId]);
-                            }
-                        }
-                    }
+                $servers = \Cdd\Servers\parse($code);
+                if (!empty($servers)) {
+                    $openapi['servers'] = $servers;
                 }
 
-                if (function_exists('\Cdd\Servers\parse')) {
-                    $servers = \Cdd\Servers\parse($code);
-                    if (!empty($servers)) {
-                        /*cov_ignore*/                         $openapi['servers'] = $servers;
-                    }
-                }
-
-                $classes = function_exists('\Cdd\Classes\parse') ? \Cdd\Classes\parse($code) : [];
+                $classes = \Cdd\Classes\parse($code);
                 if (!empty($classes)) {
-                    foreach ($classes as $c) {
-                        $schema = \Cdd\Schemas\parse($c['node']);
-                        $type = $c['componentType'] ?? 'schemas';
-                        if (!isset($openapi['components'][$type])) {
-                            /*cov_ignore*/                             $openapi['components'][$type] = [];
-                        }
-                        if ($type === 'mediaTypes') {
-                            /*cov_ignore*/                             $mediaType = ['schema' => $schema];
-
-                            // Parse extra docblock tags for Media Type Objects (3.2.0)
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['itemSchema'])) {
-                                    /*cov_ignore*/                                     $mediaType['itemSchema'] = ['$ref' => '#/components/schemas/' . trim($parsedDoc['tags']['itemSchema'][0])];
-                                }
-                                // Simplified encoding representation
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['itemEncoding'])) {
-                                    /*cov_ignore*/                                     $mediaType['itemEncoding'] = ['contentType' => trim($parsedDoc['tags']['itemEncoding'][0])];
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = $mediaType;
-                        } elseif ($type === 'parameters') {
-                            /*cov_ignore*/                             $paramName = $c['name'];
-                            /*cov_ignore*/                             $in = 'query';
-                            /*cov_ignore*/                             $required = false;
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['in'])) {
-                                    /*cov_ignore*/                                     $in = trim($parsedDoc['tags']['in'][0]);
-                                }
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['name'])) {
-                                    /*cov_ignore*/                                     $paramName = trim($parsedDoc['tags']['name'][0]);
-                                }
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['required'])) {
-                                    /*cov_ignore*/                                     $required = true;
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'name' => $paramName,
-                            /*cov_ignore*/                                 'in' => $in,
-                            /*cov_ignore*/                                 'required' => $required,
-                            /*cov_ignore*/                                 'schema' => $schema
-                                                        ];
-                        } elseif ($type === 'responses') {
-                            /*cov_ignore*/                             $desc = $c['name'];
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if ($parsedDoc['description'] !== '') {
-                                    /*cov_ignore*/                                     $desc = explode("\n", $parsedDoc['description'])[0];
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'description' => $desc,
-                            /*cov_ignore*/                                 'content' => ['application/json' => ['schema' => $schema]]
-                                                        ];
-                        } elseif ($type === 'requestBodies') {
-                            /*cov_ignore*/                             $desc = '';
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if ($parsedDoc['description'] !== '') {
-                                    /*cov_ignore*/                                     $desc = explode("\n", $parsedDoc['description'])[0];
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'description' => $desc,
-                            /*cov_ignore*/                                 'content' => ['application/json' => ['schema' => $schema]]
-                                                        ];
-                        } elseif ($type === 'headers') {
-                            /*cov_ignore*/                             $desc = '';
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if ($parsedDoc['description'] !== '') {
-                                    /*cov_ignore*/                                     $desc = explode("\n", $parsedDoc['description'])[0];
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'description' => $desc,
-                            /*cov_ignore*/                                 'schema' => $schema
-                                                        ];
-                        } elseif ($type === 'securitySchemes') {
-                            /*cov_ignore*/                             $schemeType = 'http';
-                            /*cov_ignore*/                             $scheme = 'bearer';
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['type'])) {
-                                    /*cov_ignore*/                                     $schemeType = trim($parsedDoc['tags']['type'][0]);
-                                }
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['scheme'])) {
-                                    /*cov_ignore*/                                     $scheme = trim($parsedDoc['tags']['scheme'][0]);
-                                }
-                            }
-                            /*cov_ignore*/                             $secScheme = ['type' => $schemeType];
-                            /*cov_ignore*/                             if ($schemeType === 'http') {
-                                /*cov_ignore*/                                 $secScheme['scheme'] = $scheme;
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                            } elseif ($schemeType === 'apiKey') { // @codeCoverageIgnore
-                                /*cov_ignore*/                                 $secScheme['in'] = 'header';
-                                /*cov_ignore*/                                 $secScheme['name'] = 'X-API-Key';
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['in'])) {
-                                    /*cov_ignore*/                                     $secScheme['in'] = trim($parsedDoc['tags']['in'][0]);
-                                }
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['name'])) {
-                                    /*cov_ignore*/                                     $secScheme['name'] = trim($parsedDoc['tags']['name'][0]);
-                                }
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                            } elseif ($schemeType === 'oauth2') { // @codeCoverageIgnore
-                                /*cov_ignore*/                                 $secScheme['flows'] = [];
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['flow'])) {
-                                    /*cov_ignore*/                                     foreach ($parsedDoc['tags']['flow'] as $flowStr) {
-                                        /*cov_ignore*/                                         $parts = explode(' ', $flowStr, 2);
-                                        /*cov_ignore*/                                         if (isset($parts[1])) {
-                                            /*cov_ignore*/                                             $secScheme['flows'][$parts[0]] = json_decode($parts[1], true);
-                                        }
-                                    }
-                                }
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                                /*cov_ignore*/
-                            } elseif ($schemeType === 'openIdConnect') { // @codeCoverageIgnore
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['openIdConnectUrl'])) {
-                                    /*cov_ignore*/                                     $secScheme['openIdConnectUrl'] = trim($parsedDoc['tags']['openIdConnectUrl'][0]);
-                                }
-                            }
-                            /*cov_ignore*/                             if (isset($parsedDoc['tags']['bearerFormat'])) {
-                                /*cov_ignore*/                                 $secScheme['bearerFormat'] = trim($parsedDoc['tags']['bearerFormat'][0]);
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = $secScheme;
-                        } elseif ($type === 'pathItems') {
-                            /*cov_ignore*/                             $desc = '';
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if ($parsedDoc['description'] !== '') {
-                                    /*cov_ignore*/                                     $desc = explode("\n", $parsedDoc['description'])[0];
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'description' => $desc
-                                                        ];
-                        } elseif ($type === 'callbacks') {
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                                                            '{$request.query.callbackUrl}' => [
-                                                                'post' => [
-                                                                    'requestBody' => [
-                            /*cov_ignore*/                                             'content' => ['application/json' => ['schema' => $schema]]
-                                                                    ],
-                                                                    'responses' => [
-                                                                        '200' => ['description' => 'ok']
-                                                                    ]
-                                                                ]
-                                                            ]
-                                                        ];
-                        } elseif ($type === 'links') {
-                            /*cov_ignore*/                             $desc = '';
-                            /*cov_ignore*/                             $opId = 'linkOperation';
-                            /*cov_ignore*/                             $docComment = $c['node']->getDocComment();
-                            /*cov_ignore*/                             if ($docComment !== null) {
-                                /*cov_ignore*/                                 $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
-                                /*cov_ignore*/                                 if ($parsedDoc['description'] !== '') {
-                                    /*cov_ignore*/                                     $desc = explode("\n", $parsedDoc['description'])[0];
-                                }
-                                /*cov_ignore*/                                 if (isset($parsedDoc['tags']['operationId'])) {
-                                    /*cov_ignore*/                                     $opId = trim($parsedDoc['tags']['operationId'][0]);
-                                }
-                            }
-                            /*cov_ignore*/                             $openapi['components'][$type][$c['name']] = [
-                            /*cov_ignore*/                                 'operationId' => $opId,
-                            /*cov_ignore*/                                 'description' => $desc
-                                                        ];
-                        } else {
-                            $openapi['components'][$type][$c['name']] = $schema;
-                        }
-                    }
+                    $openapi['components'] = \Cdd\Components\parse_classes($classes, (array) $openapi['components']);
                 }
             }
 
             if (empty((array)$openapi['paths'])) {
                 unset($openapi['paths']);
             }
-            if (empty((array)$openapi['components'])) {
-                /*cov_ignore*/                 unset($openapi['components']);
-            } else {
-                if (empty((array)$openapi['components']['schemas'])) {
-                    unset($openapi['components']['schemas']);
-                }
+            if (empty((array)$openapi['components']['schemas'])) {
+                unset($openapi['components']['schemas']);
             }
-
+            if (empty((array)($openapi['components'] ?? []))) {
+                unset($openapi['components']);
+            }
 
             $outStr = json_encode($openapi, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
             if ($outFile !== '') {
@@ -1156,7 +719,7 @@ Content-Type: application/json
             $subcommand = 'to_sdk';
             $file = '';
             $inputDir = '';
-            $dir = getcwd(); // default out dir is current working directory
+            $dir = (string) getcwd();
 
             $noGithubActions = false;
             $noInstallablePackage = false;
@@ -1166,9 +729,9 @@ Content-Type: application/json
             $newArgv = [];
             for ($k = 0; $k < $argc; $k++) {
                 if ($argv[$k] === '--no-github-actions') {
-                    /*cov_ignore*/                     $noGithubActions = true;
+                    $noGithubActions = true;
                 } elseif ($argv[$k] === '--no-installable-package') {
-                    /*cov_ignore*/                     $noInstallablePackage = true;
+                    $noInstallablePackage = true;
                 } elseif ($argv[$k] === '--tests') {
                     $tests = true;
                 } elseif ($argv[$k] === '--mcp') {
@@ -1191,13 +754,13 @@ Content-Type: application/json
                     $file = $resolvePath($argv[$i + 1]);
                     $i++;
                 } elseif (($argv[$i] === '-d' || $argv[$i] === '--input-dir') && isset($argv[$i + 1])) {
-                    /*cov_ignore*/                     $inputDir = $resolvePath($argv[$i + 1]);
-                    /*cov_ignore*/                     $i++;
+                    $inputDir = $resolvePath($argv[$i + 1]);
+                    $i++;
                 } elseif (($argv[$i] === '-o' || $argv[$i] === '--output') && isset($argv[$i + 1])) {
                     $dir = $resolvePath($argv[$i + 1]);
                     $i++;
                 } else {
-                    /*cov_ignore*/                     $dir = $resolvePath($argv[$i]);
+                    $dir = $resolvePath($argv[$i]);
                 }
             }
 
@@ -1206,102 +769,45 @@ Content-Type: application/json
                 return 1;
             }
 
-            if ($file !== '') {
-                if (!file_exists($file)) {
-                    echo "Error: Spec file not found ($file).\n";
+            $specFile = $file;
+            if ($specFile !== '') {
+                if (!file_exists($specFile)) {
+                    echo "Error: Spec file not found ($specFile).\n";
                     return 1;
                 }
-                $spec = \Cdd\Openapi\parse(file_get_contents($file));
-                \Cdd\Openapi\emit($spec, $dir, [
-                    'no_github_actions' => $noGithubActions,
-                    'no_installable_package' => $noInstallablePackage,
-                    'tests' => $tests,
-                    'subcommand' => $subcommand
-                ]);
-                if ($subcommand === 'to_sdk_cli') {
-                    $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
-                    file_put_contents("$dir/src/api_cli.php", $cliCode);
+            } else {
+                if (!is_dir($inputDir)) {
+                    echo "Error: Input directory not found.\n";
+                    return 1;
                 }
-                /*cov_ignore*/
-                /*cov_ignore*/
-                /*cov_ignore*/
-                /*cov_ignore*/
-            } elseif ($inputDir !== '') { // @codeCoverageIgnore
-                /*cov_ignore*/                 if (!is_dir($inputDir)) {
-                    /*cov_ignore*/                     echo "Error: Input directory not found.\n";
-                    /*cov_ignore*/                     return 1;
+                $files = glob("$inputDir/*.json");
+                if (empty($files)) {
+                    echo "Error: No .json files found in input dir.\n";
+                    return 1;
                 }
-                // For now, emit a simple combination or handle first file
-                /*cov_ignore*/                 $files = glob("$inputDir/*.json");
-                /*cov_ignore*/                 if (empty($files)) {
-                    /*cov_ignore*/                     echo "Error: No .json files found in input dir.\n";
-                    /*cov_ignore*/                     return 1;
-                }
-                /*cov_ignore*/                 $spec = \Cdd\Openapi\parse(file_get_contents($files[0]));
-                /*cov_ignore*/                 \Cdd\Openapi\emit($spec, $dir, [
-                /*cov_ignore*/                     'no_github_actions' => $noGithubActions,
-                /*cov_ignore*/                     'no_installable_package' => $noInstallablePackage,
-                /*cov_ignore*/                     'tests' => $tests,
-                /*cov_ignore*/                     'subcommand' => $subcommand
-                                ]);
-                /*cov_ignore*/                 if ($subcommand === 'to_sdk_cli') {
-                    /*cov_ignore*/                     $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
-                    /*cov_ignore*/                     file_put_contents("$dir/src/api_cli.php", $cliCode);
-                }
+                $specFile = $files[0];
             }
 
-            echo "Emitted code to $dir successfully.
-";
-
-            if (!$noInstallablePackage) {
-                if (!file_exists("$dir/composer.json")) {
-                    /*cov_ignore*/                     file_put_contents("$dir/composer.json", json_encode([
-                    /*cov_ignore*/                         "name" => "offscale/generated-api",
-                                            "description" => "Generated API client/server",
-                                            "require" => [
-                                                "php" => ">=8.0"
-                                            ],
-                                            "require-dev" => [
-                                                "phpunit/phpunit" => "^10.0"
-                                            ],
-                                            "autoload" => [
-                                                "psr-4" => [
-                                                    "Api\\" => "src/"
-                                                ]
-                                            ],
-                                            "scripts" => [
-                                                "test" => "vendor/bin/phpunit tests"
-                                            ]
-                    /*cov_ignore*/                     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-                }
+            $spec = \Cdd\Openapi\parse((string) file_get_contents($specFile));
+            \Cdd\Openapi\emit($spec, $dir, [
+                'no_github_actions' => $noGithubActions,
+                'no_installable_package' => $noInstallablePackage,
+                'tests' => $tests,
+                'mcp' => $mcp,
+                'subcommand' => $subcommand
+            ]);
+            if ($subcommand === 'to_sdk_cli') {
+                $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
+                file_put_contents("$dir/src/api_cli.php", $cliCode);
             }
 
-            if (!$noGithubActions) {
-                if (!is_dir("$dir/.github/workflows")) {
-                    /*cov_ignore*/                     mkdir("$dir/.github/workflows", 0777, true);
-                }
-                if (!file_exists("$dir/.github/workflows/ci.yml")) {
-                    /*cov_ignore*/                     file_put_contents("$dir/.github/workflows/ci.yml", "name: CI
-on: [push]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v6
-    - name: Use PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.2'
-    - run: composer install
-    - run: composer test
-");
-                }
-            }
+            echo "Emitted code to $dir successfully.\n";
             return 0;
         }
 
         if ($command === 'to_docs_json') {
             $file = '';
+            $outFileDocs = '';
             $noImports = false;
             $noWrapping = false;
 
@@ -1324,61 +830,59 @@ jobs:
                 return 1;
             }
 
-            $spec = json_decode(file_get_contents($file), true);
+            $spec = json_decode((string) file_get_contents($file), true);
             if (!$spec) {
-                /*cov_ignore*/                 fwrite(STDERR, "Error parsing JSON spec.\n");
-                /*cov_ignore*/                 return 1;
+                fwrite(STDERR, "Error parsing JSON spec.\n");
+                return 1;
             }
 
             $operations = [];
             if (isset($spec['paths'])) {
                 foreach ($spec['paths'] as $path => $methods) {
-                    /*cov_ignore*/                     foreach ($methods as $method => $operation) {
-                        /*cov_ignore*/                         if (in_array(strtolower($method), ['parameters', 'summary', 'description', 'servers'])) {
-                            /*cov_ignore*/                             continue;
+                    foreach ($methods as $method => $operation) {
+                        if (in_array(strtolower((string) $method), ['parameters', 'summary', 'description', 'servers'])) {
+                            continue;
                         }
 
-                        /*cov_ignore*/                         $opId = $operation['operationId'] ?? strtolower($method) . preg_replace('/[^a-zA-Z0-9]/', '', $path);
+                        $opId = $operation['operationId'] ?? strtolower((string) $method) . preg_replace('/[^a-zA-Z0-9]/', '', $path);
 
-                        // Generate basic snippet
-                        /*cov_ignore*/                         $camelOpId = preg_replace_callback('/[-_](.)/', function ($m) {
+                        $camelOpId = preg_replace_callback('/[-_](.)/', function ($m) {
                             return strtoupper($m[1]);
-                            /*cov_ignore*/
                         }, $opId);
 
-                        /*cov_ignore*/                         $params = [];
-                        /*cov_ignore*/                         if (isset($operation['parameters'])) {
-                            /*cov_ignore*/                             foreach ($operation['parameters'] as $p) {
-                                /*cov_ignore*/                                 $name = $p['name'] ?? 'param';
-                                /*cov_ignore*/                                 $params[] = "'$name' => 'value'";
+                        $params = [];
+                        if (isset($operation['parameters'])) {
+                            foreach ($operation['parameters'] as $p) {
+                                $name = $p['name'] ?? 'param';
+                                $params[] = "'$name' => 'value'";
                             }
                         }
-                        /*cov_ignore*/                         if (isset($operation['requestBody'])) {
-                            /*cov_ignore*/                             $params[] = "'body' => [...]";
+                        if (isset($operation['requestBody'])) {
+                            $params[] = "'body' => [...]";
                         }
-                        /*cov_ignore*/                         $paramStr = empty($params) ? '' : '[' . implode(', ', $params) . ']';
+                        $paramStr = empty($params) ? '' : '[' . implode(', ', $params) . ']';
 
-                        /*cov_ignore*/                         $snippet = "\$response = \$client->{$camelOpId}($paramStr);\nprint_r(\$response);";
+                        $snippet = "\$response = \$client->{$camelOpId}($paramStr);\nprint_r(\$response);";
 
-                        /*cov_ignore*/                         $codeBlock = [
-                        /*cov_ignore*/                             'snippet' => $snippet
-                                                ];
+                        $codeBlock = [
+                            'snippet' => $snippet
+                        ];
 
-                        /*cov_ignore*/                         if (!$noImports) {
-                            /*cov_ignore*/                             $codeBlock['imports'] = "require_once 'vendor/autoload.php';\nuse ApiClient;";
-                        }
-
-                        /*cov_ignore*/                         if (!$noWrapping) {
-                            /*cov_ignore*/                             $codeBlock['wrapper_start'] = "\$client = new ApiClient('https://api.example.com');";
-                            /*cov_ignore*/                             $codeBlock['wrapper_end'] = "";
+                        if (!$noImports) {
+                            $codeBlock['imports'] = "require_once 'vendor/autoload.php';\nuse ApiClient;";
                         }
 
-                        /*cov_ignore*/                         $operations[] = [
-                        /*cov_ignore*/                             'method' => strtoupper($method),
-                        /*cov_ignore*/                             'path' => $path,
-                        /*cov_ignore*/                             'operationId' => $opId,
-                        /*cov_ignore*/                             'code' => $codeBlock
-                                                ];
+                        if (!$noWrapping) {
+                            $codeBlock['wrapper_start'] = "\$client = new ApiClient('https://api.example.com');";
+                            $codeBlock['wrapper_end'] = "";
+                        }
+
+                        $operations[] = [
+                            'method' => strtoupper((string) $method),
+                            'path' => $path,
+                            'operationId' => $opId,
+                            'code' => $codeBlock
+                        ];
                     }
                 }
             }
@@ -1390,22 +894,19 @@ jobs:
                 ]
             ];
 
-
             $outStr = json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
-            if (isset($outFileDocs) && $outFileDocs !== '') {
+            if ($outFileDocs !== '') {
                 if (is_dir($outFileDocs)) {
-                    /*cov_ignore*/                     $outFileDocs = rtrim($outFileDocs, '/') . '/docs.json';
+                    $outFileDocs = rtrim($outFileDocs, '/') . '/docs.json';
                 }
                 file_put_contents($outFileDocs, $outStr);
             } else {
-                /*cov_ignore*/                 echo $outStr;
+                echo $outStr;
             }
             return 0;
         }
 
         fwrite(STDERR, "Error: Unknown or incomplete command: $command\n");
         return 1;
-
-        /*cov_ignore*/         return 0;
     }
 }

@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * Illuminate Router test server dispatcher.
+ *
+ * @package Cdd
+ */
+
+declare(strict_types=1);
+
 require 'vendor/autoload.php';
 
 use Illuminate\Http\Request;

@@ -1,13 +1,34 @@
 <?php
 
+/**
+ * Standalone minimal router for testing generated CDD servers.
+ *
+ * @package Cdd
+ */
+
+declare(strict_types=1);
+
 // A standalone minimal router for testing the generated CDD server
 require 'vendor/autoload.php';
 
-// Mock Laravel's Route facade
+/**
+ * Mock Laravel Route facade for standalone server routing.
+ */
 class MockRoute
 {
-    public static $routes = [];
-    public static function __callStatic($method, $args)
+    /**
+     * @var array<int, array<string, mixed>> Registered routes.
+     */
+    public static array $routes = [];
+
+    /**
+     * Registers a route definition dynamically.
+     *
+     * @param string $method HTTP method name.
+     * @param array<int, mixed> $args Route URI and action arguments.
+     * @return void
+     */
+    public static function __callStatic(string $method, array $args): void
     {
         self::$routes[] = ['method' => strtoupper($method), 'uri' => $args[0], 'action' => $args[1]];
     }

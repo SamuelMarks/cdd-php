@@ -1,11 +1,20 @@
 <?php
 
+/**
+ * Emits PHP docblock comments from structured arrays.
+ *
+ * @package Cdd\Docstrings
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Docstrings;
 
 /**
  * Emits a PHP docstring from an array.
+ *
+ * @param array<string, mixed> $doc Structured docblock definition with 'description' and 'tags'.
+ * @return string The formatted PHP docblock comment.
  */
 function emit(array $doc): string
 {
@@ -14,14 +23,14 @@ function emit(array $doc): string
 
     if (!empty($doc['description'])) {
         $lines = explode("
-", $doc['description']);
+", (string) $doc['description']);
         foreach ($lines as $line) {
             $out .= " * " . $line . "
 ";
         }
     }
 
-    if (!empty($doc['tags'])) {
+    if (!empty($doc['tags']) && is_array($doc['tags'])) {
         foreach ($doc['tags'] as $tag => $data) {
             if ($tag === 'param') {
                 foreach ($data as $param) {
@@ -32,9 +41,9 @@ function emit(array $doc): string
                 $out .= " * @return {$data['type']} {$data['description']}
 ";
             } else {
-                $trim = 'trim';
                 foreach ($data as $val) {
-                    $out .= " * @$tag " . $trim($val) . "\n";
+                    $out .= " * @$tag " . trim((string) $val) . "
+";
                 }
             }
         }

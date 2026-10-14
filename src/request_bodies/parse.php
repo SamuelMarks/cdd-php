@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Parses and validates OpenAPI RequestBody Objects.
+ *
+ * @package Cdd\RequestBodies
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\RequestBodies;
@@ -7,9 +13,9 @@ namespace Cdd\RequestBodies;
 /**
  * Parses request body information to OpenAPI RequestBody Object.
  *
- * @param string $type The expected type or schema reference
- * @param string $description Optional description
- * @return array The OpenAPI RequestBody Object
+ * @param string $type The expected type or schema reference.
+ * @param string $description Optional description.
+ * @return array<string, mixed> The OpenAPI RequestBody Object.
  */
 function parse(string $type, string $description = ''): array
 {
@@ -33,6 +39,10 @@ function parse(string $type, string $description = ''): array
 
 /**
  * Validates a Request Body Object or Reference Object.
+ *
+ * @param mixed $requestBody The Request Body or Reference Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateRequestBodyOrReferenceObject(mixed $requestBody): void
 {
@@ -49,7 +59,7 @@ function validateRequestBodyOrReferenceObject(mixed $requestBody): void
     if (!isset($requestBody['content']) || !is_array($requestBody['content'])) {
         throw new \RuntimeException('Request Body must contain a "content" map');
     }
-    foreach ($requestBody['content'] as $mediaType => $mediaTypeObj) {
+    foreach ($requestBody['content'] as $mediaTypeObj) {
         \Cdd\Encoding\validateMediaTypeOrReferenceObject($mediaTypeObj);
     }
     if (isset($requestBody['required']) && !is_bool($requestBody['required'])) {

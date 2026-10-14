@@ -1,14 +1,20 @@
 <?php
 
+/**
+ * Emits a standalone CLI client script (`api_cli.php`) with MCP stdio support.
+ *
+ * @package Cdd\Cli
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Cli;
 
 /**
  * Emits PHP CLI code, fully typed and documented.
- * @param array $paths
- * @param string $existingCode
- * @return string
+ * @param array<string, mixed> $paths The OpenAPI Paths Object.
+ * @param string $existingCode Optional existing PHP CLI code.
+ * @return string The generated CLI PHP code.
  */
 function emit(array $paths, string $existingCode = ''): string
 {
@@ -21,23 +27,18 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "    echo \"Commands:\\n\";\n";
     $commands = [];
     $to_snake_case = function (string $text): string {
-        $preg_replace = 'preg_replace';
-        $strtolower = 'strtolower';
-        return $strtolower($preg_replace('/(?<!^)[A-Z]/', '_$0', $text));
+        return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $text));
     };
 
     foreach ($paths as $path => $methods) {
         foreach ($methods as $method => $operation) {
-            $in_array = 'in_array';
-            $strtolower = 'strtolower';
-            if ($in_array($strtolower($method), ['parameters', 'summary', 'description', 'servers'])) {
-                /*cov_ignore*/ continue;
+            if (in_array(strtolower((string) $method), ['parameters', 'summary', 'description', 'servers'], true)) {
+                continue;
             }
-            $preg_replace = 'preg_replace';
-            $opId = $operation['operationId'] ?? strtolower($method) . $preg_replace('/[^a-zA-Z0-9]/', '', $path);
-            $opId = $to_snake_case($opId);
+            $opId = $operation['operationId'] ?? strtolower((string) $method) . preg_replace('/[^a-zA-Z0-9]/', '', (string) $path);
+            $opId = $to_snake_case((string) $opId);
             $commands[$opId] = $operation;
-            $desc = $operation['description'] ?? 'Call ' . strtoupper($method) . ' ' . $path;
+            $desc = $operation['description'] ?? 'Call ' . strtoupper((string) $method) . ' ' . $path;
             $out .= "    echo \"  " . str_pad($opId, 25) . " $desc\\n\";\n";
         }
     }
@@ -225,10 +226,10 @@ function emit(array $paths, string $existingCode = ''): string
     $docs = [];
     foreach ($paths as $path => $methods) {
         foreach ($methods as $m => $op) {
-            if (in_array(strtolower($m), ['parameters', 'summary', 'description', 'servers', 'additionaloperations'])) {
-                /*cov_ignore*/ continue;
+            if (in_array(strtolower((string) $m), ['parameters', 'summary', 'description', 'servers', 'additionaloperations'])) {
+                continue;
             }
-            $docs[] = strtoupper($m) . " " . $path;
+            $docs[] = strtoupper((string) $m) . " " . $path;
         }
     }
     $out .= "                            'text' => \"API Endpoints:\\n" . implode("\\n", $docs) . "\"\n";

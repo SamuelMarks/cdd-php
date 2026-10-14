@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits database connection and schema migration logic for generated servers.
+ *
+ * @package Cdd\Database
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Database;

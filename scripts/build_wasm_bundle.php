@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * Builds the JSON payload bundle for WebAssembly packaging.
+ *
+ * @package Cdd\Scripts
+ */
+
+declare(strict_types=1);
+
 $outDir = dirname($argv[1] ?? 'build/wasm_bundle.json');
 if (!is_dir($outDir)) {
     mkdir($outDir, 0777, true);

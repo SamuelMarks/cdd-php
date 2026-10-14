@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits PHP client SDK methods and the full ApiClient class.
+ *
+ * @package Cdd\Client
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Client;
@@ -9,15 +15,14 @@ namespace Cdd\Client;
  *
  * @param string $method The HTTP method.
  * @param string $path The endpoint path.
- * @param array $operation The OpenAPI operation object.
+ * @param array<string, mixed> $operation The OpenAPI operation object.
  * @param string $baseUrl The base URL for the client.
  * @return string The generated PHP method code.
  */
 function emit(string $method, string $path, array $operation, string $baseUrl = 'http://localhost'): string
 {
     $methodName = strtolower($method);
-    $preg_replace = 'preg_replace';
-    $operationId = $operation['operationId'] ?? "{$methodName}_" . $preg_replace('/[^a-zA-Z0-9]/', '_', $path);
+    $operationId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
 
     $out = "    public function $operationId(array \$params = [], array \$body = []) {\n";
     $out .= "        \$headers = \$this->defaultHeaders;\n";
@@ -99,8 +104,9 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
 /**
  * Emits the full ApiClient class, preserving existing methods.
  *
- * @param array $paths The OpenAPI Paths Object
+ * @param array<string, mixed> $paths The OpenAPI Paths Object
  * @param string $existingCode Existing PHP code
+ * @param array<string, mixed> $securityDefinitions Security Scheme definitions map
  * @return string The generated PHP Client code
  */
 function emit_class(array $paths, string $existingCode = '', array $securityDefinitions = []): string
@@ -136,33 +142,24 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
             if ($method === 'additionalOperations' && is_array($operation)) {
                 foreach ($operation as $addMethod => $addOp) {
                     $m = strtolower($addMethod);
-                    $preg_replace = 'preg_replace';
-                    $operationId = $addOp['operationId'] ?? "{$m}_" . $preg_replace('/[^a-zA-Z0-9]/', '_', $path);
-                    $strpos = 'strpos';
-                    if ($strpos($out, "function $operationId(") === false) {
+                    $operationId = $addOp['operationId'] ?? "{$m}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
+                    if (strpos($out, "function $operationId(") === false) {
                         $methodCode = emit($addMethod, $path, $addOp) . "\n";
-                        $strrpos = 'strrpos';
-                        $pos = $strrpos($out, '}');
+                        $pos = strrpos($out, '}');
                         if ($pos !== false) {
-                            $substr = 'substr';
-                            $out = $substr($out, 0, $pos) . $methodCode . "}\n";
+                            $out = substr($out, 0, $pos) . $methodCode . "}\n";
                         }
                     }
                 }
             } else {
                 $methodName = strtolower($method);
-                $in_array = 'in_array';
-                if ($in_array($methodName, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
-                    $preg_replace = 'preg_replace';
-                    $operationId = $operation['operationId'] ?? "{$methodName}_" . $preg_replace('/[^a-zA-Z0-9]/', '_', $path);
-                    $strpos = 'strpos';
-                    if ($strpos($out, "function $operationId(") === false) {
+                if (in_array($methodName, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
+                    $operationId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
+                    if (strpos($out, "function $operationId(") === false) {
                         $methodCode = emit($method, $path, $operation) . "\n";
-                        $strrpos = 'strrpos';
-                        $pos = $strrpos($out, '}');
+                        $pos = strrpos($out, '}');
                         if ($pos !== false) {
-                            $substr = 'substr';
-                            $out = $substr($out, 0, $pos) . $methodCode . "}\n";
+                            $out = substr($out, 0, $pos) . $methodCode . "}\n";
                         }
                     }
                 }

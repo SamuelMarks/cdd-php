@@ -42,17 +42,14 @@ class ParseEmitTest extends TestCase
 
     public function testValidateServerObjectNotArray()
     {
-        try {
+        $this->assertThrows(function () {
             \Cdd\Servers\validateServerObject('not an array');
-            $this->assertTrue(false);
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('Server must be an object', $e->getMessage());
-        }
+        }, \RuntimeException::class, 'Server must be an object');
     }
 
     public function testValidateValidServerObject()
     {
-        \Cdd\Servers\validateServerObject([
+        $server = [
             'url' => 'http://{username}.example.com:{port}/{basePath}',
             'description' => 'The production API server',
             'variables' => [
@@ -71,7 +68,8 @@ class ParseEmitTest extends TestCase
                     'default' => 'v2'
                 ]
             ]
-        ]);
-        $this->assertTrue(true);
+        ];
+        \Cdd\Servers\validateServerObject($server);
+        $this->assertStringContainsString('serverUrl0', \Cdd\Servers\emit([$server]));
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Cdd\Tests\Cli;
 
 use Cdd\Tests\Framework\TestCase;
@@ -26,11 +28,13 @@ class MockStream2
     {
         $req = json_decode(trim($data), true);
         if ($req && isset($req['id'])) {
-            $res = ['jsonrpc' => '2.0', 'id' => $req['id'], 'result' => ['content' => ['text' => 'hi']]];
-            self::$buffer .= json_encode($res) . "\n";
-            // also trigger an error for next call
-            $res2 = ['jsonrpc' => '2.0', 'id' => $req['id'], 'error' => ['message' => 'err']];
-            self::$buffer .= json_encode($res2) . "\n";
+            if (strpos($data, 'trigger_error') !== false) {
+                $res2 = ['jsonrpc' => '2.0', 'id' => $req['id'], 'error' => ['message' => 'err']];
+                self::$buffer .= json_encode($res2) . "\n";
+            } else {
+                $res = ['jsonrpc' => '2.0', 'id' => $req['id'], 'result' => ['content' => ['text' => 'hi']]];
+                self::$buffer .= json_encode($res) . "\n";
+            }
         }
         return strlen($data);
     }
@@ -55,17 +59,21 @@ class CddCliSampleLlmTest extends TestCase
 {
     public function testLlm()
     {
+        MockStream2::$buffer = "";
         $mock = fopen('mock2://test', 'r+');
         CddCli::$testInStream = $mock;
         CddCli::$testOutStream = $mock;
 
-        $res = CddCli::sample_llm([['role' => 'user','content' => 'x']], 10, 'sys');
+        $res = CddCli::sample_llm([['role' => 'user', 'content' => 'x']], 10, 'sys');
         $this->assertEquals('hi', $res['content']['text']);
 
-        try {
-            CddCli::sample_llm([['role' => 'user','content' => 'x']], 10, 'sys');
-        } catch (\Exception $e) {
-        }
+        $mock2 = fopen('mock2://test', 'r+');
+        CddCli::$testInStream = $mock2;
+        CddCli::$testOutStream = $mock2;
+
+        $this->assertThrows(function () {
+            CddCli::sample_llm([['role' => 'user', 'content' => 'trigger_error']], 10, 'sys');
+        }, \Exception::class, 'err');
 
         CddCli::$testInStream = null;
         CddCli::$testOutStream = null;

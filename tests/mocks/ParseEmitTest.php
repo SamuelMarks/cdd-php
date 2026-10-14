@@ -41,6 +41,28 @@ class ParseEmitTest extends TestCase
         $code = "<?php throw new \Exception('test');";
         $parsed = \Cdd\Mocks\parse($code);
         $this->assertEquals([], $parsed);
+
+        $invalidSyntax = "<?php return [;";
+        $this->assertEquals([], \Cdd\Mocks\parse($invalidSyntax));
+
+        $richMocks = "<?php return [\n"
+            . "    'ex1' => [\n"
+            . "        'negInt' => -42,\n"
+            . "        'negFloat' => -3.14,\n"
+            . "        'flagTrue' => true,\n"
+            . "        'flagFalse' => false,\n"
+            . "        'flagNull' => null,\n"
+            . "        'list' => ['a', 'b'],\n"
+            . "    ]\n"
+            . "];";
+        $parsedRich = \Cdd\Mocks\parse($richMocks);
+        $this->assertEquals(-42, $parsedRich['ex1']['dataValue']['negInt']);
+        $this->assertEquals(-3.14, $parsedRich['ex1']['dataValue']['negFloat']);
+        $this->assertTrue($parsedRich['ex1']['dataValue']['flagTrue']);
+        $this->assertFalse($parsedRich['ex1']['dataValue']['flagFalse']);
+        $this->assertNull($parsedRich['ex1']['dataValue']['flagNull']);
+        $this->assertEquals(['a', 'b'], $parsedRich['ex1']['dataValue']['list']);
+        $this->assertNull(\Cdd\Mocks\evaluateAstNode(null));
     }
 
     public function testValidateExampleOrReferenceObject()

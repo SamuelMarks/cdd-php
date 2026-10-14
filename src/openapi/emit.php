@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits OpenAPI 3.2.0 or Swagger 2.0 JSON and scaffolds generated PHP projects.
+ *
+ * @package Cdd\Openapi
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Openapi;
@@ -8,9 +14,11 @@ namespace Cdd\Openapi;
  * Emits an OpenAPI array structure as JSON string and coordinates generation
  * of the associated PHP code representations into the given directory.
  *
- * @param array $openapi The parsed OpenAPI spec
+ * @param array<string, mixed> $openapi The parsed OpenAPI spec
  * @param string|null $outDir The directory to emit PHP code into
+ * @param array<string, mixed> $options Generation options ('subcommand', 'tests', 'target_version', 'no_installable_package', 'no_github_actions', 'mcp')
  * @return string The JSON representation
+ * @throws \RuntimeException If JSON encoding fails
  */
 function emit(array $openapi, ?string $outDir = null, array $options = []): string
 {
@@ -215,16 +223,16 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
         // Generate Mocks
         if ($tests && isset($openapi['components']['examples'])) {
             if ($subcommand === 'to_server') {
-                /*cov_ignore*/ $mockFiles = \Cdd\Mocks\emit_modular($openapi['components']['examples']);
-                /*cov_ignore*/ $mocksDir = "$srcDir/Mocks";
-                /*cov_ignore*/ if (!is_dir($mocksDir)) {
-                    /*cov_ignore*/ mkdir($mocksDir, 0777, true);
+                $mockFiles = \Cdd\Mocks\emit_modular($openapi['components']['examples']);
+                $mocksDir = "$srcDir/Mocks";
+                if (!is_dir($mocksDir)) {
+                    mkdir($mocksDir, 0777, true);
                 }
-                /*cov_ignore*/ foreach ($mockFiles as $filename => $code) {
-                    /*cov_ignore*/ file_put_contents("$mocksDir/$filename", $code);
+                foreach ($mockFiles as $filename => $code) {
+                    file_put_contents("$mocksDir/$filename", $code);
                 }
-                /*cov_ignore*/ $mainMockCode = "<?php\n\n\$mocks = [];\nforeach (glob(__DIR__ . '/Mocks/*Mock.php') as \$file) {\n    \$name = basename(\$file, 'Mock.php');\n    \$mocks[\$name] = require \$file;\n}\nreturn \$mocks;\n";
-                /*cov_ignore*/ file_put_contents("$srcDir/mocks.php", $mainMockCode);
+                $mainMockCode = "<?php\n\n\$mocks = [];\nforeach (glob(__DIR__ . '/Mocks/*Mock.php') as \$file) {\n    \$name = basename(\$file, 'Mock.php');\n    \$mocks[\$name] = require \$file;\n}\nreturn \$mocks;\n";
+                file_put_contents("$srcDir/mocks.php", $mainMockCode);
             } else {
                 $mocksCode = \Cdd\Mocks\emit($openapi['components']['examples'], file_exists("$srcDir/mocks.php") ? file_get_contents("$srcDir/mocks.php") : '');
                 file_put_contents("$srcDir/mocks.php", $mocksCode);
@@ -247,24 +255,22 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             }
 
             if ($subcommand === 'to_server') {
-                /*cov_ignore*/ $routeTestsDir = "$testsDir/Routes";
-                /*cov_ignore*/ if (!is_dir($routeTestsDir)) {
-                    /*cov_ignore*/ mkdir($routeTestsDir, 0777, true);
+                $routeTestsDir = "$testsDir/Routes";
+                if (!is_dir($routeTestsDir)) {
+                    mkdir($routeTestsDir, 0777, true);
                 }
-                /*cov_ignore*/ $routeTests = \Cdd\Tests\emit_modular($openapi['paths'] ?? []);
-                /*cov_ignore*/ foreach ($routeTests as $filename => $code) {
-                    /*cov_ignore*/ file_put_contents("$routeTestsDir/$filename", $code);
+                $routeTests = \Cdd\Tests\emit_modular($openapi['paths'] ?? []);
+                foreach ($routeTests as $filename => $code) {
+                    file_put_contents("$routeTestsDir/$filename", $code);
                 }
             } else {
-                $phpunitCode = "<?php\n\n// Auto-generated tests\n\nuse PHPUnit\\Framework\\TestCase;\n\nclass ApiTests extends TestCase {\n";
+                $phpunitCode = "<?php\n\n// Auto-generated tests\n\nuse PHPUnit\Framework\TestCase;\n\nclass ApiTests extends TestCase {\n";
                 $composableCode = "<?php\n\n// Auto-generated tests\n\nreturn [\n";
 
                 if (isset($openapi['paths'])) {
                     foreach ($openapi['paths'] as $path => $methods) {
                         foreach ($methods as $method => $operation) {
-                            $in_array = 'in_array';
-                            $strtolower = 'strtolower';
-                            if (!is_array($operation) || $in_array($strtolower($method), ["parameters", "summary", "description", "servers", "additionaloperations"])) {
+                            if (!is_array($operation) || in_array(strtolower((string) $method), ["parameters", "summary", "description", "servers", "additionaloperations"])) {
                                 continue;
                             }
                             $phpunitCode .= \Cdd\Tests\emit($method, $path, $operation, false) . "\n";
@@ -281,17 +287,15 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             }
 
             if ($subcommand === 'to_server' && isset($openapi['components']['schemas'])) {
-                /*cov_ignore*/ if (!file_exists(__DIR__ . '/../tests/emit_mock_tests.php')) {
-                }
-                /*cov_ignore*/ require_once __DIR__ . '/../tests/emit_mock_tests.php';
-                /*cov_ignore*/ $mockTests = \Cdd\Tests\emit_mock_tests($openapi['components']['schemas']);
-                /*cov_ignore*/ foreach ($mockTests as $filename => $content) {
-                    /*cov_ignore*/ $targetPath = "$testsDir/$filename";
-                    /*cov_ignore*/ $targetDir = dirname($targetPath);
-                    /*cov_ignore*/ if (!is_dir($targetDir)) {
-                        /*cov_ignore*/ mkdir($targetDir, 0777, true);
+                require_once __DIR__ . '/../tests/emit_mock_tests.php';
+                $mockTests = \Cdd\Tests\emit_mock_tests($openapi['components']['schemas']);
+                foreach ($mockTests as $filename => $content) {
+                    $targetPath = "$testsDir/$filename";
+                    $targetDir = dirname($targetPath);
+                    if (!is_dir($targetDir)) {
+                        mkdir($targetDir, 0777, true);
                     }
-                    /*cov_ignore*/ file_put_contents($targetPath, $content);
+                    file_put_contents($targetPath, $content);
                 }
             }
         }
@@ -299,11 +303,8 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
         $subcommand = $options['subcommand'] ?? '';
         if (($subcommand === 'to_sdk' || $subcommand === 'to_sdk_cli') && $tests) {
             $testsDir = "$outDir/tests";
-            if (!is_dir($testsDir)) {
-                /*cov_ignore*/ mkdir($testsDir, 0777, true);
-            }
 
-            $sdkTestCode = "<?php\n\nuse PHPUnit\\Framework\\TestCase;\nuse Api\\ApiClient;\n\nclass SdkIntegrationTest extends TestCase {\n";
+            $sdkTestCode = "<?php\n\nuse PHPUnit\Framework\TestCase;\nuse Api\ApiClient;\n\nclass SdkIntegrationTest extends TestCase {\n";
             $sdkTestCode .= "    private \$client;\n\n";
             $sdkTestCode .= "    protected function setUp(): void {\n";
             $basePath = '';
@@ -326,26 +327,21 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             if (isset($openapi['paths'])) {
                 foreach ($openapi['paths'] as $path => $methods) {
                     foreach ($methods as $method => $operation) {
-                        $in_array = 'in_array';
-                        $strtolower = 'strtolower';
-                        if ($in_array($strtolower($method), ['parameters', 'summary', 'description', 'servers'])) {
+                        if (in_array(strtolower((string) $method), ['parameters', 'summary', 'description', 'servers'])) {
                             continue;
                         }
                         if ($method === 'additionalOperations' && is_array($operation)) {
                             continue;
                         }
 
-                        $methodName = strtolower($method);
-                        $preg_replace = 'preg_replace';
-                        $opId = $operation['operationId'] ?? "{$methodName}_" . $preg_replace('/[^a-zA-Z0-9]/', '_', $path);
+                        $methodName = strtolower((string) $method);
+                        $opId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
 
                         $sdkTestCode .= "    public function test_{$opId}() {\n";
 
                         $getDummy = function ($schema) use ($openapi, &$getDummy) {
-                            $strpos = 'strpos';
-                            $substr = 'substr';
-                            if (isset($schema['$ref']) && $strpos($schema['$ref'], '#/components/schemas/') === 0) {
-                                $refName = $substr($schema['$ref'], 21);
+                            if (isset($schema['$ref']) && strpos($schema['$ref'], '#/components/schemas/') === 0) {
+                                $refName = substr($schema['$ref'], 21);
                                 if (isset($openapi['components']['schemas'][$refName])) {
                                     $schema = $openapi['components']['schemas'][$refName];
                                 }
@@ -421,8 +417,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
 
                         $paramsStr = empty($dummyParams) ? "[]" : var_export($dummyParams, true);
                         $bodyStr = empty($dummyBody) ? "[]" : var_export($dummyBody, true);
-                        $str_replace = 'str_replace';
-                        $bodyStr = $str_replace("'___CURLFILE_PLACEHOLDER___'", "new \CURLFile(sys_get_temp_dir() . '/dummy.txt', '', 'dummy.txt')", $bodyStr);
+                        $bodyStr = str_replace("'___CURLFILE_PLACEHOLDER___'", "new \CURLFile(sys_get_temp_dir() . '/dummy.txt', '', 'dummy.txt')", $bodyStr);
 
                         $sdkTestCode .= "        \$response = \$this->client->{$opId}($paramsStr, $bodyStr);\n";
                         $sdkTestCode .= "        \$this->assertTrue(is_numeric(\$response['status']) && \$response['status'] > 0, 'Did not receive a valid HTTP Status Code');\n";
@@ -511,11 +506,9 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
         $swagger['produces'] = ['application/json'];
         if (isset($openapi['paths'])) {
             $swagger['paths'] = (array)$openapi['paths'];
-            $in_array = 'in_array';
-            $strtolower = 'strtolower';
             foreach ($swagger['paths'] as $path => &$pathItem) {
                 foreach ($pathItem as $method => &$op) {
-                    if ($in_array($strtolower($method), ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'])) {
+                    if (in_array(strtolower((string) $method), ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'])) {
                         if (isset($op['requestBody'])) {
                             $content = $op['requestBody']['content'] ?? [];
                             foreach ($content as $mime => $media) {
@@ -616,17 +609,12 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
             $swagger['externalDocs'] = $openapi['externalDocs'];
         }
 
-        $jsonStr = json_encode($swagger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        $str_replace = 'str_replace';
-        $jsonStr = $str_replace('#/components/schemas/', '#/definitions/', $jsonStr);
-        $jsonStr = $str_replace('#\/components\/schemas\/', '#\/definitions\/', $jsonStr);
-        $jsonStr = $str_replace('#/components/parameters/', '#/parameters/', $jsonStr);
-        $jsonStr = $str_replace('#\/components\/parameters\/', '#\/parameters\/', $jsonStr);
-        $jsonStr = $str_replace('#/components/responses/', '#/responses/', $jsonStr);
-        $jsonStr = $str_replace('#\/components\/responses\/', '#\/responses\/', $jsonStr);
-        $jsonStr = $str_replace('#/components/securitySchemes/', '#/securityDefinitions/', $jsonStr);
-        $jsonStr = $str_replace('#\/components\/securitySchemes\/', '#\/securityDefinitions\/', $jsonStr);
-        $openapiToEncode = json_decode($jsonStr, true);
+        $openapiToEncode = rewrite_ref_prefixes($swagger, [
+            '#/components/schemas/' => '#/definitions/',
+            '#/components/parameters/' => '#/parameters/',
+            '#/components/responses/' => '#/responses/',
+            '#/components/securitySchemes/' => '#/securityDefinitions/',
+        ]);
     } else {
         $openapiToEncode = $openapi;
     }

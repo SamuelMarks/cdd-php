@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Cdd\Tests\Scripts;
 
 use Cdd\Tests\Framework\TestCase;
@@ -15,7 +17,8 @@ class BundleWasmPayloadTest extends TestCase
         file_put_contents($payloadFile, "test_payload_data");
 
         $script = realpath(__DIR__ . '/../../scripts/bundle_wasm_payload.php');
-        exec("php " . escapeshellarg($script) . " " . escapeshellarg($wasmFile) . " " . escapeshellarg($payloadFile), $output, $ret);
+        $phpBin = PHP_SAPI === 'phpdbg' ? preg_replace('/phpdbg$/', 'php', PHP_BINARY) : PHP_BINARY;
+        exec(escapeshellarg($phpBin) . " " . escapeshellarg($script) . " " . escapeshellarg($wasmFile) . " " . escapeshellarg($payloadFile), $output, $ret);
 
         $this->assertEquals(0, $ret);
 

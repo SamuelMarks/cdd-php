@@ -59,15 +59,13 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(isset($routes['/api/custom']['additionalOperations']['CUSTOM_M']));
 
         $emitted = \Cdd\Routes\emit($routes);
-        // test passing manually since we just want to suppress errors related to Route::custom_m formatting
-        $this->assertTrue(true);
+        $this->assertStringContainsString("Route::custom_m('/api/custom', 'custom_mapicustom');", $emitted);
 
         // Test emit with existing code
         $existing = "<?php\n\nRoute::get('/api/users', 'UserController@index');\n";
         $emittedExisting = \Cdd\Routes\emit($routes, $existing);
-        // test passing manually
-        $this->assertTrue(true);
-        $this->assertTrue(strpos($emittedExisting, "Route::get('/api/users', 'UserController@index');") !== false);
+        $this->assertStringContainsString("Route::custom_m('/api/custom', 'custom_mapicustom');", $emittedExisting);
+        $this->assertStringContainsString("Route::get('/api/users', 'UserController@index');", $emittedExisting);
     }
 
     public function testEmitModular()

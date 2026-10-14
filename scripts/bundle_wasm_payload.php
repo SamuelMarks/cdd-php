@@ -2,7 +2,11 @@
 
 /**
  * Bundles a payload file into a WebAssembly module as a custom section.
+ *
+ * @package Cdd\Scripts
  */
+
+declare(strict_types=1);
 
 if ($argc < 3) {
     echo "Usage: php bundle_wasm_payload.php <wasm_file> <payload_file>\n";
@@ -30,7 +34,7 @@ $name_len = strlen($name);
  * @param int $value The integer to encode.
  * @return string The LEB128 encoded binary string.
  */
-function encode_leb128_u($value)
+function encode_leb128_u(int $value): string
 {
     $result = '';
     do {

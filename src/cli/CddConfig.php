@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Typed configuration object for programmatic CddCli invocation.
+ *
+ * @package Cdd\Cli
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Cli;
@@ -11,22 +17,65 @@ namespace Cdd\Cli;
  */
 class CddConfig
 {
+    /**
+     * @var string The primary CLI command (e.g. 'from_openapi', 'to_openapi', 'sync', 'to_docs_json', 'mcp', 'serve_json_rpc').
+     */
     public string $command = '';
+
+    /**
+     * @var string The subcommand target for 'from_openapi' (e.g. 'to_sdk', 'to_sdk_cli', 'to_server').
+     */
     public string $target = '';
+
+    /**
+     * @var string Input file or directory path.
+     */
     public string $input = '';
+
+    /**
+     * @var string Output file or directory path.
+     */
     public string $output = '';
+
+    /**
+     * @var bool Whether to skip generating GitHub Actions workflow files.
+     */
     public bool $noGithubActions = false;
+
+    /**
+     * @var bool Whether to skip generating composer.json package metadata.
+     */
     public bool $noInstallablePackage = false;
+
+    /**
+     * @var bool Whether to generate PHPUnit test suites.
+     */
     public bool $tests = false;
+
+    /**
+     * @var bool Whether to generate MCP server/client endpoints.
+     */
     public bool $mcp = false;
+
+    /**
+     * @var bool Whether to omit require/import lines in `to_docs_json`.
+     */
     public bool $noImports = false;
+
+    /**
+     * @var bool Whether to omit wrapper code in `to_docs_json`.
+     */
     public bool $noWrapping = false;
+
+    /**
+     * @var string Source of truth for `sync` ('class' or 'spec').
+     */
     public string $truth = '';
 
     /**
      * Converts the configuration into an array of command-line arguments.
      *
-     * @return array<string>
+     * @return array<int, string> Command-line arguments list.
      */
     public function toArgs(): array
     {

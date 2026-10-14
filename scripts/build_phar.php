@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * Builds the standalone cdd-php PHAR archive.
+ *
+ * @package Cdd\Scripts
+ */
+
+declare(strict_types=1);
+
 $outDir = dirname($argv[1] ?? 'build/cdd-php');
 if (!is_dir($outDir)) {
     mkdir($outDir, 0777, true);

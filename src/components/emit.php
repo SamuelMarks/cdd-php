@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits PHP class definitions from OpenAPI Components Objects.
+ *
+ * @package Cdd\Components
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Components;
@@ -7,19 +13,22 @@ namespace Cdd\Components;
 /**
  * Emits code string from a Components Object.
  *
- * @param array $components The components object
- * @param string $existingCode Existing PHP code
- * @return string The generated code for the components
+ * @param array<string, mixed> $components The components object.
+ * @param string $existingCode Existing PHP code.
+ * @return string The generated code for the components.
  */
 function emit(array $components, string $existingCode = ''): string
 {
-    $out = $existingCode !== '' ? $existingCode : "<?php\n\n";
+    $out = $existingCode !== '' ? $existingCode : "<?php
 
-    if (isset($components['schemas'])) {
+";
+
+    if (isset($components['schemas']) && is_array($components['schemas'])) {
         foreach ($components['schemas'] as $schemaName => $schemaDef) {
-            $strpos = 'strpos';
-            if ($strpos($out, "class $schemaName ") === false && $strpos($out, "class $schemaName\n") === false) {
-                $out .= \Cdd\Schemas\emit($schemaName, $schemaDef) . "\n";
+            if (strpos($out, "class $schemaName ") === false && strpos($out, "class $schemaName
+") === false) {
+                $out .= \Cdd\Schemas\emit((string) $schemaName, $schemaDef) . "
+";
             }
         }
     }
@@ -33,47 +42,59 @@ function emit(array $components, string $existingCode = ''): string
         'pathItems' => '@pathItem',
         'callbacks' => '@callback',
         'links' => '@link',
-        'mediaTypes' => '@mediaType'
+        'mediaTypes' => '@mediaType',
     ];
 
     foreach ($types as $compType => $docTag) {
-        if (isset($components[$compType])) {
+        if (isset($components[$compType]) && is_array($components[$compType])) {
             foreach ($components[$compType] as $name => $compDef) {
-                $strpos = 'strpos';
-                if ($strpos($out, "class $name ") === false && $strpos($out, "class $name\n") === false) {
-                    $doc = "/**\n * {$docTag}\n";
+                if (strpos($out, "class $name ") === false && strpos($out, "class $name
+") === false) {
+                    $doc = "/**
+ * {$docTag}
+";
                     if ($compType === 'parameters') {
-                        $doc .= " * @in " . ($compDef['in'] ?? 'query') . "\n";
-                        $doc .= " * @name " . ($compDef['name'] ?? $name) . "\n";
+                        $doc .= " * @in " . ($compDef['in'] ?? 'query') . "
+";
+                        $doc .= " * @name " . ($compDef['name'] ?? $name) . "
+";
                         if (!empty($compDef['required'])) {
-                            $doc .= " * @required true\n";
+                            $doc .= " * @required true
+";
                         }
                     } elseif ($compType === 'securitySchemes') {
-                        $doc .= " * @type " . ($compDef['type'] ?? 'http') . "\n";
+                        $doc .= " * @type " . ($compDef['type'] ?? 'http') . "
+";
                         if (isset($compDef['scheme'])) {
-                            $doc .= " * @scheme " . $compDef['scheme'] . "\n";
+                            $doc .= " * @scheme " . $compDef['scheme'] . "
+";
                         }
                         if (isset($compDef['in'])) {
-                            $doc .= " * @in " . $compDef['in'] . "\n";
+                            $doc .= " * @in " . $compDef['in'] . "
+";
                         }
                         if (isset($compDef['name'])) {
-                            $doc .= " * @name " . $compDef['name'] . "\n";
+                            $doc .= " * @name " . $compDef['name'] . "
+";
                         }
                         if (isset($compDef['bearerFormat'])) {
-                            $doc .= " * @bearerFormat " . $compDef['bearerFormat'] . "\n";
+                            $doc .= " * @bearerFormat " . $compDef['bearerFormat'] . "
+";
                         }
                         if (isset($compDef['openIdConnectUrl'])) {
-                            $doc .= " * @openIdConnectUrl " . $compDef['openIdConnectUrl'] . "\n";
+                            $doc .= " * @openIdConnectUrl " . $compDef['openIdConnectUrl'] . "
+";
                         }
-                        if (isset($compDef['flows'])) {
+                        if (isset($compDef['flows']) && is_array($compDef['flows'])) {
                             foreach ($compDef['flows'] as $flowType => $flow) {
-                                $doc .= " * @flow {$flowType} " . json_encode($flow) . "\n";
+                                $doc .= " * @flow {$flowType} " . json_encode($flow) . "
+";
                             }
                         }
                     } else {
                         if (isset($compDef['description']) && $compDef['description'] !== '') {
-                            $str_replace = 'str_replace';
-                            $doc .= " * " . $str_replace("\n", "\n * ", $compDef['description']) . "\n";
+                            $nl = chr(10);
+                            $doc .= " * " . str_replace($nl, $nl . " * ", (string) $compDef['description']) . $nl;
                         }
                     }
                     $doc .= " */\n";
@@ -85,11 +106,9 @@ function emit(array $components, string $existingCode = ''): string
                         $schemaDef = $compDef['content']['application/json']['schema'];
                     }
 
-                    // We emit the class with properties if it has a schema
                     if (!empty($schemaDef)) {
-                        $classCode = \Cdd\Schemas\emit($name, $schemaDef);
-                        $preg_replace = 'preg_replace';
-                        $classCode = $preg_replace('/^\/\*\*.*?\*\/\n/s', '', $classCode); // remove original docblock
+                        $classCode = \Cdd\Schemas\emit((string) $name, $schemaDef);
+                        $classCode = (string) preg_replace('/^\/\*\*.*?\*\/\s*/s', '', $classCode);
                         $out .= $doc . $classCode . "\n";
                     } else {
                         $out .= $doc . "class $name {}\n\n";

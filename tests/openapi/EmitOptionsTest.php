@@ -212,9 +212,26 @@ class EmitOptionsTest extends TestCase
     {
         $outDir = sys_get_temp_dir() . '/cdd_test_emit_outdir_server_' . uniqid();
 
-        $openapi = ['openapi' => '3.2.0', 'info' => ['title' => 'A', 'version' => '1'], 'paths' => []];
+        $openapi = [
+            'openapi' => '3.2.0',
+            'info' => ['title' => 'A', 'version' => '1'],
+            'paths' => [
+                '/users' => [
+                    'get' => ['operationId' => 'listUsers', 'responses' => ['200' => ['description' => 'ok']]],
+                ],
+            ],
+            'components' => [
+                'schemas' => [
+                    'User' => ['type' => 'object', 'properties' => ['id' => ['type' => 'integer']]],
+                ],
+                'examples' => [
+                    'User' => ['dataValue' => ['id' => 1]],
+                ],
+            ],
+        ];
         $options = [
-            'subcommand' => 'to_server'
+            'subcommand' => 'to_server',
+            'tests' => true,
         ];
 
         \Cdd\Openapi\emit($openapi, $outDir, $options);

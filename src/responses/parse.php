@@ -1,23 +1,34 @@
 <?php
 
-declare(strict_types=1);
+/**
+ * Parses and validates OpenAPI Response, Header, and Link Objects.
+ *
+ * @package Cdd\Responses
+ */
 
-declare (strict_types=1);
+declare(strict_types=1);
 
 namespace Cdd\Responses;
 
 /**
  * Parses response definitions to OpenAPI Responses Object.
  *
- * @param string $statusCode The HTTP status code
- * @param string $type The response schema type
- * @param string $description Optional description
- * @return array The OpenAPI Responses Object
+ * @param string $statusCode The HTTP status code.
+ * @param string $type The response schema type.
+ * @param string $description Optional description.
+ * @return array<string, mixed> The OpenAPI Responses Object.
  */
 function parse(string $statusCode = '200', string $type = 'string', string $description = 'Successful response'): array
 {
     $response = ['description' => $description, 'content' => ['application/json' => ['schema' => []]]];
-    $typeMap = ['int' => 'integer', 'float' => 'number', 'bool' => 'boolean', 'string' => 'string', 'array' => 'array', 'object' => 'object'];
+    $typeMap = [
+        'int' => 'integer',
+        'float' => 'number',
+        'bool' => 'boolean',
+        'string' => 'string',
+        'array' => 'array',
+        'object' => 'object',
+    ];
     if (isset($typeMap[$type])) {
         $response['content']['application/json']['schema']['type'] = $typeMap[$type];
     } else {
@@ -25,8 +36,13 @@ function parse(string $statusCode = '200', string $type = 'string', string $desc
     }
     return [$statusCode => $response];
 }
+
 /**
  * Validates a Response Object or Reference Object.
+ *
+ * @param mixed $response The Response or Reference Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateResponseOrReferenceObject(mixed $response): void
 {
@@ -44,7 +60,7 @@ function validateResponseOrReferenceObject(mixed $response): void
         if (!is_array($response['content'])) {
             throw new \RuntimeException('Response "content" must be a map');
         }
-        foreach ($response['content'] as $mt => $mtObj) {
+        foreach ($response['content'] as $mtObj) {
             \Cdd\Encoding\validateMediaTypeOrReferenceObject($mtObj);
         }
     }
@@ -53,9 +69,8 @@ function validateResponseOrReferenceObject(mixed $response): void
             throw new \RuntimeException('Response "headers" must be a map');
         }
         foreach ($response['headers'] as $hName => $headerObj) {
-            if (strtolower($hName) === 'content-type') {
+            if (strtolower((string) $hName) === 'content-type') {
                 continue;
-                // "If a response header is defined with the name "Content-Type", it SHALL be ignored."
             }
             \Cdd\Responses\validateHeaderOrReferenceObject($headerObj);
         }
@@ -64,13 +79,18 @@ function validateResponseOrReferenceObject(mixed $response): void
         if (!is_array($response['links'])) {
             throw new \RuntimeException('Response "links" must be a map');
         }
-        foreach ($response['links'] as $lName => $linkObj) {
+        foreach ($response['links'] as $linkObj) {
             \Cdd\Responses\validateLinkOrReferenceObject($linkObj);
         }
     }
 }
+
 /**
  * Validates a Header Object or Reference Object.
+ *
+ * @param mixed $header The Header or Reference Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateHeaderOrReferenceObject(mixed $header): void
 {
@@ -133,13 +153,18 @@ function validateHeaderOrReferenceObject(mixed $header): void
         if (count($header['content']) !== 1) {
             throw new \RuntimeException('Header "content" map MUST only contain one entry');
         }
-        foreach ($header['content'] as $mediaType => $mediaTypeObj) {
+        foreach ($header['content'] as $mediaTypeObj) {
             \Cdd\Encoding\validateMediaTypeOrReferenceObject($mediaTypeObj);
         }
     }
 }
+
 /**
  * Validates a Link Object or Reference Object.
+ *
+ * @param mixed $link The Link or Reference Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateLinkOrReferenceObject(mixed $link): void
 {
@@ -164,9 +189,6 @@ function validateLinkOrReferenceObject(mixed $link): void
     }
     if (isset($link['description']) && !is_string($link['description'])) {
         throw new \RuntimeException('Link "description" must be a string');
-    }
-    if (array_key_exists('requestBody', $link)) {
-        // requestBody can be any type
     }
     if (isset($link['server'])) {
         \Cdd\Servers\validateServerObject($link['server']);

@@ -20,5 +20,9 @@ class ParseEmitMockTestsTest extends TestCase
         $this->assertStringContainsString('class UserDaoTest', $files['Daos/UserDaoTest.php']);
         $this->assertStringContainsString('class DatabaseTest', $files['Database/DatabaseTest.php']);
         $this->assertStringContainsString('class SeederTest', $files['Seeder/SeederTest.php']);
+
+        $emptyFiles = \Cdd\Tests\emit_mock_tests([]);
+        $this->assertArrayHasKey('Seeder/SeederTest.php', $emptyFiles);
+        $this->assertStringContainsString('$this->assertTrue(true);', $emptyFiles['Seeder/SeederTest.php']);
     }
 }

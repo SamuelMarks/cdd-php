@@ -1,11 +1,20 @@
 <?php
 
+/**
+ * Emits Data Access Object (DAO) interfaces, stubs, concrete implementations, and factories.
+ *
+ * @package Cdd\Daos
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Daos;
 
 /**
- * emit_modular
+ * Emits modular DAO files for each OpenAPI schema.
+ *
+ * @param array<string, array<string, mixed>> $schemas Map of schema names to OpenAPI Schema Objects.
+ * @return array<string, string> Map of relative filenames to generated PHP source code.
  */
 function emit_modular(array $schemas): array
 {
@@ -33,7 +42,10 @@ function emit_modular(array $schemas): array
 }
 
 /**
- * emit
+ * Emits a single combined PHP file containing DAO interfaces, stubs, concrete classes, and factory.
+ *
+ * @param array<string, array<string, mixed>> $schemas Map of schema names to OpenAPI Schema Objects.
+ * @return string The generated PHP source code.
  */
 function emit(array $schemas): string
 {

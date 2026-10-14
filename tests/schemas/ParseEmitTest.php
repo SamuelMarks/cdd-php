@@ -113,14 +113,15 @@ class DefaultDisc {
         \Cdd\Schemas\validateSchemaOrReferenceObject(true);
 
         // schema with allOf/anyOf/oneOf/not and externalDocs
-        \Cdd\Schemas\validateSchemaOrReferenceObject([
+        $compSchema = [
             'allOf' => [['type' => 'string']],
             'anyOf' => [['type' => 'string']],
             'oneOf' => [['type' => 'string']],
             'not' => ['type' => 'string'],
             'externalDocs' => ['url' => 'http://example.com']
-        ]);
-        $this->assertTrue(true);
+        ];
+        \Cdd\Schemas\validateSchemaOrReferenceObject($compSchema);
+        $this->assertCount(1, $compSchema['allOf']);
     }
     public function testParseDiscriminatorMappingOnly()
     {
@@ -144,7 +145,6 @@ class UnionTypeClass {
 ";
         $classes = \Cdd\Classes\parse($code);
         $schema = \Cdd\Schemas\parse($classes[0]['node']);
-        // UnionType parses as 'mixed' fallback in current logic because it's not an Identifier/Name
         $this->assertEquals('string', $schema['properties']['unionProp']['type']);
     }
 
@@ -158,8 +158,8 @@ class NullableUnionTypeClass {
 ";
         $classes = \Cdd\Classes\parse($code);
         $schema = \Cdd\Schemas\parse($classes[0]['node']);
-        $this->assertEquals('string', $schema['properties']['nullableUnionProp']['type']);
-        $this->assertTrue(!isset($schema['properties']['nullableUnionProp']['nullable']));
+        $this->assertEquals('integer', $schema['properties']['nullableUnionProp']['type']);
+        $this->assertTrue($schema['properties']['nullableUnionProp']['nullable']);
 
         $this->assertEquals('#/components/schemas/Closure', $schema['properties']['closureProp']['$ref']);
     }

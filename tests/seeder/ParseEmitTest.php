@@ -28,6 +28,7 @@ class ParseEmitTest extends TestCase
                 'properties' => [
                     'id' => ['type' => 'integer'],
                     'user_id' => ['type' => 'integer'],
+                    'missing_id' => ['type' => 'integer'],
                     'title' => ['type' => 'string']
                 ]
             ]

@@ -1,11 +1,21 @@
 <?php
 
+/**
+ * Emits Eloquent Model classes from OpenAPI Schema Objects.
+ *
+ * @package Cdd\Schemas
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Schemas;
 
 /**
  * Emits a PHP class definition from an OpenAPI Schema Object.
+ *
+ * @param string $className The class name to emit.
+ * @param array<string, mixed> $schema The OpenAPI Schema Object.
+ * @return string The generated PHP class source code.
  */
 function emit(string $className, array $schema): string
 {
@@ -33,41 +43,50 @@ function emit(string $className, array $schema): string
     }
 
     if (!empty($docTags)) {
-        $out .= "/**\n";
+        $out .= "/**
+";
         foreach ($docTags as $tag) {
-            $out .= " * $tag\n";
+            $out .= " * $tag
+";
         }
-        $out .= " */\n";
+        $out .= " */
+";
     }
 
-    $out .= "class $className extends \\Illuminate\\Database\\Eloquent\\Model {\n";
-    $out .= "    protected \$fillable = [\n";
+    $out .= "class $className extends \Illuminate\Database\Eloquent\Model {
+";
+    $out .= "    protected \$fillable = [
+";
     if (isset($schema['properties']) && is_array($schema['properties'])) {
         foreach ($schema['properties'] as $propName => $propSchema) {
-            $out .= "        '$propName',\n";
+            $out .= "        '$propName',
+";
         }
     }
-    $out .= "    ];\n";
+    $out .= "    ];
+";
 
-    $out .= "    protected \$casts = [\n";
+    $out .= "    protected \$casts = [
+";
     if (isset($schema['properties']) && is_array($schema['properties'])) {
+        $typeMap = [
+            'integer' => 'integer',
+            'number' => 'float',
+            'boolean' => 'boolean',
+            'array' => 'array',
+            'object' => 'object',
+        ];
         foreach ($schema['properties'] as $propName => $propSchema) {
-            if (isset($propSchema['type'])) {
-                $typeMap = [
-                    'integer' => 'integer',
-                    'number' => 'float',
-                    'boolean' => 'boolean',
-                    'array' => 'array',
-                    'object' => 'object'
-                ];
-                if (isset($typeMap[$propSchema['type']])) {
-                    $out .= "        '$propName' => '{$typeMap[$propSchema['type']]}',\n";
-                }
+            if (isset($propSchema['type']) && isset($typeMap[$propSchema['type']])) {
+                $out .= "        '$propName' => '{$typeMap[$propSchema['type']]}',
+";
             }
         }
     }
-    $out .= "    ];\n";
+    $out .= "    ];
+";
 
-    $out .= "}\n";
+    $out .= "}
+";
     return $out;
 }

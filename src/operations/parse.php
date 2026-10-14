@@ -1,24 +1,31 @@
 <?php
 
-declare(strict_types=1);
+/**
+ * Parses and validates OpenAPI Operation and Callback Objects.
+ *
+ * @package Cdd\Operations
+ */
 
-declare (strict_types=1);
+declare(strict_types=1);
 
 namespace Cdd\Operations;
 
 /**
  * Parses an Operation Object structure from PHP tokens or reflection definitions.
  *
- * @param string $operationId Unique identifier
- * @param array $parameters List of parameter arrays
- * @param array $responses Map of responses
- * @param array|null $requestBody Optional request body map
- * @param string $summary Optional summary
- * @return array The OpenAPI Operation Object
+ * @param string $operationId Unique identifier.
+ * @param array<int, mixed> $parameters List of parameter arrays.
+ * @param array<string|int, mixed> $responses Map of responses.
+ * @param array<string, mixed>|null $requestBody Optional request body map.
+ * @param string $summary Optional summary.
+ * @return array<string, mixed> The OpenAPI Operation Object.
  */
 function parse(string $operationId, array $parameters = [], array $responses = [], ?array $requestBody = null, string $summary = ''): array
 {
-    $operation = ['operationId' => $operationId, 'responses' => empty($responses) ? ['200' => ['description' => 'Success']] : $responses];
+    $operation = [
+        'operationId' => $operationId,
+        'responses' => empty($responses) ? ['200' => ['description' => 'Success']] : $responses,
+    ];
     if (!empty($parameters)) {
         $operation['parameters'] = $parameters;
     }
@@ -30,10 +37,17 @@ function parse(string $operationId, array $parameters = [], array $responses = [
     }
     return $operation;
 }
+
 /**
  * Validates an Operation Object.
+ *
+ * @param mixed $operation The Operation Object to validate.
+ * @param array<int, mixed> $pathItemParams Parameters inherited from the parent Path Item.
+ * @param array<string, bool>|null $seenOperationIds Optional map of seen operationIds for uniqueness validation.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
-function validateOperationObject(mixed $operation, array $pathItemParams = []): void
+function validateOperationObject(mixed $operation, array $pathItemParams = [], ?array &$seenOperationIds = null): void
 {
     if (!is_array($operation)) {
         throw new \RuntimeException('Operation must be an object');
@@ -83,11 +97,12 @@ function validateOperationObject(mixed $operation, array $pathItemParams = []): 
         if (!is_string($operation['operationId'])) {
             throw new \RuntimeException('Operation "operationId" must be a string');
         }
-        global $globalOperationIds;
-        if (isset($globalOperationIds[$operation['operationId']])) {
-            throw new \RuntimeException('Operation "operationId" MUST be unique among all operations described in the API');
+        if ($seenOperationIds !== null) {
+            if (isset($seenOperationIds[$operation['operationId']])) {
+                throw new \RuntimeException('Operation "operationId" MUST be unique among all operations described in the API');
+            }
+            $seenOperationIds[$operation['operationId']] = true;
         }
-        $globalOperationIds[$operation['operationId']] = true;
     }
     if (isset($operation['parameters'])) {
         if (!is_array($operation['parameters'])) {
@@ -111,27 +126,21 @@ function validateOperationObject(mixed $operation, array $pathItemParams = []): 
     if (!isset($operation['responses'])) {
         throw new \RuntimeException('Operation must contain a "responses" object');
     }
-    if (isset($operation['responses'])) {
-        if (!is_array($operation['responses'])) {
-            throw new \RuntimeException('Operation "responses" must be a Responses Object map');
-        }
-        // Responses Object validation (minimal)
-        if (empty($operation['responses'])) {
-            throw new \RuntimeException('Responses Object MUST contain at least one response code');
-        }
-        foreach ($operation['responses'] as $key => $val) {
-            $keyStr = (string) $key;
-            $preg_match = 'preg_match';
-            $str_starts_with = 'str_starts_with';
-            if ($keyStr !== 'default' && !$preg_match('/^[1-5](?:[0-9]{2}|XX)$/', $keyStr)) {
-                // Extensions are allowed
-                if (!$str_starts_with($keyStr, 'x-')) {
-                    throw new \RuntimeException('Responses keys must be HTTP status codes, ranges like 2XX, or "default"');
-                }
+    if (!is_array($operation['responses'])) {
+        throw new \RuntimeException('Operation "responses" must be a Responses Object map');
+    }
+    if (empty($operation['responses'])) {
+        throw new \RuntimeException('Responses Object MUST contain at least one response code');
+    }
+    foreach ($operation['responses'] as $key => $val) {
+        $keyStr = (string) $key;
+        if ($keyStr !== 'default' && !preg_match('/^[1-5](?:[0-9]{2}|XX)$/', $keyStr)) {
+            if (!str_starts_with($keyStr, 'x-')) {
+                throw new \RuntimeException('Responses keys must be HTTP status codes, ranges like 2XX, or "default"');
             }
-            if (!$str_starts_with($keyStr, 'x-')) {
-                \Cdd\Responses\validateResponseOrReferenceObject($val);
-            }
+        }
+        if (!str_starts_with($keyStr, 'x-')) {
+            \Cdd\Responses\validateResponseOrReferenceObject($val);
         }
     }
     if (isset($operation['callbacks'])) {
@@ -139,7 +148,7 @@ function validateOperationObject(mixed $operation, array $pathItemParams = []): 
             throw new \RuntimeException('Operation "callbacks" must be a map');
         }
         foreach ($operation['callbacks'] as $callback) {
-            \Cdd\Operations\validateCallbackOrReferenceObject($callback);
+            \Cdd\Operations\validateCallbackOrReferenceObject($callback, $seenOperationIds);
         }
     }
     if (isset($operation['deprecated']) && !is_bool($operation['deprecated'])) {
@@ -162,10 +171,16 @@ function validateOperationObject(mixed $operation, array $pathItemParams = []): 
         }
     }
 }
+
 /**
  * Validates a Callback Object or Reference Object.
+ *
+ * @param mixed $callback The Callback or Reference Object to validate.
+ * @param array<string, bool>|null $seenOperationIds Optional map of seen operationIds.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
-function validateCallbackOrReferenceObject(mixed $callback): void
+function validateCallbackOrReferenceObject(mixed $callback, ?array &$seenOperationIds = null): void
 {
     if (!is_array($callback)) {
         throw new \RuntimeException('Callback must be an object');
@@ -174,12 +189,11 @@ function validateCallbackOrReferenceObject(mixed $callback): void
         \Cdd\Openapi\validateReferenceObject($callback);
         return;
     }
-    $str_starts_with = 'str_starts_with';
     foreach ($callback as $expression => $pathItem) {
         $exprStr = (string) $expression;
-        if ($str_starts_with($exprStr, 'x-')) {
+        if (str_starts_with($exprStr, 'x-')) {
             continue;
         }
-        \Cdd\Paths\validatePathItemObject($pathItem);
+        \Cdd\Paths\validatePathItemObject($pathItem, $seenOperationIds);
     }
 }

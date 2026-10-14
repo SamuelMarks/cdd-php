@@ -1,17 +1,26 @@
 <?php
 
+/**
+ * Parses PHP test files to extract tested HTTP methods and paths.
+ *
+ * @package Cdd\Tests
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests;
 
-use PhpParser\ParserFactory;
-use PhpParser\NodeFinder;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Scalar\String_;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
 
 /**
  * Parses a test file to extract operations tested.
+ *
+ * @param string $testCode The PHP test source code.
+ * @return array<string, mixed> Map of tested methods and paths.
  */
 function parse(string $testCode): array
 {
@@ -25,8 +34,9 @@ function parse(string $testCode): array
 
     $nodeFinder = new NodeFinder();
     /** @var MethodCall[] $methodCalls */
-    $methodCalls = $nodeFinder->findInstanceOf($stmts, MethodCall::class);
+    $methodCalls = $nodeFinder->findInstanceOf($stmts ?? [], MethodCall::class);
 
+    $validMethods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'];
     foreach ($methodCalls as $call) {
         if ($call->name instanceof Identifier) {
             $name = $call->name->toString();
@@ -34,8 +44,7 @@ function parse(string $testCode): array
                 if ($call->args[0]->value instanceof String_ && $call->args[1]->value instanceof String_) {
                     $method = strtolower($call->args[0]->value->value);
                     $path = $call->args[1]->value->value;
-                    $in_array = 'in_array';
-                    if ($in_array($method, ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'])) {
+                    if (in_array($method, $validMethods, true)) {
                         if (!isset($tested[$method])) {
                             $tested[$method] = [];
                         }

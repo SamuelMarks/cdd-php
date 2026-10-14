@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits the ServerRunner CLI class for generated server projects.
+ *
+ * @package Cdd\ServerCli
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\ServerCli;

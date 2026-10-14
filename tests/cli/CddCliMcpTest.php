@@ -16,17 +16,13 @@ class CddCliMcpTest extends TestCase
             2 => ["pipe", "w"]
         ];
 
-        $process = proc_open(['php', 'bin/cdd-php', 'mcp'], $descriptorspec, $pipes);
+        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg$/', 'php', PHP_BINARY) : PHP_BINARY;
+        $process = proc_open("$phpBin bin/cdd-php mcp", $descriptorspec, $pipes);
         $this->assertTrue(is_resource($process));
 
-        $assertOut = function ($pipes, $expected) {
-            $out = fgets($pipes[1]);
-            if (strpos($out, $expected) === false) {
-                echo "Expected: $expected, got: $out\n";
-                $this->assertTrue(false);
-            } else {
-                $this->assertTrue(true);
-            }
+        $assertOut = function ($pipes, string $expected): void {
+            $out = (string) fgets($pipes[1]);
+            $this->assertStringContainsString($expected, $out);
         };
 
         // initialize
@@ -120,8 +116,9 @@ class CddCliMcpTest extends TestCase
         ];
 
         // We run a tiny inline php script to test sample_llm using CddCli
+        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg$/', 'php', PHP_BINARY) : PHP_BINARY;
         $phpCode = 'require_once __DIR__."/src/cli/CddCli.php"; require_once __DIR__."/src/cli/Cli.php"; $res = \Cdd\Cli\CddCli::sample_llm([["role"=>"user", "content"=>"hello"]], 10, "sys"); echo json_encode($res);';
-        $process = proc_open(['php', '-r', $phpCode], $descriptorspec, $pipes, dirname(dirname(__DIR__)));
+        $process = proc_open($phpBin . ' -r ' . escapeshellarg($phpCode), $descriptorspec, $pipes, dirname(dirname(__DIR__)));
 
         // Expect CddCli::sample_llm to write a jsonrpc request to stdout
         $reqLine = fgets($pipes[1]);
@@ -154,8 +151,9 @@ class CddCliMcpTest extends TestCase
             2 => ["pipe", "w"]
         ];
 
+        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg$/', 'php', PHP_BINARY) : PHP_BINARY;
         $phpCode = 'require_once __DIR__."/src/cli/CddCli.php"; require_once __DIR__."/src/cli/Cli.php"; try { \Cdd\Cli\CddCli::sample_llm([["role"=>"user", "content"=>"hello"]]); } catch (\Exception $e) { echo $e->getMessage(); }';
-        $process = proc_open(['php', '-r', $phpCode], $descriptorspec, $pipes, dirname(dirname(__DIR__)));
+        $process = proc_open($phpBin . ' -r ' . escapeshellarg($phpCode), $descriptorspec, $pipes, dirname(dirname(__DIR__)));
 
         $reqLine = fgets($pipes[1]);
         $req = json_decode($reqLine, true);

@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits PHP parameters from OpenAPI RequestBody Objects.
+ *
+ * @package Cdd\RequestBodies
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\RequestBodies;
@@ -7,9 +13,9 @@ namespace Cdd\RequestBodies;
 /**
  * Emits a PHP parameter from an OpenAPI RequestBody Object.
  *
- * @param array $requestBody The OpenAPI RequestBody Object
- * @param string $name The parameter name
- * @return string The generated parameter definition
+ * @param array<string, mixed> $requestBody The OpenAPI RequestBody Object.
+ * @param string $name The parameter name.
+ * @return string The generated parameter definition.
  */
 function emit(array $requestBody, string $name = 'body'): string
 {
@@ -17,13 +23,13 @@ function emit(array $requestBody, string $name = 'body'): string
 
     $type = '';
     if (isset($schema['type'])) {
-        $type = $schema['type'];
+        $type = (string) $schema['type'];
     } elseif (isset($schema['$ref'])) {
-        $parts = explode('/', $schema['$ref']);
-        $type = end($parts);
+        $parts = explode('/', (string) $schema['$ref']);
+        $type = (string) end($parts);
     }
 
-    $required = $requestBody['required'] ?? false;
+    $required = (bool) ($requestBody['required'] ?? false);
 
     $typeStr = ($type !== '') ? ($required ? $type : "?$type") . ' ' : '';
 

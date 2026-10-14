@@ -1,15 +1,24 @@
 <?php
 
+/**
+ * Parses PHP source code to extract classes and OpenAPI component types.
+ *
+ * @package Cdd\Classes
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Classes;
 
-use PhpParser\ParserFactory;
-use PhpParser\NodeFinder;
 use PhpParser\Node\Stmt\Class_;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
 
 /**
  * Parses PHP source code to extract classes using nikic/php-parser.
+ *
+ * @param string $code The PHP source code to parse.
+ * @return array<int, array<string, mixed>> Extracted class descriptors.
  */
 function parse(string $code): array
 {
@@ -23,33 +32,31 @@ function parse(string $code): array
     $tokens = $parser->getTokens();
     $nodeFinder = new NodeFinder();
     /** @var Class_[] $classNodes */
-    $classNodes = $nodeFinder->findInstanceOf($stmts, Class_::class);
+    $classNodes = $nodeFinder->findInstanceOf($stmts ?? [], Class_::class);
+
+    $tagToComponentType = [
+        '@mediaType' => 'mediaTypes',
+        '@parameter' => 'parameters',
+        '@response' => 'responses',
+        '@requestBody' => 'requestBodies',
+        '@header' => 'headers',
+        '@securityScheme' => 'securitySchemes',
+        '@pathItem' => 'pathItems',
+        '@callback' => 'callbacks',
+        '@link' => 'links',
+    ];
 
     $classes = [];
     foreach ($classNodes as $node) {
-        $type = 'schemas'; // default component type
+        $type = 'schemas';
         $docComment = $node->getDocComment();
         if ($docComment !== null) {
             $text = $docComment->getText();
-            $strpos = 'strpos';
-            if ($strpos($text, '@mediaType') !== false) {
-                $type = 'mediaTypes';
-            } elseif ($strpos($text, '@parameter') !== false) {
-                $type = 'parameters';
-            } elseif ($strpos($text, '@response') !== false) {
-                $type = 'responses';
-            } elseif ($strpos($text, '@requestBody') !== false) {
-                $type = 'requestBodies';
-            } elseif ($strpos($text, '@header') !== false) {
-                $type = 'headers';
-            } elseif ($strpos($text, '@securityScheme') !== false) {
-                $type = 'securitySchemes';
-            } elseif ($strpos($text, '@pathItem') !== false) {
-                $type = 'pathItems';
-            } elseif ($strpos($text, '@callback') !== false) {
-                $type = 'callbacks';
-            } elseif ($strpos($text, '@link') !== false) {
-                $type = 'links';
+            foreach ($tagToComponentType as $tag => $componentType) {
+                if (strpos($text, $tag) !== false) {
+                    $type = $componentType;
+                    break;
+                }
             }
         }
 

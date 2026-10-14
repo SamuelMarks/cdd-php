@@ -1,21 +1,32 @@
 <?php
 
+/**
+ * Parses PHP client SDK classes to extract OpenAPI operations.
+ *
+ * @package Cdd\Client
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Client;
 
-use PhpParser\ParserFactory;
-use PhpParser\NodeFinder;
-use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Expr\Assign;
+use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\InterpolatedStringPart;
+use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\InterpolatedString;
 use PhpParser\Node\Scalar\String_;
-use PhpParser\Node\Expr\FuncCall;
-use PhpParser\Node\Name;
+use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\Node\Stmt\Expression;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
 
 /**
  * Parses client PHP code to extract operations.
+ *
+ * @param string $clientCode The PHP client class source code.
+ * @return array<string, array<string, mixed>> Extracted OpenAPI Paths map.
  */
 function parse(string $clientCode): array
 {
@@ -29,7 +40,9 @@ function parse(string $clientCode): array
 
     $nodeFinder = new NodeFinder();
     /** @var ClassMethod[] $methods */
-    $methods = $nodeFinder->findInstanceOf($stmts, ClassMethod::class);
+    $methods = $nodeFinder->findInstanceOf($stmts ?? [], ClassMethod::class);
+
+    $validMethods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'];
 
     foreach ($methods as $methodNode) {
         if (!$methodNode->isPublic() || $methodNode->name->toString() === '__construct') {
@@ -45,7 +58,6 @@ function parse(string $clientCode): array
         }
 
         foreach ($methodNode->stmts as $stmt) {
-            // Check for curl_exec call
             $calls = $nodeFinder->findInstanceOf([$stmt], FuncCall::class);
             foreach ($calls as $call) {
                 if ($call->name instanceof Name && $call->name->toString() === 'curl_exec') {
@@ -58,12 +70,11 @@ function parse(string $clientCode): array
                 }
             }
 
-            // Check for $url = "{$this->baseUrl}...";
-            if ($stmt instanceof \PhpParser\Node\Stmt\Expression && $stmt->expr instanceof Assign) {
+            if ($stmt instanceof Expression && $stmt->expr instanceof Assign) {
                 if ($stmt->expr->var instanceof Variable && $stmt->expr->var->name === 'url') {
                     if ($stmt->expr->expr instanceof InterpolatedString) {
                         foreach ($stmt->expr->expr->parts as $part) {
-                            if ($part instanceof \PhpParser\Node\InterpolatedStringPart) {
+                            if ($part instanceof InterpolatedStringPart) {
                                 $path = $part->value;
                                 break;
                             }
@@ -78,8 +89,7 @@ function parse(string $clientCode): array
             if (!isset($operations[$path])) {
                 $operations[$path] = [];
             }
-            $in_array = 'in_array';
-            if ($in_array($httpMethod, ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'])) {
+            if (in_array($httpMethod, $validMethods, true)) {
                 $operations[$path][$httpMethod] = [
                     'operationId' => $operationId,
                 ];

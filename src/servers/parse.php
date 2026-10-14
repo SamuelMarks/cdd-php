@@ -1,19 +1,25 @@
 <?php
 
+/**
+ * Parses and validates OpenAPI Server and Server Variable Objects.
+ *
+ * @package Cdd\Servers
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Servers;
 
-use PhpParser\ParserFactory;
-use PhpParser\NodeFinder;
-use PhpParser\Node\Stmt\Property;
 use PhpParser\Node\Scalar\String_;
+use PhpParser\Node\Stmt\Property;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
 
 /**
  * Parses PHP class to extract OpenAPI Server Objects.
  *
- * @param string $code
- * @return array
+ * @param string $code The PHP source code containing server URL properties.
+ * @return array<int, array<string, string>> Extracted OpenAPI Server Objects.
  */
 function parse(string $code): array
 {
@@ -26,23 +32,20 @@ function parse(string $code): array
 
     $nodeFinder = new NodeFinder();
     /** @var Property[] $properties */
-    $properties = $nodeFinder->findInstanceOf($stmts, Property::class);
+    $properties = $nodeFinder->findInstanceOf($stmts ?? [], Property::class);
 
     $servers = [];
     foreach ($properties as $prop) {
         $name = $prop->props[0]->name->toString();
-        $str_starts_with = 'str_starts_with';
-        if ($str_starts_with($name, 'serverUrl')) {
+        if (str_starts_with($name, 'serverUrl')) {
             $valueNode = $prop->props[0]->default;
             if ($valueNode instanceof String_) {
                 $url = $valueNode->value;
                 $server = ['url' => $url];
 
                 $docComment = $prop->getDocComment();
-                if ($docComment) {
-                    $trim = 'trim';
-                    $str_replace = 'str_replace';
-                    $docText = $trim($str_replace(['/**', '*/', '*'], '', $docComment->getText()));
+                if ($docComment !== null) {
+                    $docText = trim(str_replace(['/**', '*/', '*'], '', $docComment->getText()));
                     if ($docText !== '') {
                         $server['description'] = $docText;
                     }
@@ -57,6 +60,10 @@ function parse(string $code): array
 
 /**
  * Validates a Server Object.
+ *
+ * @param mixed $server The Server Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateServerObject(mixed $server): void
 {
@@ -76,7 +83,7 @@ function validateServerObject(mixed $server): void
         if (!is_array($server['variables'])) {
             throw new \RuntimeException('Server "variables" must be a map');
         }
-        foreach ($server['variables'] as $varName => $varObj) {
+        foreach ($server['variables'] as $varObj) {
             \Cdd\Servers\validateServerVariableObject($varObj);
         }
     }
@@ -84,6 +91,10 @@ function validateServerObject(mixed $server): void
 
 /**
  * Validates a Server Variable Object.
+ *
+ * @param mixed $varObj The Server Variable Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateServerVariableObject(mixed $varObj): void
 {
@@ -102,8 +113,7 @@ function validateServerVariableObject(mixed $varObj): void
                 throw new \RuntimeException('Server variable "enum" values must be strings');
             }
         }
-        $in_array = 'in_array';
-        if (!$in_array($varObj['default'], $varObj['enum'], true)) {
+        if (!in_array($varObj['default'], $varObj['enum'], true)) {
             throw new \RuntimeException('Server variable "default" value must exist in "enum"');
         }
     }

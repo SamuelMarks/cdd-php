@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits PHPUnit route test methods and modular route test classes.
+ *
+ * @package Cdd\Tests
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests;
@@ -7,11 +13,11 @@ namespace Cdd\Tests;
 /**
  * Emits a PHP test method.
  *
- * @param string $method
- * @param string $path
- * @param array $operation
- * @param bool $composable
- * @return string
+ * @param string $method The HTTP method.
+ * @param string $path The URL path pattern.
+ * @param array<string, mixed> $operation The OpenAPI Operation Object.
+ * @param bool $composable Whether to emit as a closure entry in a composable map.
+ * @return string The generated test method or closure string.
  */
 function emit(string $method, string $path, array $operation, bool $composable = false): string
 {
@@ -20,8 +26,7 @@ function emit(string $method, string $path, array $operation, bool $composable =
         foreach ($operation as $addMethod => $addOp) {
             $out .= emit($addMethod, $path, $addOp, $composable) . "\n";
         }
-        $trim = 'trim';
-        return $trim($out);
+        return trim($out);
     }
 
     $m = ucfirst(strtolower($method));
@@ -80,7 +85,10 @@ function emit(string $method, string $path, array $operation, bool $composable =
 }
 
 /**
- * emit_modular
+ * Emits modular PHPUnit test files for all operations in an OpenAPI Paths Object.
+ *
+ * @param array<string, mixed> $paths The OpenAPI Paths Object.
+ * @return array<string, string> Map of test filenames to generated PHP code.
  */
 function emit_modular(array $paths): array
 {
@@ -100,7 +108,12 @@ function emit_modular(array $paths): array
 }
 
 /**
- * emit_modular_single_test
+ * Emits a single modular PHPUnit test class for an individual operation.
+ *
+ * @param string $method The HTTP method.
+ * @param string $path The URL path pattern.
+ * @param array<string, mixed> $operation The OpenAPI Operation Object.
+ * @return array<string, string> Map of test filename to generated PHP code.
  */
 function emit_modular_single_test(string $method, string $path, array $operation): array
 {

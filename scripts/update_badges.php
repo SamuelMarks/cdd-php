@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * Updates test and documentation coverage badges in README.md.
+ *
+ * @package Cdd\Scripts
+ */
+
+declare(strict_types=1);
+
 $rootDir = dirname(__DIR__);
 $readmePath = $rootDir . '/README.md';
 
@@ -7,7 +15,13 @@ if (!file_exists($readmePath)) {
     exit(1);
 }
 
-function getColor($pct)
+/**
+ * Maps a coverage percentage to a shields.io badge color.
+ *
+ * @param int|float $pct The coverage percentage.
+ * @return string The badge color string.
+ */
+function getColor(int|float $pct): string
 {
     if ($pct >= 90) {
         return 'brightgreen';

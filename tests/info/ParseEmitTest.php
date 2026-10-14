@@ -49,8 +49,11 @@ class ParseEmitTest extends TestCase
 
     public function testValidContactAndLicense()
     {
-        \Cdd\Info\validateContactObject(['name' => 'A', 'url' => 'B', 'email' => 'C']);
-        \Cdd\Info\validateLicenseObject(['name' => 'MIT', 'identifier' => 'MIT']);
-        $this->assertTrue(true);
+        $contact = ['name' => 'A', 'url' => 'B', 'email' => 'C'];
+        $license = ['name' => 'MIT', 'identifier' => 'MIT'];
+        \Cdd\Info\validateContactObject($contact);
+        \Cdd\Info\validateLicenseObject($license);
+        $this->assertEquals('A', $contact['name']);
+        $this->assertEquals('MIT', $license['identifier']);
     }
 }

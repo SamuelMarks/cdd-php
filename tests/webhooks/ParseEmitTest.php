@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Cdd\Tests\Webhooks;
 
 class ParseEmitTest extends \Cdd\Tests\Framework\TestCase

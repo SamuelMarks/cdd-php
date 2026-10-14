@@ -44,6 +44,18 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: check-docs
+        name: Check 100% doc coverage
+        entry: php bin/check_docs.php
+        language: system
+        pass_filenames: false
+
+      - id: check-coverage
+        name: Check 100% test coverage
+        entry: phpdbg -qrr -d memory_limit=512M bin/check_coverage.php
+        language: system
+        pass_filenames: false
+
       - id: test-swagger-2
         name: Swagger 2.0 Petstore test
         entry: |-

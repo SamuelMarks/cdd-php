@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits FakerPHP database seeder logic with foreign-key topological sorting.
+ *
+ * @package Cdd\Seeder
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Seeder;
@@ -84,7 +90,7 @@ function emit(array $schemas): string
                     if (in_array($parent, $names)) {
                         $val = "\$this->entityPool['{$parent}'][array_rand(\$this->entityPool['{$parent}'])] ?? 1";
                     } else {
-                        /*cov_ignore*/ $val = "1";
+                        $val = "1";
                     }
                 } else {
                     $type = $propDef['type'] ?? 'string';

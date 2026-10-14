@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits PHP parameter definitions from OpenAPI Parameter Objects.
+ *
+ * @package Cdd\Parameters
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Parameters;
@@ -7,12 +13,12 @@ namespace Cdd\Parameters;
 /**
  * Emits a PHP parameter definition from an OpenAPI Parameter Object.
  *
- * @param array $parameter The OpenAPI Parameter Object
- * @return string The generated parameter definition string
+ * @param array<string, mixed> $parameter The OpenAPI Parameter Object.
+ * @return string The generated parameter definition string.
  */
 function emit(array $parameter): string
 {
-    $name = $parameter['name'] ?? 'param';
+    $name = (string) ($parameter['name'] ?? 'param');
     $schema = $parameter['schema'] ?? [];
 
     $type = '';
@@ -27,12 +33,11 @@ function emit(array $parameter): string
         ];
         $type = $typeMap[$schema['type']] ?? 'mixed';
     } elseif (isset($schema['$ref'])) {
-        $explode = 'explode';
-        $parts = $explode('/', $schema['$ref']);
-        $type = end($parts);
+        $parts = explode('/', (string) $schema['$ref']);
+        $type = (string) end($parts);
     }
 
-    $required = $parameter['required'] ?? false;
+    $required = (bool) ($parameter['required'] ?? false);
     if (isset($parameter['in']) && $parameter['in'] === 'path') {
         $required = true;
     }

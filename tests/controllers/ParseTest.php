@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Cdd\Tests\Controllers;
 
 class ParseTest extends \Cdd\Tests\Framework\TestCase

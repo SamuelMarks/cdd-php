@@ -1,13 +1,22 @@
 <?php
 
-declare(strict_types=1);
+/**
+ * Parses and validates OpenAPI Info, Contact, License, Tag, and ExternalDocs Objects.
+ *
+ * @package Cdd\Info
+ */
 
-declare (strict_types=1);
+declare(strict_types=1);
 
 namespace Cdd\Info;
 
 /**
  * Parses Info Object data into an OpenAPI Info Object.
+ *
+ * @param string $title The API title.
+ * @param string $version The API version string.
+ * @param string $description Optional API description.
+ * @return array<string, string> The OpenAPI Info Object array.
  */
 function parse(string $title, string $version, string $description = ''): array
 {
@@ -17,8 +26,13 @@ function parse(string $title, string $version, string $description = ''): array
     }
     return $info;
 }
+
 /**
  * Validates an Info Object.
+ *
+ * @param mixed $info The Info Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateInfoObject(mixed $info): void
 {
@@ -47,8 +61,13 @@ function validateInfoObject(mixed $info): void
         \Cdd\Info\validateLicenseObject($info['license']);
     }
 }
+
 /**
  * Validates a Contact Object.
+ *
+ * @param mixed $contact The Contact Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateContactObject(mixed $contact): void
 {
@@ -65,8 +84,13 @@ function validateContactObject(mixed $contact): void
         throw new \RuntimeException('Contact "email" must be a string');
     }
 }
+
 /**
  * Validates a License Object.
+ *
+ * @param mixed $license The License Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateLicenseObject(mixed $license): void
 {
@@ -86,8 +110,13 @@ function validateLicenseObject(mixed $license): void
         throw new \RuntimeException('License "identifier" and "url" are mutually exclusive');
     }
 }
+
 /**
  * Validates a Tag Object.
+ *
+ * @param mixed $tag The Tag Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateTagObject(mixed $tag): void
 {
@@ -113,8 +142,13 @@ function validateTagObject(mixed $tag): void
         \Cdd\Info\validateExternalDocsObject($tag['externalDocs']);
     }
 }
+
 /**
  * Validates an External Documentation Object.
+ *
+ * @param mixed $docs The External Documentation Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateExternalDocsObject(mixed $docs): void
 {

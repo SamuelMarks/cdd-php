@@ -1,48 +1,114 @@
 <?php
 
-declare(strict_types=1);
+/**
+ * Safely parses PHP mock files using AST evaluation and validates OpenAPI Example Objects.
+ *
+ * @package Cdd\Mocks
+ */
 
-declare (strict_types=1);
+declare(strict_types=1);
 
 namespace Cdd\Mocks;
 
-use PhpParser\ParserFactory;
-use PhpParser\NodeFinder;
+use PhpParser\Node;
 use PhpParser\Node\Expr\Array_;
+use PhpParser\Node\Expr\ConstFetch;
+use PhpParser\Node\Expr\UnaryMinus;
+use PhpParser\Node\Scalar\Float_;
+use PhpParser\Node\Scalar\Int_;
+use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\Return_;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
 
 /**
- * Parses mock code to extract Example Objects.
+ * Evaluates a PhpParser AST expression node into a native PHP value without executing arbitrary code.
+ *
+ * @param Node|null $node The AST expression node to evaluate.
+ * @return mixed The evaluated scalar or array value.
+ */
+function evaluateAstNode(?Node $node): mixed
+{
+    if ($node === null) {
+        return null;
+    }
+    if ($node instanceof String_ || $node instanceof Int_ || $node instanceof Float_) {
+        return $node->value;
+    }
+    if ($node instanceof UnaryMinus) {
+        $inner = evaluateAstNode($node->expr);
+        if (is_int($inner) || is_float($inner)) {
+            return -$inner;
+        }
+    }
+    if ($node instanceof ConstFetch) {
+        $constName = strtolower($node->name->toString());
+        if ($constName === 'true') {
+            return true;
+        }
+        if ($constName === 'false') {
+            return false;
+        }
+    }
+    if ($node instanceof Array_) {
+        $result = [];
+        foreach ($node->items as $item) {
+            $val = evaluateAstNode($item->value);
+            if ($item->key !== null) {
+                $key = evaluateAstNode($item->key);
+                $result[(string) $key] = $val;
+            } else {
+                $result[] = $val;
+            }
+        }
+        return $result;
+    }
+    return null;
+}
+
+/**
+ * Parses mock code to extract Example Objects safely using nikic/php-parser.
+ *
  * @param string $mockCode Code to parse.
- * @return array Extracted Example Objects.
+ * @return array<string, array<string, mixed>> Extracted Example Objects.
  */
 function parse(string $mockCode): array
 {
     $examples = [];
+    $parser = (new ParserFactory())->createForNewestSupportedVersion();
     try {
-        // execute the code to get the array safely, or parse.
-        // since it's just a config file, easiest is to include it if safe, but we use eval or require for now.
-        // wait, we can just save to temp and require.
-        $tmp = tempnam(sys_get_temp_dir(), 'mock');
-        file_put_contents($tmp, $mockCode);
-        $res = require $tmp;
-        unlink($tmp);
-        if (is_array($res)) {
-            foreach ($res as $name => $data) {
-                // Ensure it is an Example Object 3.2.0 format
-                if (isset($data['dataValue']) || isset($data['serializedValue']) || isset($data['externalValue'])) {
-                    $examples[$name] = $data;
-                } else {
-                    $examples[$name] = ['dataValue' => $data];
-                }
+        $stmts = $parser->parse($mockCode);
+    } catch (\Throwable $e) {
+        return [];
+    }
+
+    $nodeFinder = new NodeFinder();
+    /** @var Return_|null $returnStmt */
+    $returnStmt = $nodeFinder->findFirstInstanceOf($stmts ?? [], Return_::class);
+    if ($returnStmt === null) {
+        return [];
+    }
+
+    $res = evaluateAstNode($returnStmt->expr);
+    if (is_array($res)) {
+        foreach ($res as $name => $data) {
+            if (is_array($data) && (isset($data['dataValue']) || isset($data['serializedValue']) || isset($data['externalValue']))) {
+                $examples[(string) $name] = $data;
+            } else {
+                $examples[(string) $name] = ['dataValue' => $data];
             }
         }
-    } catch (\Throwable $e) {
     }
+
     return $examples;
 }
+
 /**
  * Validates an Example Object or Reference Object.
+ *
+ * @param mixed $example The Example or Reference Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateExampleOrReferenceObject(mixed $example): void
 {
@@ -59,7 +125,6 @@ function validateExampleOrReferenceObject(mixed $example): void
     if (isset($example['description']) && !is_string($example['description'])) {
         throw new \RuntimeException('Example "description" must be a string');
     }
-    // Validate value, externalValue, dataValue, serializedValue mutual exclusions
     if (isset($example['dataValue']) && isset($example['value'])) {
         throw new \RuntimeException('Example cannot contain both "dataValue" and "value"');
     }

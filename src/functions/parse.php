@@ -1,15 +1,24 @@
 <?php
 
+/**
+ * Parses PHP source code to extract standalone functions.
+ *
+ * @package Cdd\Functions
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Functions;
 
-use PhpParser\ParserFactory;
-use PhpParser\NodeFinder;
 use PhpParser\Node\Stmt\Function_;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
 
 /**
  * Parses PHP source code to extract standalone functions using nikic/php-parser.
+ *
+ * @param string $code The PHP source code to parse.
+ * @return array<int, array<string, mixed>> List of extracted function descriptors.
  */
 function parse(string $code): array
 {
@@ -23,16 +32,12 @@ function parse(string $code): array
     $tokens = $parser->getTokens();
     $nodeFinder = new NodeFinder();
     /** @var Function_[] $functionNodes */
-    $functionNodes = $nodeFinder->findInstanceOf($stmts, Function_::class);
+    $functionNodes = $nodeFinder->findInstanceOf($stmts ?? [], Function_::class);
 
     $functions = [];
     foreach ($functionNodes as $node) {
-        $name = '';
-        if ($node->name) {
-            $name = $node->name->toString();
-        }
         $functions[] = [
-            'name' => $name,
+            'name' => $node->name->toString(),
             'node' => $node,
             'tokens' => $tokens,
             'stmts' => $stmts,

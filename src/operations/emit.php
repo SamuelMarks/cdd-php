@@ -1,11 +1,23 @@
 <?php
 
+/**
+ * Emits PHP controller method code from OpenAPI Operation Objects.
+ *
+ * @package Cdd\Operations
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Operations;
 
 /**
- * emit
+ * Emits a PHP controller method representation for an OpenAPI Operation Object.
+ *
+ * @param array<string, mixed> $operation The OpenAPI Operation Object.
+ * @param string $path Optional URL path pattern.
+ * @param string $method Optional HTTP method.
+ * @param bool $asInvokable Whether to emit the method as `__invoke`.
+ * @return string The generated PHP method source code.
  */
 function emit(array $operation, string $path = '', string $method = '', bool $asInvokable = false): string
 {
@@ -20,17 +32,14 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
         $hasDoc = true;
     }
     if (isset($operation['description'])) {
-        $explode = 'explode';
-        $trim = 'trim';
-        foreach ($explode("\n", $operation['description']) as $line) {
-            $docStr .= " * " . $trim($line) . "\n";
+        foreach (explode("\n", $operation['description']) as $line) {
+            $docStr .= " * " . trim($line) . "\n";
         }
         $docStr .= " *\n";
         $hasDoc = true;
     }
     if (isset($operation['tags'])) {
-        $implode = 'implode';
-        $docStr .= " * @tags " . $implode(',', $operation['tags']) . "\n";
+        $docStr .= " * @tags " . implode(',', $operation['tags']) . "\n";
         $hasDoc = true;
     }
     if (isset($operation['externalDocs']['url'])) {
@@ -69,8 +78,7 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
         $paramsOut[] = \Cdd\RequestBodies\emit($operation['requestBody'], 'body');
     }
 
-    $implode = 'implode';
-    $signature = "public function $methodName(" . $implode(', ', $paramsOut) . ")";
+    $signature = "public function $methodName(" . implode(', ', $paramsOut) . ")";
 
     $returnType = '';
     $primarySchema = null;
@@ -86,16 +94,14 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
                 'object' => 'object',
             ];
             $returnType = $typeMap[$schema['type']] ?? '';
+            if ($schema['type'] === 'array' && isset($schema['items']['$ref'])) {
+                $parts = explode('/', $schema['items']['$ref']);
+                $primarySchema = end($parts);
+            }
         } elseif (isset($schema['$ref'])) {
             $parts = explode('/', $schema['$ref']);
             $returnType = end($parts);
             $primarySchema = $returnType;
-            /*cov_ignore*/
-            /*cov_ignore*/
-            /*cov_ignore*/
-        } elseif (isset($schema['type']) && $schema['type'] === 'array' && isset($schema['items']['$ref'])) { // @codeCoverageIgnore
-            /*cov_ignore*/ $parts = explode('/', $schema['items']['$ref']);
-            /*cov_ignore*/ $primarySchema = end($parts);
         }
     }
 
@@ -146,30 +152,30 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
                 $implementation .= "    echo json_encode(\$record->toArray());\n";
             } else {
                 // it's a getAll
-                /*cov_ignore*/ $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
-                /*cov_ignore*/ $implementation .= "    \$records = \$dao->getAll();\n";
-                /*cov_ignore*/ $implementation .= "    header('Content-Type: application/json');\n";
-                /*cov_ignore*/ $implementation .= "    echo json_encode(array_map(fn(\$r) => \$r->toArray(), \$records));\n";
+                $implementation = "    \$dao = \Api\Daos\DaoFactory::create('{$primarySchema}');\n";
+                $implementation .= "    \$records = \$dao->getAll();\n";
+                $implementation .= "    header('Content-Type: application/json');\n";
+                $implementation .= "    echo json_encode(array_map(fn(\$r) => \$r->toArray(), \$records));\n";
             }
         } elseif (strtolower($method) === 'post') {
-            $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
+            $implementation = "    \$dao = \Api\Daos\DaoFactory::create('{$primarySchema}');\n";
             $implementation .= "    \$record = \$dao->create(json_decode(file_get_contents('php://input'), true) ?? []);\n";
             $implementation .= "    header('Content-Type: application/json');\n";
             $implementation .= "    echo json_encode(\$record->toArray());\n";
         } elseif (strtolower($method) === 'delete') {
-            /*cov_ignore*/ $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
-            /*cov_ignore*/ $idVar = 'id';
-            /*cov_ignore*/ if (preg_match('/\{([^}]+)\}/', $path, $matches)) {
-                /*cov_ignore*/ $idVar = $matches[1];
+            $implementation = "    \$dao = \Api\Daos\DaoFactory::create('{$primarySchema}');\n";
+            $idVar = 'id';
+            if (preg_match('/\{([^}]+)\}/', $path, $matches)) {
+                $idVar = $matches[1];
             }
-            /*cov_ignore*/ $implementation .= "    \$success = \$dao->delete(\${$idVar});\n";
-            /*cov_ignore*/ $implementation .= "    if (!\$success) {\n";
-            /*cov_ignore*/ $implementation .= "        header('HTTP/1.1 404 Not Found');\n";
-            /*cov_ignore*/ $implementation .= "        echo json_encode(['error' => 'Not found']);\n";
-            /*cov_ignore*/ $implementation .= "        return;\n";
-            /*cov_ignore*/ $implementation .= "    }\n";
-            /*cov_ignore*/ $implementation .= "    header('Content-Type: application/json');\n";
-            /*cov_ignore*/ $implementation .= "    echo json_encode(['success' => true]);\n";
+            $implementation .= "    \$success = \$dao->delete(\${$idVar});\n";
+            $implementation .= "    if (!\$success) {\n";
+            $implementation .= "        header('HTTP/1.1 404 Not Found');\n";
+            $implementation .= "        echo json_encode(['error' => 'Not found']);\n";
+            $implementation .= "        return;\n";
+            $implementation .= "    }\n";
+            $implementation .= "    header('Content-Type: application/json');\n";
+            $implementation .= "    echo json_encode(['success' => true]);\n";
         }
     }
 

@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Emits PHP interfaces for incoming OpenAPI Webhooks.
+ *
+ * @package Cdd\Webhooks
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Webhooks;
@@ -7,9 +13,9 @@ namespace Cdd\Webhooks;
 /**
  * Emits abstract interfaces for incoming Webhooks defined in OpenAPI.
  *
- * @param array $webhooks
- * @param string $existingCode
- * @return string
+ * @param array<string, array<string, mixed>> $webhooks Map of webhook names to Path Item Objects.
+ * @param string $existingCode Optional existing PHP code.
+ * @return string The emitted WebhookHandlers interface code.
  */
 function emit(array $webhooks, string $existingCode = ''): string
 {
@@ -26,6 +32,8 @@ function emit(array $webhooks, string $existingCode = ''): string
     $code .= "interface WebhookHandlers {
 ";
 
+    $validMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'];
+
     foreach ($webhooks as $name => $pathItem) {
         if (isset($pathItem['$ref'])) {
             $code .= "    // Webhook '{$name}' uses reference: {$pathItem['$ref']}
@@ -33,10 +41,9 @@ function emit(array $webhooks, string $existingCode = ''): string
             continue;
         }
         foreach ($pathItem as $method => $operation) {
-            $methodStr = strtolower($method);
-            $in_array = 'in_array';
-            if (!$in_array($methodStr, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
-                continue; // Ignoring extensions or invalid methods
+            $methodStr = strtolower((string) $method);
+            if (!in_array($methodStr, $validMethods, true)) {
+                continue;
             }
             $opId = $operation['operationId'] ?? "handle_{$name}_{$methodStr}";
             $code .= "    public function {$opId}(array \$request): array;

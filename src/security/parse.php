@@ -1,13 +1,20 @@
 <?php
 
-declare(strict_types=1);
+/**
+ * Parses and validates OpenAPI Security Scheme and Security Requirement Objects.
+ *
+ * @package Cdd\Security
+ */
 
-declare (strict_types=1);
+declare(strict_types=1);
 
 namespace Cdd\Security;
 
 /**
  * Parses security requirements mapping into OpenAPI Security Requirement Object array.
+ *
+ * @param array<string, array<int, string>> $requirements Map of security scheme names to scope lists.
+ * @return array<int, array<string, array<int, string>>> List of OpenAPI Security Requirement Objects.
  */
 function parse(array $requirements): array
 {
@@ -17,8 +24,13 @@ function parse(array $requirements): array
     }
     return $security;
 }
+
 /**
  * Validates a Security Scheme Object or Reference Object.
+ *
+ * @param mixed $scheme The Security Scheme or Reference Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateSecuritySchemeOrReferenceObject(mixed $scheme): void
 {
@@ -33,8 +45,7 @@ function validateSecuritySchemeOrReferenceObject(mixed $scheme): void
         throw new \RuntimeException('Security Scheme must contain a "type" string');
     }
     $validTypes = ['apiKey', 'http', 'mutualTLS', 'oauth2', 'openIdConnect'];
-    $in_array = 'in_array';
-    if (!$in_array($scheme['type'], $validTypes, true)) {
+    if (!in_array($scheme['type'], $validTypes, true)) {
         throw new \RuntimeException('Security Scheme "type" must be one of: apiKey, http, mutualTLS, oauth2, openIdConnect');
     }
     if (isset($scheme['description']) && !is_string($scheme['description'])) {
@@ -47,8 +58,7 @@ function validateSecuritySchemeOrReferenceObject(mixed $scheme): void
         if (!isset($scheme['name']) || !is_string($scheme['name'])) {
             throw new \RuntimeException('Security Scheme "apiKey" requires a "name" string');
         }
-        $in_array = 'in_array';
-        if (!isset($scheme['in']) || !is_string($scheme['in']) || !$in_array($scheme['in'], ['query', 'header', 'cookie'], true)) {
+        if (!isset($scheme['in']) || !is_string($scheme['in']) || !in_array($scheme['in'], ['query', 'header', 'cookie'], true)) {
             throw new \RuntimeException('Security Scheme "apiKey" requires an "in" string (query, header, cookie)');
         }
     } elseif ($scheme['type'] === 'http') {
@@ -67,12 +77,10 @@ function validateSecuritySchemeOrReferenceObject(mixed $scheme): void
         }
         $validFlows = ['implicit', 'password', 'clientCredentials', 'authorizationCode', 'deviceAuthorization'];
         foreach ($scheme['flows'] as $flowType => $flowObj) {
-            $str_starts_with = 'str_starts_with';
-            if ($str_starts_with($flowType, 'x-')) {
+            if (str_starts_with((string) $flowType, 'x-')) {
                 continue;
             }
-            $in_array = 'in_array';
-            if (!$in_array($flowType, $validFlows, true)) {
+            if (!in_array($flowType, $validFlows, true)) {
                 throw new \RuntimeException('OAuth2 flow type must be one of: implicit, password, clientCredentials, authorizationCode, deviceAuthorization');
             }
             if (!is_array($flowObj)) {
@@ -81,12 +89,12 @@ function validateSecuritySchemeOrReferenceObject(mixed $scheme): void
             if (!isset($flowObj['scopes']) || !is_array($flowObj['scopes'])) {
                 throw new \RuntimeException('OAuth2 flow must contain a "scopes" map');
             }
-            if ($in_array($flowType, ['implicit', 'authorizationCode'])) {
+            if (in_array($flowType, ['implicit', 'authorizationCode'], true)) {
                 if (!isset($flowObj['authorizationUrl']) || !is_string($flowObj['authorizationUrl'])) {
                     throw new \RuntimeException("OAuth2 {$flowType} flow requires an 'authorizationUrl' string");
                 }
             }
-            if ($in_array($flowType, ['password', 'clientCredentials', 'authorizationCode', 'deviceAuthorization'])) {
+            if (in_array($flowType, ['password', 'clientCredentials', 'authorizationCode', 'deviceAuthorization'], true)) {
                 if (!isset($flowObj['tokenUrl']) || !is_string($flowObj['tokenUrl'])) {
                     throw new \RuntimeException("OAuth2 {$flowType} flow requires a 'tokenUrl' string");
                 }
@@ -105,17 +113,21 @@ function validateSecuritySchemeOrReferenceObject(mixed $scheme): void
             throw new \RuntimeException('Security Scheme "openIdConnect" requires an "openIdConnectUrl" string');
         }
     }
-
 }
+
 /**
  * Validates a Security Requirement Object.
+ *
+ * @param mixed $security The Security Requirement Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateSecurityRequirementObject(mixed $security): void
 {
     if (!is_array($security)) {
         throw new \RuntimeException('Security Requirement must be an object/map');
     }
-    foreach ($security as $name => $scopes) {
+    foreach ($security as $scopes) {
         if (!is_array($scopes)) {
             throw new \RuntimeException('Security Requirement scopes must be an array of strings');
         }

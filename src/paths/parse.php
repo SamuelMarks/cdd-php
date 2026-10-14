@@ -1,16 +1,20 @@
 <?php
 
-declare(strict_types=1);
+/**
+ * Parses and validates OpenAPI Paths and Path Item Objects.
+ *
+ * @package Cdd\Paths
+ */
 
-declare (strict_types=1);
+declare(strict_types=1);
 
 namespace Cdd\Paths;
 
 /**
  * Parses an array of Path Item Objects into an OpenAPI Paths Object.
  *
- * @param array $pathItems Key-value map of path strings to Path Item Arrays
- * @return array The OpenAPI Paths Object
+ * @param array<string, mixed> $pathItems Key-value map of path strings to Path Item Arrays.
+ * @return array<string, mixed> The OpenAPI Paths Object.
  */
 function parse(array $pathItems): array
 {
@@ -20,38 +24,47 @@ function parse(array $pathItems): array
     }
     return $paths;
 }
+
 /**
  * Validates a Paths Object.
+ *
+ * @param mixed $paths The Paths Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validatePathsObject(mixed $paths): void
 {
-    global $globalOperationIds;
-    $globalOperationIds = [];
     if (!is_array($paths)) {
         throw new \RuntimeException('Field "paths" must be an object (array in PHP)');
     }
+    $seenOperationIds = [];
     foreach ($paths as $path => $pathItem) {
-        $str_starts_with = 'str_starts_with';
-        if (!is_string($path) || !$str_starts_with($path, '/')) {
-            if (!$str_starts_with($path, 'x-')) {
+        if (!is_string($path) || !str_starts_with($path, '/')) {
+            if (!is_string($path) || !str_starts_with($path, 'x-')) {
                 throw new \RuntimeException('Paths object keys must start with a forward slash (/)');
             }
         }
-        if ($str_starts_with($path, '/')) {
+        if (is_string($path) && str_starts_with($path, '/')) {
             if (preg_match_all('/\{([^}]+)\}/', $path, $matches)) {
                 $vars = $matches[1];
                 if (count($vars) !== count(array_unique($vars))) {
                     throw new \RuntimeException("Path template expressions MUST NOT appear more than once in a single path: {$path}");
                 }
             }
-            \Cdd\Paths\validatePathItemObject($pathItem);
+            \Cdd\Paths\validatePathItemObject($pathItem, $seenOperationIds);
         }
     }
 }
+
 /**
  * Validates a Path Item Object.
+ *
+ * @param mixed $pathItem The Path Item Object to validate.
+ * @param array<string, bool>|null $seenOperationIds Optional map of seen operationIds.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
-function validatePathItemObject(mixed $pathItem): void
+function validatePathItemObject(mixed $pathItem, ?array &$seenOperationIds = null): void
 {
     if (!is_array($pathItem)) {
         throw new \RuntimeException('Path Item must be an object');
@@ -69,7 +82,7 @@ function validatePathItemObject(mixed $pathItem): void
     $pathItemParams = isset($pathItem['parameters']) && is_array($pathItem['parameters']) ? $pathItem['parameters'] : [];
     foreach ($methods as $method) {
         if (isset($pathItem[$method])) {
-            \Cdd\Operations\validateOperationObject($pathItem[$method], $pathItemParams);
+            \Cdd\Operations\validateOperationObject($pathItem[$method], $pathItemParams, $seenOperationIds);
         }
     }
     if (isset($pathItem['additionalOperations'])) {
@@ -77,11 +90,10 @@ function validatePathItemObject(mixed $pathItem): void
             throw new \RuntimeException('Path Item "additionalOperations" must be a map');
         }
         foreach ($pathItem['additionalOperations'] as $opKey => $opVal) {
-            $in_array = 'in_array';
-            if ($in_array(strtolower($opKey), $methods, true)) {
+            if (in_array(strtolower((string) $opKey), $methods, true)) {
                 throw new \RuntimeException('Path Item "additionalOperations" MUST NOT contain any entry for fixed methods (e.g., ' . $opKey . ')');
             }
-            \Cdd\Operations\validateOperationObject($opVal, $pathItemParams);
+            \Cdd\Operations\validateOperationObject($opVal, $pathItemParams, $seenOperationIds);
         }
     }
     if (isset($pathItem['servers'])) {

@@ -36,15 +36,18 @@ class ParseEmitTest extends TestCase
 
     public function testValidateParameterObjectValidOptionals()
     {
-        \Cdd\Parameters\validateParameterOrReferenceObject([
+        $param1 = [
             'name' => 'foo',
             'in' => 'query',
             'style' => 'form',
             'explode' => true,
             'allowReserved' => true,
             'schema' => ['type' => 'string']
-        ]);
-        \Cdd\Parameters\validateParameterOrReferenceObject([
+        ];
+        \Cdd\Parameters\validateParameterOrReferenceObject($param1);
+        $this->assertEquals('?string $foo', \Cdd\Parameters\emit($param1));
+
+        $param2 = [
             'name' => 'foo',
             'in' => 'query',
             'content' => [
@@ -52,8 +55,9 @@ class ParseEmitTest extends TestCase
                     'schema' => ['type' => 'string']
                 ]
             ]
-        ]);
-        $this->assertTrue(true);
+        ];
+        \Cdd\Parameters\validateParameterOrReferenceObject($param2);
+        $this->assertEquals('$foo', \Cdd\Parameters\emit($param2));
     }
 
     public function testValidateParameterOrReferenceObjectErrors()

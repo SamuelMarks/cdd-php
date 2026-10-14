@@ -1,15 +1,24 @@
 <?php
 
+/**
+ * Parses PHP controller classes and docblocks into OpenAPI Operation metadata.
+ *
+ * @package Cdd\Controllers
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Controllers;
 
-use PhpParser\ParserFactory;
-use PhpParser\NodeFinder;
 use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
 
 /**
  * Parses PHP code to extract OpenAPI metadata from Controller docblocks.
+ *
+ * @param string $code The PHP controller source code.
+ * @return array<string, array<string, mixed>> Map of operationId to extracted operation metadata.
  */
 function parse(string $code): array
 {
@@ -22,7 +31,7 @@ function parse(string $code): array
 
     $nodeFinder = new NodeFinder();
     /** @var ClassMethod[] $methods */
-    $methods = $nodeFinder->findInstanceOf($stmts, ClassMethod::class);
+    $methods = $nodeFinder->findInstanceOf($stmts ?? [], ClassMethod::class);
 
     $operations = [];
     foreach ($methods as $method) {
@@ -30,18 +39,19 @@ function parse(string $code): array
         $op = [];
 
         $docComment = $method->getDocComment();
-        if ($docComment) {
+        if ($docComment !== null) {
             $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
 
             if ($parsedDoc['description'] !== '') {
-                // First sentence is summary, rest is description
-                $descLines = explode("\n", $parsedDoc['description']);
+                $descLines = explode("
+", $parsedDoc['description']);
                 $op['summary'] = $descLines[0];
                 $c = count($descLines);
                 if ($c > 1) {
                     $descStr = $descLines[1];
                     for ($i = 2; $i < $c; $i++) {
-                        $descStr .= "\n" . $descLines[$i];
+                        $descStr .= "
+" . $descLines[$i];
                     }
                     $op['description'] = $descStr;
                 }
@@ -50,13 +60,13 @@ function parse(string $code): array
             if (isset($parsedDoc['tags']['tags'])) {
                 $tagsArr = [];
                 foreach ($parsedDoc['tags']['tags'] as $t) {
-                    $tagsArr = array_merge($tagsArr, explode(',', $t));
+                    $tagsArr = array_merge($tagsArr, explode(',', (string) $t));
                 }
                 $op['tags'] = array_map('trim', $tagsArr);
             }
 
             if (isset($parsedDoc['tags']['externalDocs'])) {
-                $ext = explode(' ', $parsedDoc['tags']['externalDocs'][0], 2);
+                $ext = explode(' ', (string) $parsedDoc['tags']['externalDocs'][0], 2);
                 $op['externalDocs'] = ['url' => $ext[0]];
                 if (isset($ext[1])) {
                     $op['externalDocs']['description'] = $ext[1];
@@ -66,7 +76,7 @@ function parse(string $code): array
             if (isset($parsedDoc['tags']['oas-callback'])) {
                 $op['callbacks'] = [];
                 foreach ($parsedDoc['tags']['oas-callback'] as $cbTag) {
-                    $parts = explode(' ', $cbTag, 2);
+                    $parts = explode(' ', (string) $cbTag, 2);
                     if (isset($parts[1])) {
                         $op['callbacks'][$parts[0]] = json_decode($parts[1], true);
                     }
@@ -75,15 +85,15 @@ function parse(string $code): array
 
             if (isset($parsedDoc['tags']['oas-link'])) {
                 foreach ($parsedDoc['tags']['oas-link'] as $linkTag) {
-                    $parts = explode(' ', $linkTag, 3);
+                    $parts = explode(' ', (string) $linkTag, 3);
                     if (count($parts) === 3) {
-                        $code = $parts[0];
+                        $codeKey = $parts[0];
                         $linkName = $parts[1];
                         $linkObj = json_decode($parts[2], true);
-                        if (!isset($op['responses'][$code]['links'])) {
-                            $op['responses'][$code]['links'] = [];
+                        if (!isset($op['responses'][$codeKey]['links'])) {
+                            $op['responses'][$codeKey]['links'] = [];
                         }
-                        $op['responses'][$code]['links'][$linkName] = $linkObj;
+                        $op['responses'][$codeKey]['links'][$linkName] = $linkObj;
                     }
                 }
             }

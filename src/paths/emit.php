@@ -1,79 +1,77 @@
 <?php
 
+/**
+ * Emits PHP controller classes from OpenAPI Paths Objects.
+ *
+ * @package Cdd\Paths
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Paths;
 
 /**
+ * Appends a method block to a PHP class source string before its closing brace.
+ *
+ * @param string $classCode The target class PHP code.
+ * @param string $methodCode The indented method code to append.
+ * @param bool $hasClosingBrace Whether the target class string already has a closing brace.
+ * @return string The updated PHP class code.
+ */
+function append_method_to_class(string $classCode, string $methodCode, bool $hasClosingBrace): string
+{
+    if ($hasClosingBrace) {
+        $pos = strrpos($classCode, '}');
+        if ($pos !== false) {
+            return substr($classCode, 0, $pos) . $methodCode . "}
+";
+        }
+    }
+    return $classCode . $methodCode;
+}
+
+/**
  * Emits a PHP controller class representation from an OpenAPI Paths Object.
  * Preserves existing methods and comments if existing code is provided.
  *
- * @param array $paths The OpenAPI Paths Object
- * @param string $existingCode Existing PHP code
- * @return string The generated PHP Controller code
+ * @param array<string, array<string, mixed>> $paths The OpenAPI Paths Object.
+ * @param string $existingCode Existing PHP code.
+ * @return string The generated PHP Controller code.
  */
 function emit(array $paths, string $existingCode = ''): string
 {
-    $out = $existingCode !== '' ? $existingCode : "<?php\n\nclass ApiController {\n";
+    $out = $existingCode !== '' ? $existingCode : "<?php
+
+class ApiController {
+";
+    $validMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'];
 
     foreach ($paths as $path => $pathItem) {
         foreach ($pathItem as $method => $operation) {
             if ($method === 'additionalOperations' && is_array($operation)) {
                 foreach ($operation as $addMethod => $addOp) {
-                    $methodStr = strtolower($addMethod);
+                    $methodStr = strtolower((string) $addMethod);
                     if (!isset($addOp['operationId'])) {
-                        $preg_replace = 'preg_replace';
-                        $addOp['operationId'] = $methodStr . $preg_replace('/[^a-zA-Z0-9]/', '', $path);
+                        $addOp['operationId'] = $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', (string) $path);
                     }
-                    $opName = $addOp['operationId'];
-                    $strpos = 'strpos';
-                    if ($strpos($out, "function $opName(") === false) {
-                        $str_replace = 'str_replace';
-                        $trim = 'trim';
-                        $methodCode = "    " . $str_replace("\n", "\n    ", $trim(\Cdd\Operations\emit($addOp))) . "\n\n";
-                        if ($existingCode !== '') {
-                            $strrpos = 'strrpos';
-                            $pos = $strrpos($out, '}');
-                            if ($pos !== false) {
-                                $substr = 'substr';
-                                $out = $substr($out, 0, $pos) . $methodCode . "}\n";
-                            } else {
-                                $out .= $methodCode;
-                            }
-                        } else {
-                            $out .= $methodCode;
-                        }
+                    $opName = (string) $addOp['operationId'];
+                    if (strpos($out, "function $opName(") === false) {
+                        $nl = chr(10);
+                        $methodCode = "    " . str_replace($nl, $nl . "    ", trim(\Cdd\Operations\emit($addOp))) . $nl . $nl;
+                        $out = append_method_to_class($out, $methodCode, $existingCode !== '');
                     }
                 }
             } else {
-                $methodStr = strtolower($method);
-                $in_array = 'in_array';
-                if ($in_array($methodStr, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
+                $methodStr = strtolower((string) $method);
+                if (in_array($methodStr, $validMethods, true)) {
                     if (!isset($operation['operationId'])) {
-                        $preg_replace = 'preg_replace';
-                        $operation['operationId'] = $methodStr . $preg_replace('/[^a-zA-Z0-9]/', '', $path);
+                        $operation['operationId'] = $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', (string) $path);
                     }
-
-                    $opName = $operation['operationId'];
-                    // Check if function already exists
-                    $strpos = 'strpos';
-                    if ($strpos($out, "function $opName(") === false) {
-                        $str_replace = 'str_replace';
-                        $trim = 'trim';
-                        $methodCode = "    " . $str_replace("\n", "\n    ", $trim(\Cdd\Operations\emit($operation))) . "\n\n";
-                        if ($existingCode !== '') {
-                            // Insert before the last closing brace
-                            $strrpos = 'strrpos';
-                            $pos = $strrpos($out, '}');
-                            if ($pos !== false) {
-                                $substr = 'substr';
-                                $out = $substr($out, 0, $pos) . $methodCode . "}\n";
-                            } else {
-                                $out .= $methodCode;
-                            }
-                        } else {
-                            $out .= $methodCode;
-                        }
+                    $opName = (string) $operation['operationId'];
+                    if (strpos($out, "function $opName(") === false) {
+                        $nl = chr(10);
+                        $methodCode = "    " . str_replace($nl, $nl . "    ", trim(\Cdd\Operations\emit($operation))) . $nl . $nl;
+                        $out = append_method_to_class($out, $methodCode, $existingCode !== '');
                     }
                 }
             }
@@ -87,22 +85,22 @@ function emit(array $paths, string $existingCode = ''): string
 }
 
 /**
- * emit_modular
+ * Emits modular single-action controller files from an OpenAPI Paths Object.
+ *
+ * @param array<string, array<string, mixed>> $paths The OpenAPI Paths Object.
+ * @return array<string, string> Map of controller filenames to generated PHP code.
  */
 function emit_modular(array $paths): array
 {
     $files = [];
     foreach ($paths as $path => $pathItem) {
         foreach ($pathItem as $method => $operation) {
-            if ($method === 'parameters' || $method === 'summary' || $method === 'description' || $method === 'servers') {
-                /*cov_ignore*/ continue;
-            }
-            if ($method === 'additionalOperations') {
-                /*cov_ignore*/ foreach ($operation as $addMethod => $addOp) {
-                    /*cov_ignore*/ $files = array_merge($files, emit_modular_single($addMethod, $path, $addOp));
+            if ($method === 'additionalOperations' && is_array($operation)) {
+                foreach ($operation as $addMethod => $addOp) {
+                    $files = array_merge($files, emit_modular_single((string) $addMethod, (string) $path, $addOp));
                 }
-            } else {
-                $files = array_merge($files, emit_modular_single($method, $path, $operation));
+            } elseif (is_array($operation)) {
+                $files = array_merge($files, emit_modular_single((string) $method, (string) $path, $operation));
             }
         }
     }
@@ -110,18 +108,30 @@ function emit_modular(array $paths): array
 }
 
 /**
- * emit_modular_single
+ * Emits a single modular controller file for an individual operation.
+ *
+ * @param string $method The HTTP method.
+ * @param string $path The URL path pattern.
+ * @param array<string, mixed> $operation The OpenAPI Operation Object.
+ * @return array<string, string> Map of controller filename to generated PHP code.
  */
 function emit_modular_single(string $method, string $path, array $operation): array
 {
     $methodStr = strtolower($method);
-    if (!in_array($methodStr, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'])) {
-        /*cov_ignore*/ return [];
+    if (!in_array($methodStr, ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'], true)) {
+        return [];
     }
-    $opId = $operation['operationId'] ?? $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', $path);
+    $opId = (string) ($operation['operationId'] ?? $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', $path));
     $className = ucfirst($opId) . 'Controller';
-    $code = "<?php\n\nnamespace Api\\Controllers;\n\n";
+    $code = "<?php
+
+namespace Api\Controllers;
+
+";
     $methodCode = \Cdd\Operations\emit($operation, $path, $method, true);
-    $code .= "class $className\n{\n" . preg_replace('/^/m', '    ', $methodCode) . "}\n";
+    $code .= "class $className
+{
+" . preg_replace('/^/m', '    ', $methodCode) . "}
+";
     return ["{$className}.php" => $code];
 }

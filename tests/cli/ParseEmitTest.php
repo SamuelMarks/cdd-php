@@ -27,6 +27,22 @@ class ParseEmitTest extends TestCase
         $json = json_decode(file_get_contents("$dir/openapi.json"), true);
         $this->assertTrue(isset($json['components']['schemas']['User']));
 
+        $cliPaths = [
+            '/users' => [
+                'summary' => 'Users endpoint',
+                'get' => [
+                    'operationId' => 'getUsers',
+                    'description' => 'List users',
+                ],
+            ],
+        ];
+        $cliCode = \Cdd\Cli\emit($cliPaths);
+        $this->assertStringContainsString("if (\$command === 'get_users')", $cliCode);
+
+        $parsedCli = \Cdd\Cli\parse($cliCode);
+        $this->assertArrayHasKey('/cli/get_users', $parsedCli);
+        $this->assertEquals('get_users', $parsedCli['/cli/get_users']['post']['operationId']);
+
         // cleanup
         $files = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),

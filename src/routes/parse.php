@@ -1,18 +1,27 @@
 <?php
 
+/**
+ * Parses Laravel-style `Route::<method>(...)` statements into OpenAPI Paths Objects.
+ *
+ * @package Cdd\Routes
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Routes;
 
-use PhpParser\ParserFactory;
-use PhpParser\NodeFinder;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\String_;
-use PhpParser\Node\Identifier;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
 
 /**
  * Parses PHP code to extract routing definitions.
+ *
+ * @param string $code The PHP routes file source code.
+ * @return array<string, array<string, mixed>> Extracted OpenAPI Paths map.
  */
 function parse(string $code): array
 {
@@ -25,8 +34,9 @@ function parse(string $code): array
 
     $nodeFinder = new NodeFinder();
     /** @var StaticCall[] $staticCalls */
-    $staticCalls = $nodeFinder->findInstanceOf($stmts, StaticCall::class);
+    $staticCalls = $nodeFinder->findInstanceOf($stmts ?? [], StaticCall::class);
 
+    $validMethods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'];
     $routes = [];
     foreach ($staticCalls as $call) {
         if ($call->class instanceof Name && strtolower($call->class->toString()) === 'route') {
@@ -39,17 +49,15 @@ function parse(string $code): array
                         if (!isset($routes[$path])) {
                             $routes[$path] = [];
                         }
-                        $preg_replace = 'preg_replace';
                         $op = [
-                            'operationId' => $method . $preg_replace('/[^a-zA-Z0-9]/', '', $path),
+                            'operationId' => $method . preg_replace('/[^a-zA-Z0-9]/', '', $path),
                             'responses' => [
                                 '200' => [
-                                    'description' => 'Successful operation'
-                                ]
-                            ]
+                                    'description' => 'Successful operation',
+                                ],
+                            ],
                         ];
-                        $in_array = 'in_array';
-                        if ($in_array($method, ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'])) {
+                        if (in_array($method, $validMethods, true)) {
                             $routes[$path][$method] = $op;
                         } else {
                             $routes[$path]['additionalOperations'][strtoupper($method)] = $op;

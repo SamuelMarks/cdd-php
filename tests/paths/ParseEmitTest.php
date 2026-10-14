@@ -8,22 +8,6 @@ use Cdd\Tests\Framework\TestCase;
 
 class ParseEmitTest extends TestCase
 {
-    protected function assertThrows(\Closure $closure, string $exceptionClass, ?string $exceptionMessage = null)
-    {
-        try {
-            $closure();
-        } catch (\Throwable $e) {
-            if (!($e instanceof $exceptionClass)) {
-                throw new \Exception("Expected exception $exceptionClass, got " . get_class($e));
-            }
-            if ($exceptionMessage !== null && $e->getMessage() !== $exceptionMessage) {
-                throw new \Exception("Expected exception message '$exceptionMessage', got '{$e->getMessage()}'");
-            }
-            return;
-        }
-        throw new \Exception("Expected exception $exceptionClass was not thrown");
-    }
-
     public function testParseAndEmit()
     {
         $pathItems = [
@@ -147,6 +131,16 @@ class ParseEmitTest extends TestCase
                 ['name' => 'id', 'in' => 'header', 'schema' => []]
             ]
         ]);
-        $this->assertTrue(true);
+        $modular = \Cdd\Paths\emit_modular([
+            '/users' => [
+                'summary' => 'Users path',
+                'get' => ['operationId' => 'listUsers'],
+                'additionalOperations' => [
+                    'CUSTOM' => ['operationId' => 'customUsers'],
+                ],
+            ],
+        ]);
+        $this->assertArrayHasKey('ListUsersController.php', $modular);
+        $this->assertEquals([], \Cdd\Paths\emit_modular_single('INVALID', '/users', []));
     }
 }

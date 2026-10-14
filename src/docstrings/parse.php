@@ -1,43 +1,43 @@
 <?php
 
+/**
+ * Parses PHP docblock comments into structured arrays.
+ *
+ * @package Cdd\Docstrings
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Docstrings;
 
 /**
  * Parses a PHP docstring into its component parts.
+ *
+ * @param string $docComment The raw PHP docblock string.
+ * @return array{description: string, tags: array<string, mixed>} Parsed description and tags.
  */
 function parse(string $docComment): array
 {
     $parsed = [
         'description' => '',
-        'tags' => []
+        'tags' => [],
     ];
 
-    if (empty($docComment)) {
+    if ($docComment === '') {
         return $parsed;
     }
 
-    // Clean up comment asterisks
     $lines = explode("
 ", $docComment);
     $descriptionLines = [];
 
-    $trim = 'trim';
-    $preg_replace = 'preg_replace';
-    $str_starts_with = 'str_starts_with';
-    $substr = 'substr';
-    $preg_split = 'preg_split';
-
     foreach ($lines as $line) {
-        $line = $trim($line);
-        // Remove '/**' or '*/' or '*'
-        $line = $preg_replace('/^\/?\**\/? ?/', '', $line);
+        $line = trim($line);
+        $line = (string) preg_replace('/^\/?\**\/? ?/', '', $line);
 
-        if ($str_starts_with($line, '@')) {
-            // It's a tag
-            $parts = $preg_split('/\s+/', $line, 3);
-            $tag = $substr($parts[0], 1);
+        if (str_starts_with($line, '@')) {
+            $parts = preg_split('/\s+/', $line, 3);
+            $tag = substr((string) ($parts[0] ?? ''), 1);
             $type = $parts[1] ?? '';
             $desc = $parts[2] ?? '';
 
@@ -48,14 +48,12 @@ function parse(string $docComment): array
             } else {
                 $parsed['tags'][$tag][] = $type . ' ' . $desc;
             }
-        } else {
-            if ($line !== '') {
-                $descriptionLines[] = $line;
-            }
+        } elseif ($line !== '') {
+            $descriptionLines[] = $line;
         }
     }
 
-    $implode = 'implode';
-    $parsed['description'] = $implode("\n", $descriptionLines);
+    $parsed['description'] = implode("
+", $descriptionLines);
     return $parsed;
 }

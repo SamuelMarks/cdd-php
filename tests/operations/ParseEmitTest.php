@@ -8,18 +8,6 @@ use Cdd\Tests\Framework\TestCase;
 
 class ParseEmitTest extends TestCase
 {
-    public function setUp(): void
-    {
-        global $globalOperationIds;
-        $globalOperationIds = [];
-    }
-
-    public function tearDown(): void
-    {
-        global $globalOperationIds;
-        $globalOperationIds = [];
-    }
-
     public function testParseAndEmit()
     {
         $op = \Cdd\Operations\parse('getUser', [], ['201' => ['description' => 'Created']], null, 'Get a user');
@@ -116,6 +104,28 @@ class ParseEmitTest extends TestCase
         $emitted = \Cdd\Operations\emit($op, '/items', 'post');
         $this->assertStringContainsString('\Api\Daos\DaoFactory::create(\'MyItem\')', $emitted);
         $this->assertStringContainsString('$dao->create(', $emitted);
+
+        $emittedDelete = \Cdd\Operations\emit($op, '/items/{itemId}', 'delete');
+        $this->assertStringContainsString('$dao->delete($itemId)', $emittedDelete);
+
+        $opList = [
+            'operationId' => 'listItems',
+            'responses' => [
+                '200' => [
+                    'description' => 'List',
+                    'content' => [
+                        'application/json' => [
+                            'schema' => [
+                                'type' => 'array',
+                                'items' => ['$ref' => '#/components/schemas/MyItem'],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+        $emittedList = \Cdd\Operations\emit($opList, '/items', 'get');
+        $this->assertStringContainsString('$dao->getAll()', $emittedList);
     }
 
     public function testValidateOperationObjectErrors()
@@ -291,16 +301,14 @@ class ParseEmitTest extends TestCase
             ]
         ];
         // this shouldn't throw
-        \Cdd\Operations\validateOperationObject($op);
-        $this->assertTrue(true);
+        $seen = [];
+        \Cdd\Operations\validateOperationObject($op, [], $seen);
+        $this->assertArrayHasKey('testOp', $seen);
     }
     public function testValidateOperationServersNotArray()
     {
-        try {
+        $this->assertThrows(function () {
             \Cdd\Operations\validateOperationObject(['responses' => ['200' => ['description' => 'OK']], 'servers' => 'not array']);
-            $this->assertTrue(false);
-        } catch (\RuntimeException $e) {
-            $this->assertEquals('Operation "servers" must be an array', $e->getMessage());
-        }
+        }, \RuntimeException::class, 'Operation "servers" must be an array');
     }
 }

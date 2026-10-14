@@ -1,24 +1,35 @@
 <?php
 
-declare(strict_types=1);
+/**
+ * Parses and validates OpenAPI Parameter Objects.
+ *
+ * @package Cdd\Parameters
+ */
 
-declare (strict_types=1);
+declare(strict_types=1);
 
 namespace Cdd\Parameters;
 
 /**
  * Parses a parameter definition into an OpenAPI Parameter Object.
  *
- * @param string $name The parameter name
- * @param string $type The parameter type
- * @param string $in The location of the parameter
- * @param bool $required Whether the parameter is required
- * @return array The OpenAPI Parameter Object
+ * @param string $name The parameter name.
+ * @param string $type The parameter type.
+ * @param string $in The location of the parameter.
+ * @param bool $required Whether the parameter is required.
+ * @return array<string, mixed> The OpenAPI Parameter Object.
  */
 function parse(string $name, string $type, string $in = 'query', bool $required = true): array
 {
     $param = ['name' => $name, 'in' => $in, 'required' => $required, 'schema' => []];
-    $typeMap = ['int' => 'integer', 'float' => 'number', 'bool' => 'boolean', 'string' => 'string', 'array' => 'array', 'object' => 'object'];
+    $typeMap = [
+        'int' => 'integer',
+        'float' => 'number',
+        'bool' => 'boolean',
+        'string' => 'string',
+        'array' => 'array',
+        'object' => 'object',
+    ];
     if (isset($typeMap[$type])) {
         $param['schema']['type'] = $typeMap[$type];
     } else {
@@ -29,8 +40,13 @@ function parse(string $name, string $type, string $in = 'query', bool $required 
     }
     return $param;
 }
+
 /**
  * Validates a Parameter Object or Reference Object.
+ *
+ * @param mixed $parameter The Parameter or Reference Object to validate.
+ * @return void
+ * @throws \RuntimeException If validation fails.
  */
 function validateParameterOrReferenceObject(mixed $parameter): void
 {
@@ -48,8 +64,7 @@ function validateParameterOrReferenceObject(mixed $parameter): void
         throw new \RuntimeException('Parameter must contain an "in" string');
     }
     $validIn = ['query', 'querystring', 'header', 'path', 'cookie'];
-    $in_array = 'in_array';
-    if (!$in_array($parameter['in'], $validIn, true)) {
+    if (!in_array($parameter['in'], $validIn, true)) {
         throw new \RuntimeException('Parameter "in" must be one of: query, querystring, header, path, cookie');
     }
     if (isset($parameter['description']) && !is_string($parameter['description'])) {
@@ -83,9 +98,7 @@ function validateParameterOrReferenceObject(mixed $parameter): void
     }
     if ($hasSchema) {
         if ($parameter['in'] === 'querystring') {
-            if (isset($parameter['style']) || isset($parameter['explode']) || isset($parameter['allowReserved']) || isset($parameter['schema'])) {
-                throw new \RuntimeException('Fields schema, style, explode, allowReserved MUST NOT be used with in: querystring');
-            }
+            throw new \RuntimeException('Fields schema, style, explode, allowReserved MUST NOT be used with in: querystring');
         }
         if (isset($parameter['style']) && !is_string($parameter['style'])) {
             throw new \RuntimeException('Parameter "style" must be a string');
@@ -107,7 +120,7 @@ function validateParameterOrReferenceObject(mixed $parameter): void
         if (count($parameter['content']) !== 1) {
             throw new \RuntimeException('Parameter "content" map MUST only contain one entry');
         }
-        foreach ($parameter['content'] as $mediaType => $mediaTypeObj) {
+        foreach ($parameter['content'] as $mediaTypeObj) {
             \Cdd\Encoding\validateMediaTypeOrReferenceObject($mediaTypeObj);
         }
     }

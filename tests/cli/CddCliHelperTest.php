@@ -35,48 +35,30 @@ class CddCliHelperTest extends TestCase
         $this->assertTrue(strpos($out, 'Error:') !== false);
 
         ob_start();
-        CddCli::generate_docs_json([]);
+        $this->assertEquals(1, CddCli::generate_docs_json([]));
         $out = ob_get_clean();
-        $this->assertTrue(true);
 
         $config3 = new \Cdd\Cli\CddConfig();
         ob_start();
-        CddCli::generate_docs_json($config3);
+        $this->assertEquals(1, CddCli::generate_docs_json($config3));
         $out = ob_get_clean();
-        $this->assertTrue(true);
 
-        // Test the serve_json_rpc execution without blocking.
-        $process = proc_open(['php', 'bin/cdd-php', 'serve_json_rpc', '-p', '0'], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
-        if (is_resource($process)) {
-            usleep(10000); // give it a moment to start and bind
-            fclose($pipes[0]);
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-            proc_terminate($process);
-            proc_close($process);
-        }
-
-        // Also call the helper directly to cover it, but with invalid args so it fails quickly
+        // Call the helper directly with a short timeout
         ob_start();
-        CddCli::serve_json_rpc(['--port', 'invalid', '--timeout', '0.1']);
+        $this->assertEquals(0, CddCli::serve_json_rpc(['--port', '0', '--timeout', '0.01']));
         ob_get_clean();
 
-        $origTimeout = ini_get('default_socket_timeout');
-        ini_set('default_socket_timeout', '0.1');
         $_ENV['CDD_PORT'] = '0';
+        $_ENV['CDD_TIMEOUT'] = '0.01';
         $config4 = new \Cdd\Cli\CddConfig();
         ob_start();
-        CddCli::serve_json_rpc($config4);
+        $this->assertEquals(0, CddCli::serve_json_rpc($config4));
         ob_get_clean();
-        unset($_ENV['CDD_PORT']);
-        ini_set('default_socket_timeout', $origTimeout);
-
-        $this->assertTrue(true);
+        unset($_ENV['CDD_PORT'], $_ENV['CDD_TIMEOUT']);
 
         ob_start();
-        CddCli::run(['cdd-php', 'serve_json_rpc', '-p', 'invalid', '--timeout', '0.1']);
+        $this->assertEquals(0, CddCli::run(['cdd-php', 'serve_json_rpc', '-p', '0', '--timeout', '0.01']));
         ob_get_clean();
-        $this->assertTrue(true);
 
         ob_start();
         CddCli::run(['cdd-php', '-v']);
@@ -100,9 +82,8 @@ class CddCliHelperTest extends TestCase
         // Env var injection
         $_ENV['CDD_TEST_ARG'] = 'val';
         ob_start();
-        CddCli::run(['cdd-php', 'unknown_command']);
+        $this->assertEquals(1, CddCli::run(['cdd-php', 'unknown_command']));
         $out = ob_get_clean();
-        $this->assertTrue(true);
         unset($_ENV['CDD_TEST_ARG']);
 
         // App class

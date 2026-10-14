@@ -1,11 +1,19 @@
 <?php
 
+/**
+ * Emits a standalone PHP development server script (`server.php`).
+ *
+ * @package Cdd\StandaloneServer
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\StandaloneServer;
 
 /**
- * emit
+ * Emits a standalone development server script for PHP's built-in web server.
+ *
+ * @return string The generated standalone server PHP code.
  */
 function emit(): string
 {
@@ -46,9 +54,9 @@ foreach (MockRoute::$routes as $route) {
 
         $executed = false;
         if (is_array($action)) {
-            $class = ltrim($action[0], '\\');
+            $class = ltrim($action[0], '');
             $methodName = $action[1];
-            $file = __DIR__ . '/src/Controllers/' . basename(str_replace('\\', '/', $class)) . '.php';
+            $file = __DIR__ . '/src/Controllers/' . basename(str_replace('', '/', $class)) . '.php';
             if (file_exists($file)) require_once $file;
             if (class_exists($class)) {
                 $instance = new $class();

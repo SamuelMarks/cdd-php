@@ -8,22 +8,6 @@ use Cdd\Tests\Framework\TestCase;
 
 class ParseEmitTest extends TestCase
 {
-    protected function assertThrows(\Closure $closure, string $exceptionClass, ?string $exceptionMessage = null)
-    {
-        try {
-            $closure();
-        } catch (\Throwable $e) {
-            if (!($e instanceof $exceptionClass)) {
-                throw new \Exception("Expected exception $exceptionClass, got " . get_class($e));
-            }
-            if ($exceptionMessage !== null && $e->getMessage() !== $exceptionMessage) {
-                throw new \Exception("Expected exception message '$exceptionMessage', got '{$e->getMessage()}'");
-            }
-            return;
-        }
-        throw new \Exception("Expected exception $exceptionClass was not thrown");
-    }
-
     public function testParseAndEmit()
     {
         $res = \Cdd\Responses\parse('201', 'User', 'Created user');
@@ -95,12 +79,14 @@ class ParseEmitTest extends TestCase
         ]);
 
         // Links
-        \Cdd\Responses\validateResponseOrReferenceObject([
+        $respWithLinks = [
             'description' => 'valid',
             'links' => [
                 'LinkName' => ['operationId' => 'op']
             ]
-        ]);
+        ];
+        \Cdd\Responses\validateResponseOrReferenceObject($respWithLinks);
+        $this->assertEquals(" * @return mixed\n", \Cdd\Responses\emit(['200' => $respWithLinks]));
     }
 
     public function testValidateResponseObjectFailures()
@@ -129,10 +115,11 @@ class ParseEmitTest extends TestCase
     public function testValidateHeaderObject()
     {
         \Cdd\Responses\validateHeaderOrReferenceObject(['$ref' => '#/components/headers/Ref']);
-        \Cdd\Responses\validateHeaderOrReferenceObject([
+        $header = [
             'description' => 'valid header',
             'schema' => ['type' => 'string']
-        ]);
+        ];
+        \Cdd\Responses\validateHeaderOrReferenceObject($header);
         \Cdd\Responses\validateHeaderOrReferenceObject([
             'content' => [
                 'application/json' => []
@@ -145,6 +132,7 @@ class ParseEmitTest extends TestCase
             'style' => 'simple',
             'explode' => false
         ]);
+        $this->assertStringContainsString('valid header', \Cdd\Encoding\emit_header($header));
     }
 
     public function testValidateHeaderObjectFailures()
@@ -224,9 +212,9 @@ class ParseEmitTest extends TestCase
             'requestBody' => ['a'],
             'server' => ['url' => 'http://example.com']
         ]);
-        \Cdd\Responses\validateLinkOrReferenceObject([
-            'operationRef' => '#/paths/~1foo/get'
-        ]);
+        $linkRef = ['operationRef' => '#/paths/~1foo/get'];
+        \Cdd\Responses\validateLinkOrReferenceObject($linkRef);
+        $this->assertEquals('#/paths/~1foo/get', $linkRef['operationRef']);
     }
 
     public function testValidateLinkObjectFailures()

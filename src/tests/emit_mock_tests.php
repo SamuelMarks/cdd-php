@@ -1,11 +1,20 @@
 <?php
 
+/**
+ * Emits PHPUnit tests for generated Mock Server DAOs, Database, and Seeder.
+ *
+ * @package Cdd\Tests
+ */
+
 declare(strict_types=1);
 
 namespace Cdd\Tests;
 
 /**
  * Emits tests for Mock Server DAOs, DB, and Seeder.
+ *
+ * @param array<string, array<string, mixed>> $schemas Map of schema names to OpenAPI Schema Objects.
+ * @return array<string, string> Map of relative test filenames to generated PHP code.
  */
 function emit_mock_tests(array $schemas): array
 {
@@ -52,7 +61,7 @@ function emit_mock_tests(array $schemas): array
         $seederTests .= "        \$records = \$dao->getAll();\n";
         $seederTests .= "        \$this->assertNotEmpty(\$records);\n";
     } else {
-        /*cov_ignore*/ $seederTests .= "        \$this->assertTrue(true);\n";
+        $seederTests .= "        \$this->assertTrue(true);\n";
     }
     $seederTests .= "    }\n";
     $seederTests .= "}\n";
