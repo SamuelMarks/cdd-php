@@ -29,34 +29,21 @@ function emit(array $schemas, string $namespace = ''): string
 declare(strict_types=1);
 
 ";
+    $bs = chr(92);
     if ($namespace !== '') {
-        $out .= "namespace {$namespace};
-
-";
-        $out .= "use Api\Database\DatabaseConnection;
-";
+        $out .= "namespace {$namespace};\n\n";
+        $out .= "use Api{$bs}Database{$bs}DatabaseConnection;\n";
         foreach (array_keys($schemas) as $schemaName) {
-            $out .= "use Api\Models\{$schemaName};
-";
+            $out .= "use Api{$bs}Models{$bs}{$schemaName};\n";
         }
     }
-    $out .= "use Faker\Factory as FakerFactory;
-";
-    $out .= "use Illuminate\Database\Capsule\Manager as Capsule;
+    $out .= "use Faker{$bs}Factory as FakerFactory;\n";
+    $out .= "use Illuminate{$bs}Database{$bs}Capsule{$bs}Manager as Capsule;\n\n";
 
-";
-
-    $out .= "/**
- * Seeder class to populate the database with fake data.
- */
-";
-    $out .= "class DatabaseSeeder {
-";
-    $out .= "    private \Faker\Generator \$faker;
-";
-    $out .= "    private array \$entityPool = [];
-
-";
+    $out .= "/**\n * Seeder class to populate the database with fake data.\n */\n";
+    $out .= "class DatabaseSeeder {\n";
+    $out .= "    private {$bs}Faker{$bs}Generator \$faker;\n";
+    $out .= "    private array \$entityPool = [];\n\n";
 
     $out .= "    public function __construct() {
 ";

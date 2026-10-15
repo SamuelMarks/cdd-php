@@ -22,15 +22,7 @@ function emit(string $className, array $schema, string $namespace = ''): string
 {
     $out = '';
     if ($namespace !== '') {
-        $out .= "<?php
-
-declare(strict_types=1);
-
-namespace {$namespace};
-
-use Illuminate\Database\Eloquent\Model;
-
-";
+        $out .= "<?php\n\ndeclare(strict_types=1);\n\nnamespace {$namespace};\n\nuse Illuminate\\Database\\Eloquent\\Model;\n\n";
     }
 
     $docTags = [];

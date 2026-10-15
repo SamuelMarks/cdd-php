@@ -30,7 +30,7 @@ class CddCliMcpTest extends TestCase
             2 => ['pipe', 'w'],
         ];
 
-        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg$/', 'php', PHP_BINARY) : PHP_BINARY;
+        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg([0-9.]*)$/', 'php$1', PHP_BINARY) : PHP_BINARY;
         $process = proc_open("$phpBin bin/cdd-php mcp", $descriptorspec, $pipes);
         $this->assertTrue(is_resource($process));
 
@@ -130,7 +130,7 @@ class CddCliMcpTest extends TestCase
             2 => ['pipe', 'w'],
         ];
 
-        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg$/', 'php', PHP_BINARY) : PHP_BINARY;
+        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg([0-9.]*)$/', 'php$1', PHP_BINARY) : PHP_BINARY;
         $phpCode = 'require_once __DIR__."/src/cli/CddCli.php"; require_once __DIR__."/src/cli/Cli.php"; $res = \Cdd\Cli\CddCli::sample_llm([["role"=>"user", "content"=>"hello"]], 10, "sys"); echo json_encode($res);';
         $process = proc_open($phpBin . ' -r ' . escapeshellarg($phpCode), $descriptorspec, $pipes, dirname(__DIR__, 2));
         $this->assertTrue(is_resource($process));
@@ -168,7 +168,7 @@ class CddCliMcpTest extends TestCase
             2 => ['pipe', 'w'],
         ];
 
-        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg$/', 'php', PHP_BINARY) : PHP_BINARY;
+        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg([0-9.]*)$/', 'php$1', PHP_BINARY) : PHP_BINARY;
         $phpCode = 'require_once __DIR__."/src/cli/CddCli.php"; require_once __DIR__."/src/cli/Cli.php"; try { \Cdd\Cli\CddCli::sample_llm([["role"=>"user", "content"=>"hello"]]); } catch (\Exception $e) { echo $e->getMessage(); }';
         $process = proc_open($phpBin . ' -r ' . escapeshellarg($phpCode), $descriptorspec, $pipes, dirname(__DIR__, 2));
         $this->assertTrue(is_resource($process));

@@ -19,86 +19,39 @@ namespace Cdd\Tests;
 function emit_mock_tests(array $schemas): array
 {
     $files = [];
+    $bs = chr(92);
 
     foreach ($schemas as $name => $schema) {
-        $daoTest = "<?php
-
-declare(strict_types=1);
-
-namespace Api\Tests\Daos;
-
-use PHPUnit\Framework\TestCase;
-use Api\Daos\DaoFactory;
-use Api\Daos\Stub{$name}Dao;
-
-class {$name}DaoTest extends TestCase {
-";
-        $daoTest .= "    public function test{$name}StubDaoThrows(): void {
-";
-        $daoTest .= "        \$dao = DaoFactory::create('{$name}', false);
-";
-        $daoTest .= "        \$this->assertInstanceOf(Stub{$name}Dao::class, \$dao);
-";
-        $daoTest .= "        \$this->expectException(\RuntimeException::class);
-";
-        $daoTest .= "        \$dao->getAll();
-";
-        $daoTest .= "    }
-";
-        $daoTest .= "}
-";
+        $daoTest = "<?php\n\ndeclare(strict_types=1);\n\nnamespace Api{$bs}Tests{$bs}Daos;\n\nuse PHPUnit{$bs}Framework{$bs}TestCase;\nuse Api{$bs}Daos{$bs}DaoFactory;\nuse Api{$bs}Daos{$bs}Stub{$name}Dao;\n\nclass {$name}DaoTest extends TestCase {\n";
+        $daoTest .= "    public function test{$name}StubDaoThrows(): void {\n";
+        $daoTest .= "        \$dao = DaoFactory::create('{$name}', false);\n";
+        $daoTest .= "        \$this->assertInstanceOf(Stub{$name}Dao::class, \$dao);\n";
+        $daoTest .= "        \$this->expectException({$bs}RuntimeException::class);\n";
+        $daoTest .= "        \$dao->getAll();\n";
+        $daoTest .= "    }\n";
+        $daoTest .= "}\n";
         $files["Daos/{$name}DaoTest.php"] = $daoTest;
     }
 
-    $dbTests = "<?php
-
-declare(strict_types=1);
-
-namespace Api\Tests\Database;
-
-use PHPUnit\Framework\TestCase;
-use Illuminate\Database\Capsule\Manager as Capsule;
-use Api\Database\DatabaseConnection;
-
-class DatabaseTest extends TestCase {
-";
-    $dbTests .= "    public function testEphemeralConnection(): void {
-";
-    $dbTests .= "        \$capsule = DatabaseConnection::connect(true);
-";
-    $dbTests .= "        \$this->assertInstanceOf(Capsule::class, \$capsule);
-";
-    $dbTests .= "        DatabaseConnection::migrate();
-";
+    $dbTests = "<?php\n\ndeclare(strict_types=1);\n\nnamespace Api{$bs}Tests{$bs}Database;\n\nuse PHPUnit{$bs}Framework{$bs}TestCase;\nuse Illuminate{$bs}Database{$bs}Capsule{$bs}Manager as Capsule;\nuse Api{$bs}Database{$bs}DatabaseConnection;\n\nclass DatabaseTest extends TestCase {\n";
+    $dbTests .= "    public function testEphemeralConnection(): void {\n";
+    $dbTests .= "        \$capsule = DatabaseConnection::connect(true);\n";
+    $dbTests .= "        \$this->assertInstanceOf(Capsule::class, \$capsule);\n";
+    $dbTests .= "        DatabaseConnection::migrate();\n";
     if (!empty($schemas)) {
         $firstTable = strtolower((string) array_keys($schemas)[0]) . 's';
-        $dbTests .= "        \$this->assertTrue(Capsule::schema()->hasTable('{$firstTable}'));
-";
+        $dbTests .= "        \$this->assertTrue(Capsule::schema()->hasTable('{$firstTable}'));\n";
     } else {
-        $dbTests .= "        \$this->assertNotNull(\$capsule->getConnection());
-";
+        $dbTests .= "        \$this->assertNotNull(\$capsule->getConnection());\n";
     }
-    $dbTests .= "    }
-";
-    $dbTests .= "}
-";
+    $dbTests .= "    }\n";
+    $dbTests .= "}\n";
     $files['Database/DatabaseTest.php'] = $dbTests;
 
-    $seederTests = "<?php
-
-declare(strict_types=1);
-
-namespace Api\Tests\Seeder;
-
-use PHPUnit\Framework\TestCase;
-use Api\Database\DatabaseConnection;
-use Api\Seeder\DatabaseSeeder;
-use Api\Daos\DaoFactory;
-";
+    $seederTests = "<?php\n\ndeclare(strict_types=1);\n\nnamespace Api{$bs}Tests{$bs}Seeder;\n\nuse PHPUnit{$bs}Framework{$bs}TestCase;\nuse Api{$bs}Database{$bs}DatabaseConnection;\nuse Api{$bs}Seeder{$bs}DatabaseSeeder;\nuse Api{$bs}Daos{$bs}DaoFactory;\n";
     if (!empty($schemas)) {
         $firstName = array_keys($schemas)[0];
-        $seederTests .= "use Api\Daos\Concrete{$firstName}Dao;
-";
+        $seederTests .= "use Api{$bs}Daos{$bs}Concrete{$firstName}Dao;\n";
     }
     $seederTests .= "
 class SeederTest extends TestCase {

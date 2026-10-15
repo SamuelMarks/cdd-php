@@ -28,14 +28,9 @@ declare(strict_types=1);
 
 ";
     if ($namespace !== '') {
-        $out .= "namespace {$namespace};
-
-";
-        $out .= "use Api\Database\DatabaseConnection;
-";
-        $out .= "use Api\Seeder\DatabaseSeeder;
-
-";
+        $out .= "namespace {$namespace};\n\n";
+        $out .= "use Api\\Database\\DatabaseConnection;\n";
+        $out .= "use Api\\Seeder\\DatabaseSeeder;\n\n";
     }
     $out .= "class ServerRunner {
 ";
@@ -87,32 +82,19 @@ declare(strict_types=1);
 ";
     $out .= "                DatabaseConnection::migrate();
 ";
-    $out .= "            } elseif (class_exists('DatabaseConnection')) {
-";
-    $out .= "                \DatabaseConnection::connect(\$this->isEphemeral);
-";
-    $out .= "                \DatabaseConnection::migrate();
-";
-    $out .= "            }
-";
-    $out .= "            if (\$this->shouldSeed) {
-";
-    $out .= "                if (class_exists(DatabaseSeeder::class)) {
-";
-    $out .= "                    \$seeder = new DatabaseSeeder();
-";
-    $out .= "                    \$seeder->seed();
-";
-    $out .= "                } elseif (class_exists('DatabaseSeeder')) {
-";
-    $out .= "                    \$seeder = new \DatabaseSeeder();
-";
-    $out .= "                    \$seeder->seed();
-";
-    $out .= "                }
-";
-    $out .= "            }
-";
+    $out .= "            } elseif (class_exists('DatabaseConnection')) {\n";
+    $out .= "                \\DatabaseConnection::connect(\$this->isEphemeral);\n";
+    $out .= "                \\DatabaseConnection::migrate();\n";
+    $out .= "            }\n";
+    $out .= "            if (\$this->shouldSeed) {\n";
+    $out .= "                if (class_exists(DatabaseSeeder::class)) {\n";
+    $out .= "                    \$seeder = new DatabaseSeeder();\n";
+    $out .= "                    \$seeder->seed();\n";
+    $out .= "                } elseif (class_exists('DatabaseSeeder')) {\n";
+    $out .= "                    \$seeder = new \\DatabaseSeeder();\n";
+    $out .= "                    \$seeder->seed();\n";
+    $out .= "                }\n";
+    $out .= "            }\n";
     $out .= "        }
 ";
     $out .= "    }

@@ -59,14 +59,7 @@ function emitServerProject(array $openapi, string $outDir, string $srcDir): void
     if (!is_dir($excDir)) {
         mkdir($excDir, 0777, true);
     }
-    file_put_contents("$excDir/MockServerError.php", "<?php
-
-declare(strict_types=1);
-
-namespace Api\Exceptions;
-
-class MockServerError extends \RuntimeException {}
-");
+    file_put_contents("$excDir/MockServerError.php", "<?php\n\ndeclare(strict_types=1);\n\nnamespace Api\\Exceptions;\n\nclass MockServerError extends \\RuntimeException {}\n");
 
     $serverRunnerCode = \Cdd\ServerCli\emit('Api');
     file_put_contents("$srcDir/ServerRunner.php", $serverRunnerCode);
@@ -134,15 +127,7 @@ function generateDummySchemaValue(array $schema, array $openapi): mixed
  */
 function emitSdkIntegrationTests(array $openapi, string $testsDir): void
 {
-    $sdkTestCode = "<?php
-
-declare(strict_types=1);
-
-use PHPUnit\Framework\TestCase;
-use Api\ApiClient;
-
-class SdkIntegrationTest extends TestCase {
-";
+    $sdkTestCode = "<?php\n\ndeclare(strict_types=1);\n\nuse PHPUnit\\Framework\\TestCase;\nuse Api\\ApiClient;\n\nclass SdkIntegrationTest extends TestCase {\n";
     $sdkTestCode .= "    private ApiClient \$client;
 
 ";
@@ -231,7 +216,7 @@ class SdkIntegrationTest extends TestCase {
 
                 $paramsStr = empty($dummyParams) ? '[]' : var_export($dummyParams, true);
                 $bodyStr = empty($dummyBody) ? '[]' : var_export($dummyBody, true);
-                $bodyStr = str_replace("'___CURLFILE_PLACEHOLDER___'", "new \CURLFile(sys_get_temp_dir() . '/dummy.txt', '', 'dummy.txt')", $bodyStr);
+                $bodyStr = str_replace("'___CURLFILE_PLACEHOLDER___'", "new \\CURLFile(sys_get_temp_dir() . '/dummy.txt', '', 'dummy.txt')", $bodyStr);
 
                 $sdkTestCode .= "        \$response = \$this->client->{$opId}($paramsStr, $bodyStr);
 ";
@@ -286,7 +271,7 @@ function emitProjectScaffolding(string $outDir, string $subcommand, bool $noInst
                 ],
                 'autoload' => [
                     'psr-4' => [
-                        'Api' => 'src/',
+                        'Api\\' => 'src/',
                     ],
                 ],
             ];
@@ -671,14 +656,7 @@ return \$mocks;
                     file_put_contents("$routeTestsDir/$filename", $code);
                 }
             } else {
-                $phpunitCode = "<?php
-
-// Auto-generated tests
-
-use PHPUnit\Framework\TestCase;
-
-class ApiTests extends TestCase {
-";
+                $phpunitCode = "<?php\n\n// Auto-generated tests\n\nuse PHPUnit\\Framework\\TestCase;\n\nclass ApiTests extends TestCase {\n";
                 $composableCode = "<?php
 
 // Auto-generated tests

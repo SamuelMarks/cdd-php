@@ -123,11 +123,7 @@ function emit_modular_single(string $method, string $path, array $operation): ar
     }
     $opId = (string) ($operation['operationId'] ?? $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', $path));
     $className = ucfirst($opId) . 'Controller';
-    $code = "<?php
-
-namespace Api\Controllers;
-
-";
+    $code = "<?php\n\nnamespace Api\\Controllers;\n\n";
     $methodCode = \Cdd\Operations\emit($operation, $path, $method, true);
     $code .= "class $className
 {

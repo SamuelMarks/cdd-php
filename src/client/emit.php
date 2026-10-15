@@ -235,7 +235,7 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
         $mcpCode .= "                        ]\n";
         $mcpCode .= "                    ];\n";
         $mcpCode .= "                }\n";
-        $mcpCode .= "                throw new \Exception(\"Unknown resource: \" . \$uri);\n";
+        $mcpCode .= "                throw new \\Exception(\"Unknown resource: \" . \$uri);\n";
         $mcpCode .= "            }\n";
         $mcpCode .= "            public function execute_tool(string \$name, array \$args) {\n";
         $mcpCode .= "                switch (\$name) {\n";
@@ -255,7 +255,7 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
             $mcpCode .= "                        return \$this->client->$opId(\$params, \$body);\n";
         }
         $mcpCode .= "                    default:\n";
-        $mcpCode .= "                        throw new \Exception(\"Unknown tool: \" . \$name);\n";
+        $mcpCode .= "                        throw new \\Exception(\"Unknown tool: \" . \$name);\n";
         $mcpCode .= "                }\n";
         $mcpCode .= "            }\n";
         $mcpCode .= "        };\n";
@@ -278,7 +278,7 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
         $mcpConnectCode .= "                2 => [\"pipe\", \"w\"]\n";
         $mcpConnectCode .= "            ];\n";
         $mcpConnectCode .= "            \$process = proc_open(\$transport, \$descriptorspec, \$pipes);\n";
-        $mcpConnectCode .= "            if (!is_resource(\$process)) throw new \Exception('Failed to start MCP server');\n";
+        $mcpConnectCode .= "            if (!is_resource(\$process)) throw new \\Exception('Failed to start MCP server');\n";
         $mcpConnectCode .= "            \$rpcCall = function(\$method, \$params = [], ?callable \$onNotification = null, bool \$isNotification = false, ?callable \$onSampling = null) use (&\$pipes) {\n";
         $mcpConnectCode .= "                \$id = uniqid();\n";
         $mcpConnectCode .= "                if (\$onNotification) \$params['_meta'] = ['progressToken' => \$id];\n";
@@ -306,10 +306,10 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
         $mcpConnectCode .= "        } elseif (is_callable(\$transport)) {\n";
         $mcpConnectCode .= "            \$rpcCall = \$transport;\n";
         $mcpConnectCode .= "        } else {\n";
-        $mcpConnectCode .= "            throw new \Exception('Invalid transport provided');\n";
+        $mcpConnectCode .= "            throw new \\Exception('Invalid transport provided');\n";
         $mcpConnectCode .= "        }\n";
         $mcpConnectCode .= "        \$init = \$rpcCall('initialize', ['protocolVersion' => '2024-11-05', 'capabilities' => [], 'clientInfo' => ['name' => 'cdd-client', 'version' => '1.0.0']]);\n";
-        $mcpConnectCode .= "        if (!isset(\$init['result'])) throw new \Exception('MCP initialization failed');\n";
+        $mcpConnectCode .= "        if (!isset(\$init['result'])) throw new \\Exception('MCP initialization failed');\n";
         $mcpConnectCode .= "        \$rpcCall('initialized', [], null, true);\n";
         $mcpConnectCode .= "        return new class(\$rpcCall, \$process, \$pipes) {\n";
         $mcpConnectCode .= "            private \$rpcCall;\n";
@@ -340,9 +340,9 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
         $mcpConnectCode .= "                \$res = \$call('tools/call', ['name' => \$name, 'arguments' => \$args], \$onNotification, false, \$onSampling);\n";
         $mcpConnectCode .= "                if (isset(\$res['result']['isError']) && \$res['result']['isError'] === true) {\n";
         $mcpConnectCode .= "                     \$msg = \$res['result']['content'][0]['text'] ?? 'Tool execution returned an error state (e.g., User Denied).';\n";
-        $mcpConnectCode .= "                     throw new \Exception(\$msg);\n";
+        $mcpConnectCode .= "                     throw new \\Exception(\$msg);\n";
         $mcpConnectCode .= "                }\n";
-        $mcpConnectCode .= "                if (isset(\$res['error'])) throw new \Exception(\$res['error']['message'] ?? 'Tool execution failed');\n";
+        $mcpConnectCode .= "                if (isset(\$res['error'])) throw new \\Exception(\$res['error']['message'] ?? 'Tool execution failed');\n";
         $mcpConnectCode .= "                return \$res['result']['content'][0]['text'] ?? null;\n";
         $mcpConnectCode .= "            }\n";
         $mcpConnectCode .= "            public function ping() {\n";
@@ -364,7 +364,7 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
         $mcpConnectCode .= "            public function read_resource(string \$uri) {\n";
         $mcpConnectCode .= "                \$call = \$this->rpcCall;\n";
         $mcpConnectCode .= "                \$res = \$call('resources/read', ['uri' => \$uri]);\n";
-        $mcpConnectCode .= "                if (isset(\$res['error'])) throw new \Exception(\$res['error']['message'] ?? 'Resource read failed');\n";
+        $mcpConnectCode .= "                if (isset(\$res['error'])) throw new \\Exception(\$res['error']['message'] ?? 'Resource read failed');\n";
         $mcpConnectCode .= "                return \$res['result']['contents'] ?? [];\n";
         $mcpConnectCode .= "            }\n";
         $mcpConnectCode .= "        };\n";

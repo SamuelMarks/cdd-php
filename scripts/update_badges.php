@@ -42,7 +42,7 @@ function getColor(int|float $pct): string
 }
 
 // Test coverage
-$testOutput = shell_exec("phpdbg -qrr -d memory_limit=512M bin/check_coverage.php 2>/dev/null");
+$testOutput = (string) shell_exec('phpdbg -qrr -d memory_limit=512M ' . escapeshellarg($rootDir . '/bin/check_coverage.php') . ' 2>/dev/null');
 $testCov = 0;
 if (preg_match('/^100$/m', trim($testOutput))) {
     $testCov = 100;
@@ -51,7 +51,7 @@ if (preg_match('/^100$/m', trim($testOutput))) {
 }
 
 // Doc coverage
-$docOutput = shell_exec("php bin/check_docs.php 2>/dev/null");
+$docOutput = (string) shell_exec('php ' . escapeshellarg($rootDir . '/bin/check_docs.php') . ' 2>/dev/null');
 $docCov = 0;
 if (preg_match('/Doc Coverage:\s*([0-9.]+)/', $docOutput, $matches)) {
     $docCov = (int) $matches[1];

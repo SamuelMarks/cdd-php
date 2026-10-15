@@ -46,7 +46,7 @@ function emit(array $paths, string $existingCode = ''): string
         return $out;
     }
 
-    $out = "<?php\n\nuse Illuminate\Support\Facades\Route;\n\n";
+    $out = "<?php\n\nuse Illuminate\\Support\\Facades\\Route;\n\n";
     foreach ($paths as $path => $methods) {
         foreach ((array)$methods as $method => $operation) {
             if ($method === 'additionalOperations' && is_array($operation)) {
@@ -83,7 +83,7 @@ function emit_modular(array $paths): array
         $group = !empty($parts[0]) ? ucfirst((string) preg_replace('/[^a-zA-Z0-9]/', '', $parts[0])) : 'Default';
 
         if (!isset($grouped[$group])) {
-            $grouped[$group] = "<?php\n\nuse Illuminate\Support\Facades\Route;\n\n";
+            $grouped[$group] = "<?php\n\nuse Illuminate\\Support\\Facades\\Route;\n\n";
         }
 
         foreach ((array)$methods as $method => $operation) {
@@ -120,5 +120,6 @@ function emit_modular_single_route(string $method, string $path, array $operatio
     }
     $opId = $operation['operationId'] ?? $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', $path);
     $className = ucfirst($opId) . 'Controller';
-    return "Route::$methodStr('$path', [\Api\Controllers\\$className::class, '__invoke']);\n";
+    $bs = chr(92);
+    return "Route::$methodStr('$path', [{$bs}Api{$bs}Controllers{$bs}{$className}::class, '__invoke']);\n";
 }

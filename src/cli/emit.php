@@ -105,7 +105,7 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "            while ((\$line = fgets(STDIN)) !== false) {\n";
     $out .= "                \$res = json_decode(\$line, true);\n";
     $out .= "                if (\$res && isset(\$res['id']) && \$res['id'] === \$id) {\n";
-    $out .= "                    if (isset(\$res['error'])) throw new \Exception(\$res['error']['message'] ?? 'Sampling failed');\n";
+    $out .= "                    if (isset(\$res['error'])) throw new \\Exception(\$res['error']['message'] ?? 'Sampling failed');\n";
     $out .= "                    return \$res['result'] ?? null;\n";
     $out .= "                }\n";
     $out .= "            }\n";
@@ -270,12 +270,12 @@ function emit(array $paths, string $existingCode = ''): string
         $out .= "                            break;\n";
     }
     $out .= "                        default:\n";
-    $out .= "                            throw new \Exception(\"Unknown tool: \" . \$name);\n";
+    $out .= "                            throw new \\Exception(\"Unknown tool: \" . \$name);\n";
     $out .= "                    }\n";
     $out .= "                    \$res['result'] = [\n";
     $out .= "                        'content' => [['type' => 'text', 'text' => is_string(\$callRes) ? \$callRes : json_encode(\$callRes)]]\n";
     $out .= "                    ];\n";
-    $out .= "                } catch (\Throwable \$e) {\n";
+    $out .= "                } catch (\\Throwable \$e) {\n";
     $out .= "                    \$res['result'] = [\n";
     $out .= "                        'content' => [['type' => 'text', 'text' => 'Error: ' . \$e->getMessage()]],\n";
     $out .= "                        'isError' => true\n";

@@ -180,9 +180,14 @@ class EmitOptionsTest extends TestCase
 
         $composerJson = json_decode((string) file_get_contents($outDir . '/composer.json'), true);
         $this->assertTrue(isset($composerJson['require']));
+        $this->assertEquals('src/', $composerJson['autoload']['psr-4']['Api\\']);
         $this->assertTrue(!isset($composerJson['require']['illuminate/database']));
         $this->assertTrue(!isset($composerJson['require']['fakerphp/faker']));
         $this->assertTrue(!file_exists($outDir . '/README.md'));
+        $sdkTestContents = (string) file_get_contents($outDir . '/tests/SdkIntegrationTest.php');
+        $this->assertStringContainsString('use PHPUnit\\Framework\\TestCase;', $sdkTestContents);
+        $this->assertStringContainsString('use Api\\ApiClient;', $sdkTestContents);
+        $this->assertStringContainsString('new \\CURLFile(', $sdkTestContents);
 
         $this->removeDir($outDir);
     }
@@ -259,10 +264,13 @@ class EmitOptionsTest extends TestCase
         $this->assertTrue(file_exists($outDir . '/composer.json'));
         $composerJson = json_decode((string) file_get_contents($outDir . '/composer.json'), true);
         $this->assertTrue(isset($composerJson['require']));
+        $this->assertEquals('src/', $composerJson['autoload']['psr-4']['Api\\']);
         $this->assertTrue(isset($composerJson['require']['illuminate/database']));
         $this->assertTrue(isset($composerJson['require']['fakerphp/faker']));
         $this->assertTrue(isset($composerJson['require']['ext-pdo']));
         $this->assertTrue(isset($composerJson['require']['ext-pdo_sqlite']));
+        $this->assertStringContainsString('namespace Api\\Exceptions;', (string) file_get_contents($outDir . '/src/Exceptions/MockServerError.php'));
+        $this->assertStringContainsString('\\Api\\Controllers\\Mcp_sseController::class', $mcpRouteCode);
 
         $this->assertTrue(file_exists($outDir . '/README.md'));
         $readmeContents = (string) file_get_contents($outDir . '/README.md');

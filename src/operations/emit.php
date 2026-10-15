@@ -144,18 +144,18 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
                 $implementation .= "    echo json_encode(\$record->toArray());\n";
             } else {
                 // it's a getAll
-                $implementation = "    \$dao = \Api\Daos\DaoFactory::create('{$primarySchema}');\n";
+                $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
                 $implementation .= "    \$records = \$dao->getAll();\n";
                 $implementation .= "    header('Content-Type: application/json');\n";
                 $implementation .= "    echo json_encode(array_map(fn(\$r) => \$r->toArray(), \$records));\n";
             }
         } elseif (strtolower($method) === 'post') {
-            $implementation = "    \$dao = \Api\Daos\DaoFactory::create('{$primarySchema}');\n";
+            $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
             $implementation .= "    \$record = \$dao->create(json_decode(file_get_contents('php://input'), true) ?? []);\n";
             $implementation .= "    header('Content-Type: application/json');\n";
             $implementation .= "    echo json_encode(\$record->toArray());\n";
         } elseif (strtolower($method) === 'delete') {
-            $implementation = "    \$dao = \Api\Daos\DaoFactory::create('{$primarySchema}');\n";
+            $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
             $idVar = 'id';
             if (preg_match('/\{([^}]+)\}/', $path, $matches)) {
                 $idVar = $matches[1];

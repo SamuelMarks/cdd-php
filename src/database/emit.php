@@ -29,15 +29,10 @@ declare(strict_types=1);
 
 ";
     if ($namespace !== '') {
-        $out .= "namespace {$namespace};
-
-";
+        $out .= "namespace {$namespace};\n\n";
     }
-    $out .= "use Illuminate\Database\Capsule\Manager as Capsule;
-";
-    $out .= "use Illuminate\Database\Schema\Blueprint;
-
-";
+    $out .= "use Illuminate\\Database\\Capsule\\Manager as Capsule;\n";
+    $out .= "use Illuminate\\Database\\Schema\\Blueprint;\n\n";
 
     $out .= "/**
  * Manages database connection and migrations.
