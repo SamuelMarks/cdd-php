@@ -31,7 +31,7 @@ class BundleWasmPayloadTest extends TestCase
         file_put_contents($payloadFile, 'test_payload_data');
 
         $script = (string) realpath(__DIR__ . '/../../scripts/bundle_wasm_payload.php');
-        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg$/', 'php', PHP_BINARY) : PHP_BINARY;
+        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg([0-9.]*)$/', 'php$1', PHP_BINARY) : PHP_BINARY;
         exec(escapeshellarg($phpBin) . ' ' . escapeshellarg($script) . ' ' . escapeshellarg($wasmFile) . ' ' . escapeshellarg($payloadFile), $output, $ret);
 
         $this->assertEquals(0, $ret);
