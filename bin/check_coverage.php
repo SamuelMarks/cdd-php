@@ -25,29 +25,27 @@ require_once __DIR__ . '/../tests/framework/Runner.php';
 
 $srcDir = realpath(__DIR__ . '/../src');
 if ($srcDir === false) {
-    echo "Failed to resolve src directory
-";
+    echo "Failed to resolve src directory\n";
     exit(1);
 }
 
-// Load all src files and verify no coverage-ignore comments exist
+$testClasses = \Cdd\Tests\Framework\Runner::discoverTestClasses($dir);
+
+phpdbg_start_oplog();
+
+// Load all src files after starting oplog so top-level opcodes are recorded, and verify no coverage-ignore comments exist
 $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($srcDir));
 foreach ($files as $file) {
     if ($file->isFile() && str_ends_with($file->getFilename(), '.php')) {
         $path = $file->getPathname();
         $rawContent = (string) file_get_contents($path);
         if (strpos($rawContent, 'cov_ignore') !== false || strpos($rawContent, '@codeCoverageIgnore') !== false) {
-            echo "Forbidden coverage ignore directive found in: $path
-";
+            echo "Forbidden coverage ignore directive found in: $path\n";
             exit(1);
         }
         require_once $path;
     }
 }
-
-$testClasses = \Cdd\Tests\Framework\Runner::discoverTestClasses($dir);
-
-phpdbg_start_oplog();
 
 $passed = 0;
 $failed = 0;

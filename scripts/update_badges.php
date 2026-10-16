@@ -42,7 +42,13 @@ function getColor(int|float $pct): string
 }
 
 // Test coverage
-$testOutput = (string) shell_exec('phpdbg -qrr -d memory_limit=512M ' . escapeshellarg($rootDir . '/bin/check_coverage.php') . ' 2>/dev/null');
+$phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg([0-9.]*)$/', 'php$1', PHP_BINARY) : PHP_BINARY;
+$phpdbgBin = PHP_SAPI === 'phpdbg' ? PHP_BINARY : (string) preg_replace('/php([0-9.]*)$/', 'phpdbg$1', PHP_BINARY);
+if (!is_executable($phpdbgBin)) {
+    $phpdbgBin = 'phpdbg';
+}
+$testCmd = escapeshellarg($phpdbgBin) . ' -qrr -d memory_limit=512M -d opcache.enable=0 -d opcache.enable_cli=0 -d opcache.jit=0 ' . escapeshellarg($rootDir . '/bin/check_coverage.php') . ' 2>/dev/null';
+$testOutput = (string) shell_exec($testCmd);
 $testCov = 0;
 if (preg_match('/^100$/m', trim($testOutput))) {
     $testCov = 100;
@@ -51,7 +57,8 @@ if (preg_match('/^100$/m', trim($testOutput))) {
 }
 
 // Doc coverage
-$docOutput = (string) shell_exec('php ' . escapeshellarg($rootDir . '/bin/check_docs.php') . ' 2>/dev/null');
+$docCmd = escapeshellarg($phpBin) . ' ' . escapeshellarg($rootDir . '/bin/check_docs.php') . ' 2>/dev/null';
+$docOutput = (string) shell_exec($docCmd);
 $docCov = 0;
 if (preg_match('/Doc Coverage:\s*([0-9.]+)/', $docOutput, $matches)) {
     $docCov = (int) $matches[1];

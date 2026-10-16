@@ -35,7 +35,10 @@ jobs:
       run: vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --allow-risky=yes --using-cache=no -q
 
     - name: Run tests (with coverage)
-      run: make test
+      run: |
+        make test
+        php bin/check_docs.php
+        phpdbg -qrr -d memory_limit=512M -d opcache.enable=0 -d opcache.enable_cli=0 -d opcache.jit=0 bin/check_coverage.php
 
     - name: Verify Coverage Badges (Optional - Fails if badges need update)
       run: |
