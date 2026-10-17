@@ -12,6 +12,7 @@
 declare(strict_types=1);
 
 ini_set('memory_limit', '-1');
+putenv('XDEBUG_MODE=off');
 
 if (!function_exists('phpdbg_start_oplog')) {
     echo "Please run with phpdbg: phpdbg -qrr bin/check_coverage.php
@@ -34,15 +35,17 @@ $testClasses = \Cdd\Tests\Framework\Runner::discoverTestClasses($dir);
 phpdbg_start_oplog();
 
 // Load all src files after starting oplog so top-level opcodes are recorded, and verify no coverage-ignore comments exist
+$srcFiles = [];
 $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($srcDir));
 foreach ($files as $file) {
     if ($file->isFile() && str_ends_with($file->getFilename(), '.php')) {
-        $path = $file->getPathname();
+        $path = (string) $file->getRealPath();
         $rawContent = (string) file_get_contents($path);
         if (strpos($rawContent, 'cov_ignore') !== false || strpos($rawContent, '@codeCoverageIgnore') !== false) {
             echo "Forbidden coverage ignore directive found in: $path\n";
             exit(1);
         }
+        $srcFiles[] = $path;
         require_once $path;
     }
 }
@@ -61,7 +64,7 @@ foreach ($testClasses as $testClass) {
 $runnerOutput = (string) ob_get_clean();
 
 $oplog = phpdbg_end_oplog();
-$executable = phpdbg_get_executable();
+$executable = phpdbg_get_executable(['files' => $srcFiles]);
 
 if ($failed > 0) {
     echo "Tests failed ($failed failed, $passed passed):
@@ -91,20 +94,19 @@ foreach ($executable as $file => $lines) {
 if ($totalExecutableLines > 0) {
     $percent = round(($totalCoveredLines / $totalExecutableLines) * 100, 2);
     if ($totalCoveredLines === $totalExecutableLines) {
-        echo "100
-";
+        echo "100\n";
+        fflush(STDOUT);
         exit(0);
     } else {
-        echo "Coverage is $percent% ($totalCoveredLines / $totalExecutableLines)
-";
+        echo "Coverage is $percent% ($totalCoveredLines / $totalExecutableLines)\n";
         foreach ($uncoveredFiles as $f => $lines) {
-            echo "Uncovered in $f: " . implode(', ', $lines) . "
-";
+            echo "Uncovered in $f: " . implode(', ', $lines) . "\n";
         }
+        fflush(STDOUT);
         exit(1);
     }
 } else {
-    echo "0
-";
+    echo "0\n";
+    fflush(STDOUT);
     exit(1);
 }

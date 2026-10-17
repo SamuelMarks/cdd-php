@@ -17,3 +17,23 @@
 
 *   By default, `cdd-php` can parse and emit generic PSR-7/PSR-15 style HTTP routes and controllers.
 *   It supports integrating with popular routing mechanisms and ORMs via AST analysis without needing explicit runtime inclusion.
+
+## Support Matrix
+
+| Specification Concept       | Status |
+| --------------------------- | ------ |
+| Info Object                 | ✅     |
+| Server Object               | ✅     |
+| Components Object           | ✅     |
+| Paths Object                | ✅     |
+| Path Item Object            | ✅     |
+| Operation Object            | ✅     |
+| Parameter Object            | ✅     |
+| Request Body Object         | ✅     |
+| Responses Object            | ✅     |
+| Responses / Schema Object   | ✅     |
+| Reference Object (`$ref`)   | ✅     |
+| OAuth Flows                 | ✅     |
+| Security Requirement Object | ✅     |
+| Links / Callbacks           | ✅     |
+| Webhooks                    | ✅     |

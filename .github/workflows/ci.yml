@@ -21,7 +21,7 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.4'
-        coverage: phpdbg
+        coverage: none
     - name: Install Dependencies
       run: composer install
 
@@ -38,7 +38,7 @@ jobs:
       run: |
         make test
         php bin/check_docs.php
-        phpdbg -qrr -d memory_limit=512M -d opcache.enable=0 -d opcache.enable_cli=0 -d opcache.jit=0 bin/check_coverage.php
+        XDEBUG_MODE=off phpdbg -qrr -d memory_limit=512M -d xdebug.mode=off -d pcov.enabled=0 -d opcache.enable=0 -d opcache.enable_cli=0 -d opcache.jit=0 bin/check_coverage.php
 
     - name: Verify Coverage Badges (Optional - Fails if badges need update)
       run: |

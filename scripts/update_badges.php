@@ -42,12 +42,13 @@ function getColor(int|float $pct): string
 }
 
 // Test coverage
+putenv('XDEBUG_MODE=off');
 $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg([0-9.]*)$/', 'php$1', PHP_BINARY) : PHP_BINARY;
 $phpdbgBin = PHP_SAPI === 'phpdbg' ? PHP_BINARY : (string) preg_replace('/php([0-9.]*)$/', 'phpdbg$1', PHP_BINARY);
 if (!is_executable($phpdbgBin)) {
     $phpdbgBin = 'phpdbg';
 }
-$testCmd = escapeshellarg($phpdbgBin) . ' -qrr -d memory_limit=512M -d opcache.enable=0 -d opcache.enable_cli=0 -d opcache.jit=0 ' . escapeshellarg($rootDir . '/bin/check_coverage.php') . ' 2>/dev/null';
+$testCmd = escapeshellarg($phpdbgBin) . ' -qrr -d memory_limit=512M -d xdebug.mode=off -d pcov.enabled=0 -d opcache.enable=0 -d opcache.enable_cli=0 -d opcache.jit=0 ' . escapeshellarg($rootDir . '/bin/check_coverage.php') . ' 2>/dev/null';
 $testOutput = (string) shell_exec($testCmd);
 $testCov = 0;
 if (preg_match('/^100$/m', trim($testOutput))) {
