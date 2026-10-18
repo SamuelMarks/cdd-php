@@ -52,7 +52,7 @@ repos:
 
       - id: check-coverage
         name: Check 100% test coverage
-        entry: phpdbg -qrr -d memory_limit=512M -d xdebug.mode=off -d pcov.enabled=0 -d opcache.enable=0 -d opcache.enable_cli=0 -d opcache.jit=0 bin/check_coverage.php
+        entry: phpdbg -qrr -d memory_limit=512M -d xdebug.mode=off -d pcov.enabled=0 -d opcache.enable=0 -d opcache.enable_cli=0 -d opcache.jit=0 -d opcache.jit_buffer_size=0 bin/check_coverage.php
         language: system
         pass_filenames: false
 

@@ -66,6 +66,36 @@ class CddCli
     }
 
     /**
+     * Generate code from an Arazzo specification.
+     *
+     * @param array<int, string>|CddConfig $args The command line arguments or config object
+     * @return int The exit status code
+     */
+    public static function generate_from_arazzo(array|CddConfig $args): int
+    {
+        if ($args instanceof CddConfig) {
+            $args->command = 'from_arazzo';
+            return self::run($args->toArgs());
+        }
+        return self::run(array_merge(['cdd-php', 'from_arazzo'], $args));
+    }
+
+    /**
+     * Generate an Arazzo specification from source code.
+     *
+     * @param array<int, string>|CddConfig $args The command line arguments or config object
+     * @return int The exit status code
+     */
+    public static function generate_to_arazzo(array|CddConfig $args): int
+    {
+        if ($args instanceof CddConfig) {
+            $args->command = 'to_arazzo';
+            return self::run($args->toArgs());
+        }
+        return self::run(array_merge(['cdd-php', 'to_arazzo'], $args));
+    }
+
+    /**
      * Generate JSON documentation with code snippets for an OpenAPI specification.
      *
      * @param array<int, string>|CddConfig $args The command line arguments or config object
@@ -152,6 +182,34 @@ class CddCli
             }
         }
         return $paths;
+    }
+
+    /**
+     * Parses `api_metadata.php` via AST without executing code and merges top-level fields into `$openapi`.
+     *
+     * @param array<string, mixed> $openapi Target OpenAPI specification array.
+     * @param string $metadataPath Path to `api_metadata.php`.
+     * @return array<string, mixed> Updated OpenAPI specification array.
+     */
+    public static function applyApiMetadata(array $openapi, string $metadataPath): array
+    {
+        if (!file_exists($metadataPath)) {
+            return $openapi;
+        }
+        $parser = \Cdd\Classes\create_parser();
+        $stmts = $parser->parse((string) file_get_contents($metadataPath)) ?? [];
+        $nodeFinder = new \PhpParser\NodeFinder();
+        /** @var \PhpParser\Node\Stmt\Return_|null $returnStmt */
+        $returnStmt = $nodeFinder->findFirstInstanceOf($stmts, \PhpParser\Node\Stmt\Return_::class);
+        $metadata = $returnStmt !== null ? \Cdd\Mocks\evaluateAstNode($returnStmt->expr) : null;
+        if (is_array($metadata)) {
+            foreach (['info', 'jsonSchemaDialect', 'externalDocs', 'tags', 'security'] as $key) {
+                if (isset($metadata[$key])) {
+                    $openapi[$key] = $metadata[$key];
+                }
+            }
+        }
+        return $openapi;
     }
 
     /**
@@ -369,6 +427,14 @@ Examples:
 ";
             return 0;
         }
+        if ($command === 'from_arazzo') {
+            echo "Usage: cdd-php from_arazzo <target> [options]\n";
+            return 0;
+        }
+        if ($command === 'to_arazzo') {
+            echo "Usage: cdd-php to_arazzo [options]\n";
+            return 0;
+        }
         return -1;
     }
 
@@ -393,7 +459,7 @@ Examples:
                     $res['result'] = [
                         'protocolVersion' => '2024-11-05',
                         'capabilities' => $capabilities,
-                        'serverInfo' => ['name' => 'cdd-php-mcp', 'version' => '0.0.3'],
+                        'serverInfo' => ['name' => 'cdd-php-mcp', 'version' => '0.0.4'],
                     ];
                 } elseif ($req['method'] === 'initialized') {
                     continue;
@@ -478,6 +544,16 @@ Examples:
                             'description' => 'Bidirectional sync code and schema',
                             'inputSchema' => ['type' => 'object', 'properties' => ['input' => ['type' => 'string'], 'truth' => ['type' => 'string']], 'required' => ['input']],
                         ],
+                        [
+                            'name' => 'from_arazzo',
+                            'description' => 'Generate PHP workflow SDK, CLI, or Server tests from Arazzo spec',
+                            'inputSchema' => ['type' => 'object', 'properties' => ['input' => ['type' => 'string'], 'output' => ['type' => 'string']], 'required' => ['input', 'output']],
+                        ],
+                        [
+                            'name' => 'to_arazzo',
+                            'description' => 'Generate Arazzo 1.1.0 spec from PHP workflow code',
+                            'inputSchema' => ['type' => 'object', 'properties' => ['input' => ['type' => 'string'], 'output' => ['type' => 'string']], 'required' => ['input', 'output']],
+                        ],
                     ];
 
                     $cursor = $req['params']['cursor'] ?? null;
@@ -500,6 +576,10 @@ Examples:
                             self::run(['cdd-php', 'from_openapi', '-i', $args['input'], '-o', $args['output']]);
                         } elseif ($name === 'to_openapi') {
                             self::run(['cdd-php', 'to_openapi', '-i', $args['input'], '-o', $args['output']]);
+                        } elseif ($name === 'from_arazzo') {
+                            self::run(['cdd-php', 'from_arazzo', '-i', $args['input'], '-o', $args['output']]);
+                        } elseif ($name === 'to_arazzo') {
+                            self::run(['cdd-php', 'to_arazzo', '-i', $args['input'], '-o', $args['output']]);
                         } elseif ($name === 'sync') {
                             $syncArgs = ['cdd-php', 'sync', '-i', $args['input']];
                             if (isset($args['truth'])) {
@@ -603,7 +683,7 @@ Examples:
 
         $openapi = [
             'openapi' => '3.2.0',
-            'info' => ['title' => 'Synced API', 'version' => '0.0.3'],
+            'info' => ['title' => 'Synced API', 'version' => '0.0.4'],
             'paths' => [],
             'components' => ['schemas' => []],
         ];
@@ -612,16 +692,7 @@ Examples:
             $openapi = \Cdd\Openapi\parse((string) file_get_contents("$dir/openapi.json"));
         }
 
-        if (file_exists("$dir/src/api_metadata.php")) {
-            $metadata = include "$dir/src/api_metadata.php";
-            if (is_array($metadata)) {
-                foreach (['info', 'jsonSchemaDialect', 'externalDocs', 'tags', 'security'] as $key) {
-                    if (isset($metadata[$key])) {
-                        $openapi[$key] = $metadata[$key];
-                    }
-                }
-            }
-        }
+        $openapi = self::applyApiMetadata($openapi, "$dir/src/api_metadata.php");
 
         if (file_exists("$dir/src/routes.php")) {
             $routes = \Cdd\Routes\parse((string) file_get_contents("$dir/src/routes.php"));
@@ -705,6 +776,21 @@ Examples:
         $json = \Cdd\Openapi\emit($openapi, $dir, $options);
         file_put_contents("$dir/openapi.json", $json);
 
+        if (file_exists("$dir/arazzo.json") || file_exists("$dir/src/ApiWorkflows.php")) {
+            $arazzo = [];
+            if ($truth === 'spec' && file_exists("$dir/arazzo.json")) {
+                $arazzo = \Cdd\Arazzo\parse((string) file_get_contents("$dir/arazzo.json"));
+            } elseif (file_exists("$dir/src/ApiWorkflows.php")) {
+                $arazzo = \Cdd\ArazzoClient\parse((string) file_get_contents("$dir/src/ApiWorkflows.php"));
+            } elseif (file_exists("$dir/arazzo.json")) {
+                $arazzo = \Cdd\Arazzo\parse((string) file_get_contents("$dir/arazzo.json"));
+            }
+            if (!empty($arazzo)) {
+                $arazzoJson = \Cdd\Arazzo\emit($arazzo, $dir, ['subcommand' => 'all']);
+                file_put_contents("$dir/arazzo.json", $arazzoJson);
+            }
+        }
+
         echo "Synchronized codebase in $dir successfully.
 ";
         return 0;
@@ -746,23 +832,14 @@ Examples:
             'openapi' => '3.2.0',
             'info' => [
                 'title' => 'Parsed API',
-                'version' => '0.0.3',
+                'version' => '0.0.4',
             ],
             'paths' => [],
             'components' => ['schemas' => []],
         ];
 
         $dir = is_dir($file) ? $file : dirname($file);
-        if (file_exists("$dir/src/api_metadata.php")) {
-            $metadata = include "$dir/src/api_metadata.php";
-            if (is_array($metadata)) {
-                foreach (['info', 'jsonSchemaDialect', 'externalDocs', 'tags', 'security'] as $key) {
-                    if (isset($metadata[$key])) {
-                        $openapi[$key] = $metadata[$key];
-                    }
-                }
-            }
-        }
+        $openapi = self::applyApiMetadata($openapi, "$dir/src/api_metadata.php");
 
         if (strpos($code, 'curl_exec') !== false) {
             $openapi['paths'] = \Cdd\Client\parse($code);
@@ -1033,6 +1110,126 @@ use ApiClient;";
     }
 
     /**
+     * Runs the `from_arazzo` subcommand to compile an Arazzo specification into PHP SDK, CLI, or Server artifacts.
+     *
+     * @param array<int, string> $argv CLI arguments.
+     * @param callable(string): string $resolvePath Path resolution helper.
+     * @return int Exit status code.
+     */
+    public static function runFromArazzo(array $argv, callable $resolvePath): int
+    {
+        $argc = count($argv);
+        $subcommand = 'to_sdk';
+        $file = '';
+        $inputDir = '';
+        $dir = (string) getcwd();
+        $noGithubActions = false;
+        $noInstallablePackage = false;
+
+        $i = 2;
+        if (isset($argv[$i]) && in_array($argv[$i], ['to_sdk_cli', 'to_sdk', 'to_server', 'all'], true)) {
+            $subcommand = $argv[$i];
+            $i++;
+        }
+
+        for (; $i < $argc; $i++) {
+            if ($argv[$i] === '--no-github-actions') {
+                $noGithubActions = true;
+            } elseif ($argv[$i] === '--no-installable-package') {
+                $noInstallablePackage = true;
+            } elseif (($argv[$i] === '-i' || $argv[$i] === '--input') && isset($argv[$i + 1])) {
+                $file = $resolvePath($argv[++$i]);
+            } elseif (($argv[$i] === '-d' || $argv[$i] === '--input-dir') && isset($argv[$i + 1])) {
+                $inputDir = $resolvePath($argv[++$i]);
+            } elseif (($argv[$i] === '-o' || $argv[$i] === '--output') && isset($argv[$i + 1])) {
+                $dir = $resolvePath($argv[++$i]);
+            }
+        }
+
+        if ($file === '' && $inputDir !== '' && is_dir($inputDir)) {
+            $candidates = glob("$inputDir/*.json");
+            if (!empty($candidates)) {
+                $file = $candidates[0];
+            }
+        }
+
+        if ($file === '' || !file_exists($file)) {
+            echo "Error: Arazzo spec file not found.\n";
+            return 1;
+        }
+
+        $spec = \Cdd\Arazzo\parse((string) file_get_contents($file));
+        \Cdd\Arazzo\emit($spec, $dir, [
+            'subcommand' => $subcommand,
+            'no_github_actions' => $noGithubActions,
+            'no_installable_package' => $noInstallablePackage,
+        ]);
+
+        echo "Emitted Arazzo code to $dir successfully.\n";
+        return 0;
+    }
+
+    /**
+     * Runs the `to_arazzo` subcommand to extract an Arazzo 1.1.0 specification from PHP workflow code.
+     *
+     * @param array<int, string> $argv CLI arguments.
+     * @param callable(string): string $resolvePath Path resolution helper.
+     * @return int Exit status code.
+     */
+    public static function runToArazzo(array $argv, callable $resolvePath): int
+    {
+        $argc = count($argv);
+        $inputPath = '';
+        $outFile = '';
+
+        for ($i = 2; $i < $argc; $i++) {
+            if (($argv[$i] === '-i' || $argv[$i] === '--input') && isset($argv[$i + 1])) {
+                $inputPath = $resolvePath($argv[++$i]);
+            } elseif (($argv[$i] === '-o' || $argv[$i] === '--output') && isset($argv[$i + 1])) {
+                $outFile = $resolvePath($argv[++$i]);
+            } elseif ($inputPath === '') {
+                $inputPath = $resolvePath($argv[$i]);
+            }
+        }
+
+        if ($inputPath === '' || !file_exists($inputPath)) {
+            echo "Error: Input file or directory not found.\n";
+            return 1;
+        }
+
+        $arazzo = [];
+        if (is_dir($inputPath)) {
+            if (file_exists("$inputPath/src/ApiWorkflows.php")) {
+                $arazzo = \Cdd\ArazzoClient\parse((string) file_get_contents("$inputPath/src/ApiWorkflows.php"));
+            } elseif (file_exists("$inputPath/src/arazzo_cli.php")) {
+                $arazzo = \Cdd\ArazzoCli\parse((string) file_get_contents("$inputPath/src/arazzo_cli.php"));
+            } elseif (file_exists("$inputPath/src/WorkflowEngine.php")) {
+                $arazzo = \Cdd\ArazzoServer\parse((string) file_get_contents("$inputPath/src/WorkflowEngine.php"));
+            } elseif (file_exists("$inputPath/tests/Workflows/ArazzoWorkflowTest.php")) {
+                $arazzo = \Cdd\ArazzoServer\parse((string) file_get_contents("$inputPath/tests/Workflows/ArazzoWorkflowTest.php"));
+            }
+        } else {
+            $raw = (string) file_get_contents($inputPath);
+            if (str_contains($inputPath, 'arazzo_cli.php')) {
+                $arazzo = \Cdd\ArazzoCli\parse($raw);
+            } elseif (str_contains($inputPath, 'WorkflowTest') || str_contains($inputPath, 'WorkflowEngine')) {
+                $arazzo = \Cdd\ArazzoServer\parse($raw);
+            } else {
+                $arazzo = \Cdd\ArazzoClient\parse($raw);
+            }
+        }
+
+        $outStr = \Cdd\Arazzo\emit($arazzo) . "\n";
+        if ($outFile !== '') {
+            file_put_contents($outFile, $outStr);
+            echo "Emitted Arazzo to $outFile\n";
+        } else {
+            echo $outStr;
+        }
+        return 0;
+    }
+
+    /**
      * Runs the CLI application.
      *
      * @param array<int, string> $argv The command line arguments
@@ -1060,7 +1257,7 @@ use ApiClient;";
         $command = $argv[1] ?? '';
 
         if ($command === '--version' || $command === '-v') {
-            echo "0.0.3
+            echo "0.0.4
 ";
             return 0;
         }
@@ -1082,6 +1279,8 @@ use ApiClient;";
             'sync' => self::runSync($argv, $resolvePath),
             'to_openapi' => self::runToOpenApi($argv, $resolvePath),
             'from_openapi', 'emit' => self::runFromOpenApi($argv, $resolvePath),
+            'from_arazzo' => self::runFromArazzo($argv, $resolvePath),
+            'to_arazzo' => self::runToArazzo($argv, $resolvePath),
             'to_docs_json' => self::runToDocsJson($argv, $resolvePath),
             default => (static function () use ($command): int {
                 fwrite(STDERR, "Error: Unknown or incomplete command: $command

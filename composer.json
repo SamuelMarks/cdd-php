@@ -1,6 +1,6 @@
 {
   "name": "offscale/cdd-php",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Zero-dependency OpenAPI bidirectional compiler for PHP.",
   "type": "library",
   "license": "Apache-2.0",
@@ -11,6 +11,15 @@
     "files": [
       "src/openapi/parse.php",
       "src/openapi/emit.php",
+      "src/arazzo/parse.php",
+      "src/arazzo/runtime.php",
+      "src/arazzo/emit.php",
+      "src/arazzo_client/parse.php",
+      "src/arazzo_client/emit.php",
+      "src/arazzo_cli/parse.php",
+      "src/arazzo_cli/emit.php",
+      "src/arazzo_server/parse.php",
+      "src/arazzo_server/emit.php",
       "src/readme/emit.php",
       "src/standalone_server/emit.php",
       "src/tests/emit_mock_tests.php",

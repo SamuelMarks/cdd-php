@@ -30,7 +30,7 @@ if ($srcDir === false) {
     exit(1);
 }
 
-$testClasses = \Cdd\Tests\Framework\Runner::discoverTestClasses($dir);
+$oplog = [];
 
 phpdbg_start_oplog();
 
@@ -50,6 +50,19 @@ foreach ($files as $file) {
     }
 }
 
+$initOplog = phpdbg_end_oplog();
+$executable = phpdbg_get_executable(['files' => $srcFiles]);
+foreach ($srcFiles as $srcFile) {
+    if (isset($initOplog[$srcFile])) {
+        foreach ($initOplog[$srcFile] as $line => $count) {
+            $oplog[$srcFile][$line] = ($oplog[$srcFile][$line] ?? 0) + $count;
+        }
+    }
+}
+unset($initOplog);
+
+$testClasses = \Cdd\Tests\Framework\Runner::discoverTestClasses($dir);
+
 $passed = 0;
 $failed = 0;
 
@@ -57,14 +70,21 @@ ob_start();
 foreach ($testClasses as $testClass) {
     /** @var \Cdd\Tests\Framework\TestCase $instance */
     $instance = new $testClass();
+    phpdbg_start_oplog();
     [$p, $f] = $instance->runAll();
+    $classOplog = phpdbg_end_oplog();
+    foreach ($srcFiles as $srcFile) {
+        if (isset($classOplog[$srcFile])) {
+            foreach ($classOplog[$srcFile] as $line => $count) {
+                $oplog[$srcFile][$line] = ($oplog[$srcFile][$line] ?? 0) + $count;
+            }
+        }
+    }
+    unset($classOplog);
     $passed += $p;
     $failed += $f;
 }
 $runnerOutput = (string) ob_get_clean();
-
-$oplog = phpdbg_end_oplog();
-$executable = phpdbg_get_executable(['files' => $srcFiles]);
 
 if ($failed > 0) {
     echo "Tests failed ($failed failed, $passed passed):

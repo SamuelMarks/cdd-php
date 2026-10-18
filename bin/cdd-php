@@ -59,7 +59,7 @@ spl_autoload_register(function ($class) use ($baseDir) {
 });
 
 // Require all functional scripts since PHP cannot autoload functions
-$dirs = ['functions', 'classes', 'docstrings', 'routes', 'tests', 'mocks', 'openapi', 'client', 'cli', 'schemas', 'components', 'parameters', 'request_bodies', 'responses', 'operations', 'paths', 'servers', 'security', 'info', 'encoding', 'webhooks', 'controllers'];
+$dirs = ['functions', 'classes', 'docstrings', 'routes', 'tests', 'mocks', 'openapi', 'client', 'cli', 'schemas', 'components', 'parameters', 'request_bodies', 'responses', 'operations', 'paths', 'servers', 'security', 'info', 'encoding', 'webhooks', 'controllers', 'arazzo', 'arazzo_client', 'arazzo_cli', 'arazzo_server'];
 foreach ($dirs as $dir) {
     $parseFile = "$baseDir/src/$dir/parse.php";
     $emitFile = "$baseDir/src/$dir/emit.php";
@@ -72,6 +72,9 @@ foreach ($dirs as $dir) {
 }
 if (file_exists("$baseDir/src/openapi/resolve_refs.php")) {
     require_once "$baseDir/src/openapi/resolve_refs.php";
+}
+if (file_exists("$baseDir/src/arazzo/runtime.php")) {
+    require_once "$baseDir/src/arazzo/runtime.php";
 }
 
 $sapi = php_sapi_name();

@@ -38,7 +38,8 @@ jobs:
       run: |
         make test
         php bin/check_docs.php
-        XDEBUG_MODE=off phpdbg -qrr -d memory_limit=512M -d xdebug.mode=off -d pcov.enabled=0 -d opcache.enable=0 -d opcache.enable_cli=0 -d opcache.jit=0 bin/check_coverage.php
+        sudo rm -f /etc/php/*/phpdbg/conf.d/*opcache* /etc/php/*/phpdbg/conf.d/*xdebug* /etc/php/*/phpdbg/conf.d/*pcov* /etc/php/*/phpdbg/conf.d/*pecl* 2>/dev/null || true
+        XDEBUG_MODE=off phpdbg -qrr -d memory_limit=512M -d xdebug.mode=off -d pcov.enabled=0 -d opcache.enable=0 -d opcache.enable_cli=0 -d opcache.jit=0 -d opcache.jit_buffer_size=0 bin/check_coverage.php
 
     - name: Verify Coverage Badges (Optional - Fails if badges need update)
       run: |

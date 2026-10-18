@@ -85,7 +85,7 @@ class CddConfig
             $args[] = $this->command;
         }
 
-        if ($this->command === 'from_openapi' && $this->target !== '') {
+        if (($this->command === 'from_openapi' || $this->command === 'from_arazzo') && $this->target !== '') {
             $args[] = $this->target;
         }
 

@@ -468,7 +468,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
     if (!isset($openapi['info'])) {
         $openapi['info'] = [
             'title' => 'Default API',
-            'version' => '0.0.3',
+            'version' => '0.0.4',
         ];
     }
 
@@ -586,12 +586,11 @@ foreach (glob(__DIR__ . '/Routes/*.php') as \$file) {
             if (!isset($openapi['components']['schemas'])) {
                 $openapi['components']['schemas'] = [];
             }
-            if (file_exists(__DIR__ . '/mcp_schema.php')) {
-                $mcpSchemas = include __DIR__ . '/mcp_schema.php';
-                foreach ($mcpSchemas as $name => $schema) {
-                    if (!isset($openapi['components']['schemas'][$name])) {
-                        $openapi['components']['schemas'][$name] = $schema;
-                    }
+            require_once __DIR__ . '/mcp_schema.php';
+            $mcpSchemas = get_mcp_schema();
+            foreach ($mcpSchemas as $name => $schema) {
+                if (!isset($openapi['components']['schemas'][$name])) {
+                    $openapi['components']['schemas'][$name] = $schema;
                 }
             }
         }

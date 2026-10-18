@@ -76,7 +76,7 @@ class CddCliHelperTest extends TestCase
         ob_start();
         CddCli::run(['cdd-php', '-v']);
         $out = (string) ob_get_clean();
-        $this->assertTrue(strpos($out, '0.0.3') !== false);
+        $this->assertTrue(strpos($out, '0.0.4') !== false);
 
         ob_start();
         CddCli::run(['cdd-php', '-h']);

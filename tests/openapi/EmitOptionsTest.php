@@ -30,7 +30,7 @@ class EmitOptionsTest extends TestCase
 
         $this->assertEquals('3.2.0', $decoded['openapi']);
         $this->assertEquals('Default API', $decoded['info']['title']);
-        $this->assertEquals('0.0.3', $decoded['info']['version']);
+        $this->assertEquals('0.0.4', $decoded['info']['version']);
         $this->assertTrue(is_array($decoded['paths']));
     }
 
