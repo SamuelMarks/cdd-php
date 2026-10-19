@@ -2,29 +2,29 @@
 
 <!-- BADGES_START -->
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![CI/CD](https://github.com/offscale/cdd-php/workflows/CI/badge.svg)](https://github.com/offscale/cdd-php/actions)
-[![Coverage](https://codecov.io/gh/offscale/cdd-php/branch/master/graph/badge.svg)](https://codecov.io/gh/offscale/cdd-php)
+[![CI](https://github.com/SamuelMarks/cdd-php/actions/workflows/ci.yml/badge.svg)](https://github.com/SamuelMarks/cdd-php/actions)
+[![Test Coverage](https://img.shields.io/badge/test_coverage-100.00%25-brightgreen.svg)](#)
+[![Doc Coverage](https://img.shields.io/badge/doc_coverage-100.00%25-brightgreen.svg)](#)
 <!-- BADGES_END -->
 
-The **cdd-php** tool acts as a dedicated compiler and transpiler. Its fundamental architecture follows standard compiler design principles, divided into three distinct phases: **Frontend (Parsing)**, **Intermediate Representation (IR)**, and **Backend (Emitting)**.
+The **cdd-php** toolchain is a standalone, bidirectional compiler and transpiler written in PHP 8.2+. Its architecture is divided into three distinct phases: **Frontend (Static AST/CST & Spec Parsing)**, **Intermediate Representation (IR)**, and **Backend (Format-Preserving Code & Spec Emission)**.
 
-This decoupled design ensures that any format capable of being parsed into the IR can subsequently be emitted into any supported output format, whether that is a server-side route, a client-side SDK, a database ORM, or an OpenAPI specification.
+This decoupled design ensures that any supported input (OpenAPI 3.2.0, Swagger 2.0, Arazzo 1.1.0, MCP tool definitions, or PHP source code) parsed into the IR can be emitted or synchronized losslessly across servers, client SDKs, CLIs, database ORMs, workflow engines, tests, mocks, and specifications.
 
-## 🏗 High-Level Overview
+## High-Level Overview
 
 ```mermaid
 graph TD
-    %% Styling Definitions
     classDef frontend fill:#57caff,stroke:#4285f4,stroke-width:2px,color:#20344b,font-family:Roboto Mono
     classDef core fill:#ffd427,stroke:#f9ab00,stroke-width:3px,color:#20344b,font-family:Google Sans,font-weight:bold
     classDef backend fill:#5cdb6d,stroke:#34a853,stroke-width:2px,color:#20344b,font-family:Roboto Mono
     classDef endpoint fill:#ffffff,stroke:#20344b,stroke-width:1px,color:#20344b,font-family:Google Sans
 
     subgraph Frontend [Parsers]
-        A[OpenAPI .yaml/.json]:::endpoint --> P1(OpenAPI Parser):::frontend
-        B[PHP Models / Source]:::endpoint --> P2(PHP Parser):::frontend
-        C[Server Routes / Frameworks]:::endpoint --> P3(Framework Parser):::frontend
-        D[Client SDKs / ORMs]:::endpoint --> P4(Ext Parser):::frontend
+        A[OpenAPI 3.2 / Swagger 2.0 / Arazzo 1.1]:::endpoint --> P1(Spec & Ref Parsers):::frontend
+        B[PHP Models & Eloquent Schemas]:::endpoint --> P2(AST/CST Class Parser):::frontend
+        C[Routes, Controllers & Webhooks]:::endpoint --> P3(Route & Controller Parser):::frontend
+        D[Client SDKs, CLIs & Workflows]:::endpoint --> P4(Client, CLI & Arazzo Parser):::frontend
     end
 
     subgraph Core [Intermediate Representation]
@@ -32,11 +32,11 @@ graph TD
     end
 
     subgraph Backend [Emitters]
-        E1(OpenAPI Emitter):::backend --> X[OpenAPI .yaml/.json]:::endpoint
-        E2(PHP Emitter):::backend --> Y[PHP Models / Structs]:::endpoint
-        E3(Server Emitter):::backend --> Z[Server Routes / Controllers]:::endpoint
-        E4(Client Emitter):::backend --> W[Client SDKs / API Calls]:::endpoint
-        E5(Data Emitter):::backend --> V[ORM Models / CLI Parsers]:::endpoint
+        E1(OpenAPI / Swagger / Arazzo Emitter):::backend --> X[openapi.json / arazzo.json]:::endpoint
+        E2(Model & DAO Emitter):::backend --> Y[Eloquent Models, DAOs & Migrations]:::endpoint
+        E3(Server & Seeder Emitter):::backend --> Z[Routes, Controllers, ServerRunner & Faker Seeder]:::endpoint
+        E4(Client & CLI Emitter):::backend --> W[cURL SDK, Symfony Console CLI & Workflows]:::endpoint
+        E5(Test, Mock & MCP Emitter):::backend --> V[Composable Tests, Mocks, docs.json & MCP Server]:::endpoint
     end
 
     P1 --> IR
@@ -51,43 +51,33 @@ graph TD
     IR --> E5
 ```
 
-## 🧩 Core Components
+## Core Components
 
-### 1. The Frontend (Parsers)
+### 1. The Frontend (`src/*/parse.php`)
 
-The Frontend's responsibility is to read an input source and translate it into the universal CDD Intermediate Representation (IR).
+The Frontend reads source specifications or PHP files and translates them into the normalized CDD Intermediate Representation:
 
-* **Static Analysis (AST-Driven)**: For `PHP` source code, the tool **does not** use dynamic reflection or execute the code. Instead, it reads the source files, generates an Abstract Syntax Tree (AST), and navigates the tree to extract classes, structs, functions, type signatures, API client definitions, server routes, and docstrings.
-* **OpenAPI Parsing**: For OpenAPI and JSON Schema inputs, the parser normalizes the structure, resolving internal `$ref`s and extracting properties, endpoints (client or server perspectives), and metadata into the IR.
+* **Static AST/CST Analysis (`nikic/php-parser`)**: `cdd-php` never executes or `eval()`s user PHP files. It parses PHP source code into a syntax tree with token and comment trivia attached (`PhpParser\NodeVisitor\CloningVisitor`), extracting classes (`src/classes/`), Eloquent models (`src/components/`), routes (`src/routes/`), controllers (`src/controllers/`), cURL client calls (`src/client/`), Symfony Console commands (`src/cli/`), Arazzo workflows (`src/arazzo_client/`, `src/arazzo_cli/`, `src/arazzo_server/`), mocks (`src/mocks/`), and PHPDoc annotations (`src/docstrings/`).
+* **OpenAPI, Swagger & Arazzo Parsing (`src/openapi/`, `src/arazzo/`)**: Validates and normalizes OpenAPI 3.0/3.1/3.2, upgrades Swagger 2.0 documents, resolves JSON Pointer `$ref`s (`src/openapi/resolve_refs.php`), and parses Arazzo 1.0.x/1.1.0 workflow graphs.
 
 ### 2. Intermediate Representation (IR)
 
-The Intermediate Representation is the crucial "glue" of the architecture. It is a normalized, language-agnostic data structure that represents concepts like:
-* **Models**: Entities containing typed properties, required fields, defaults, and descriptions.
-* **Endpoints / Operations**: HTTP verbs, paths, path/query/body parameters, and responses. In the IR, an operation is an abstract concept that can represent *either* a Server Route receiving a request *or* an API Client dispatching a request.
-* **Metadata**: Tooling hints, docstrings, and validations.
+The Intermediate Representation is a normalized associative AST/schema graph modeling:
+* **Schemas & Models**: Typed properties, JSON Schema 2020-12 constraints, discriminators, XML metadata, and relational foreign keys.
+* **Paths, Webhooks & Operations**: HTTP methods (including OpenAPI 3.2 `QUERY` and `additionalOperations`), parameters (`path`, `query`, `querystring`, `header`, `cookie`), request bodies, multipart encodings, responses, links, callbacks, and security requirements.
+* **Workflows**: Arazzo `sourceDescriptions`, `workflows`, `steps`, runtime expressions, and success/failure actions.
 
-By standardizing on a single IR (heavily inspired by OpenAPI / JSON Schema primitives), the system guarantees that parsing logic and emitting logic remain completely decoupled.
+### 3. The Backend (`src/*/emit.php`)
 
-### 3. The Backend (Emitters)
+The Backend emits or patches target files from the IR:
 
-The Backend's responsibility is to take the universal IR and generate valid target output. Emitters can be written to support various environments (e.g., Client vs Server, Web vs CLI).
+* **Format-Preserving AST/CST Patching**: When updating existing PHP files (`src/classes/emit.php`), `nikic/php-parser`'s `Standard::printFormatPreserving()` surgically updates properties, methods, and PHPDoc blocks while preserving surrounding formatting, comments, and custom method implementations.
+* **Multi-Tiered Server & ORM Generation**: Emits Eloquent models (`src/classes/`), DAO interfaces/stubs/concrete classes (`src/daos/`), `Illuminate\Database\Capsule\Manager` connections and schema migrations (`src/database/`), topologically sorted `FakerPHP/Faker` seeders (`src/seeder/`), `ServerRunner.php` (`src/server_cli/`), and a zero-config standalone server script (`src/standalone_server/`).
+* **SDK, CLI, Workflow, MCP & Test Generation**: Emits `ApiClient.php` (`src/client/`), `api_cli.php` (`src/cli/`), `ApiWorkflows.php` / `arazzo_cli.php` / `WorkflowEngine.php` (`src/arazzo*/`), `mcp_server.php` (`src/openapi/mcp_schema.php`), and `ComposableTests.php` / `mocks.php` (`src/tests/`, `src/mocks/`).
 
-* **Code Generation**: Emitters iterate over the IR and generate idiomatic `PHP` source code.
-  * A **Server Emitter** creates routing controllers and request-validation logic.
-  * A **Client Emitter** creates API wrappers, fetch functions, and response-parsing logic.
-* **Database & CLI Generation**: Emitters can also target ORM models or command-line parsers by mapping IR properties to database columns or CLI arguments.
-* **Specification Generation**: Emitters translating back to OpenAPI serialize the IR into standard OpenAPI 3.x JSON or YAML, rigorously formatting descriptions, type constraints, and endpoint schemas based on what was parsed from the source code.
+## Design Principles
 
-## 🔄 Extensibility
-
-Because of the IR-centric design, adding support for a new `PHP` framework (e.g., a new Client library, Web framework, or ORM) requires minimal effort:
-1. **To support parsing a new framework**: Write a parser that converts the framework's AST/DSL into the CDD IR. Once written, the framework can automatically be exported to OpenAPI, Client SDKs, CLI parsers, or any other existing output target.
-2. **To support emitting a new framework**: Write an emitter that converts the CDD IR into the framework's DSL/AST. Once written, the framework can automatically be generated from OpenAPI or any other supported input.
-
-## 🛡 Design Principles
-
-1. **A Single Source of Truth**: Developers should be able to maintain their definitions in whichever format is most ergonomic for their team (OpenAPI files, Native Code, Client libraries, ORM models) and generate the rest.
-2. **Zero-Execution Parsing**: Ensure security and resilience by strictly statically analyzing inputs. The compiler must never need to run the target code to understand its structure.
-3. **Lossless Conversion**: Maximize the retention of metadata (e.g., type annotations, docstrings, default values, validators) during the transition `Source -> IR -> Target`.
-4. **Symmetric Operations**: An Endpoint in the IR holds all the information necessary to generate both the Server-side controller that fulfills it, and the Client-side SDK method that calls it.
+1. **A Single Source of Truth**: Maintain definitions in whichever representation is most ergonomic (`openapi.json`, `arazzo.json`, PHP classes, routes, or SDKs) and synchronize the rest via `cdd-php sync`.
+2. **Zero-Execution Static Parsing**: Analyze PHP code strictly via `nikic/php-parser` AST/CST traversal and static expression evaluation (`\Cdd\Mocks\evaluateAstNode`).
+3. **Lossless Conversion**: Preserve metadata, PHPDoc annotations, comments, and formatting across `Source -> IR -> Target` roundtrips.
+4. **100% Test & Documentation Coverage**: Enforced continuously via `bin/check_coverage.php` (`phpdbg` oplog) and `bin/check_docs.php` (`nikic/php-parser`).

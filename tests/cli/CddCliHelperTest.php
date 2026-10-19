@@ -91,6 +91,13 @@ class CddCliHelperTest extends TestCase
             $this->assertTrue(strpos($out, 'Usage:') !== false || strpos($out, 'Run the Model') !== false);
         }
 
+        foreach (['to_sdk', 'to_sdk_cli', 'to_server'] as $target) {
+            ob_start();
+            CddCli::run(['cdd-php', 'from_openapi', $target, '--help']);
+            $out = (string) ob_get_clean();
+            $this->assertTrue(strpos($out, "Usage: cdd-php from_openapi {$target}") !== false);
+        }
+
         $this->assertEquals(-1, CddCli::printHelp('unknown_subcommand'));
 
         $_ENV['CDD_TEST_ARG'] = 'val';

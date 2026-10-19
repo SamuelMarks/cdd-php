@@ -276,163 +276,124 @@ class CddCli
      * Prints top-level or subcommand-specific CLI help text.
      *
      * @param string $command The subcommand name or empty string for top-level help.
+     * @param string $subcommand Optional target subcommand (e.g., `to_sdk`, `to_sdk_cli`, `to_server`).
      * @return int Exit status code (0 if help was printed, -1 if command is not a known help target).
      */
-    public static function printHelp(string $command = ''): int
+    public static function printHelp(string $command = '', string $subcommand = ''): int
     {
         if ($command === '' || $command === '--help' || $command === '-h') {
-            echo "cdd-php CLI
-";
-            echo "Usage:
-";
-            echo "  cdd-php [subcommand] [options]
-";
-            echo "
-Subcommands:
-";
-            echo "  from_openapi    Generate code from an OpenAPI specification.
-";
-            echo "  to_openapi      Generate an OpenAPI specification from source code.
-";
-            echo "  to_docs_json    Generate JSON documentation with code snippets for an OpenAPI specification.
-";
-            echo "  serve_json_rpc  Expose CLI interface as a JSON-RPC server.
-";
-            echo "  sync            Synchronize an OpenAPI specification with source code.
-";
-            echo "
-Options:
-";
-            echo "  --help, -h      Show this help message
-";
-            echo "  --version, -v   Show version information
-";
-            echo "
-Examples:
-";
-            echo "  cdd-php serve_json_rpc [--port|-p 8080] [--listen|-l 127.0.0.1]
-";
-            echo "  cdd-php to_docs_json --no-imports --no-wrapping -i spec.json -o docs.json
-";
-            echo "  cdd-php from_openapi to_sdk_cli -i spec.json -o target_directory [--no-github-actions] [--no-installable-package] [--tests
-] [--mcp]
-";
-            echo "  cdd-php from_openapi to_sdk -i spec.json -o target_directory [--no-github-actions] [--no-installable-package] [--tests
-] [--mcp]
-";
-            echo "  cdd-php from_openapi to_server -i spec.json -o target_directory
-";
-            echo "  cdd-php sync -i directory -t class
-";
+            echo "cdd-php CLI\n";
+            echo "Usage:\n";
+            echo "  cdd-php [subcommand] [options]\n";
+            echo "\nSubcommands:\n";
+            echo "  from_openapi    Generate code from an OpenAPI specification.\n";
+            echo "  to_openapi      Generate an OpenAPI specification from source code.\n";
+            echo "  from_arazzo     Generate code from an Arazzo workflow specification.\n";
+            echo "  to_arazzo       Generate an Arazzo workflow specification from source code.\n";
+            echo "  to_docs_json    Generate JSON documentation with code snippets for an OpenAPI specification.\n";
+            echo "  serve_json_rpc  Expose CLI interface as a JSON-RPC server.\n";
+            echo "  sync            Synchronize an OpenAPI specification with source code.\n";
+            echo "  mcp             Run the Model Context Protocol (MCP) server over stdio.\n";
+            echo "\nOptions:\n";
+            echo "  --help, -h      Show this help message\n";
+            echo "  --version, -v   Show version information\n";
+            echo "\nExamples:\n";
+            echo "  cdd-php serve_json_rpc [--port|-p 8080] [--listen|-l 127.0.0.1]\n";
+            echo "  cdd-php to_docs_json --no-imports --no-wrapping -i spec.json -o docs.json\n";
+            echo "  cdd-php from_openapi to_sdk_cli -i spec.json -o target_directory [--no-github-actions] [--no-installable-package] [--tests] [--mcp]\n";
+            echo "  cdd-php from_openapi to_sdk -i spec.json -o target_directory [--no-github-actions] [--no-installable-package] [--tests] [--mcp]\n";
+            echo "  cdd-php from_openapi to_server -i spec.json -o target_directory\n";
+            echo "  cdd-php sync -i directory -t class\n";
             return 0;
         }
         if ($command === 'from_openapi') {
-            echo "Usage: cdd-php from_openapi <target> [options]
-
-";
-            echo "Targets:
-";
-            echo "  to_sdk_cli      Generate a client SDK and a corresponding CLI
-";
-            echo "  to_sdk          Generate a client SDK
-";
-            echo "  to_server       Generate server boilerplate, models, and routing logic
-
-";
-            echo "Options:
-";
-            echo "  -i, --input <spec>    Path to the OpenAPI specification file
-";
-            echo "  -d, --input-dir <dir> Path to a directory containing OpenAPI specifications
-";
-            echo "  -o, --output <dir>    Destination path for generation
-";
-            echo "  --no-github-actions   Disable GitHub Actions generation
-";
-            echo "  --no-installable-package Disable Composer package generation
-";
-            echo "  --tests               Generate PHPUnit tests
-";
-            echo "  --mcp                 Generate MCP server
-";
-            echo "  --help, -h            Show this help message
-";
+            $targetDescriptions = [
+                'to_sdk' => 'Generate a client SDK from an OpenAPI specification.',
+                'to_sdk_cli' => 'Generate a client SDK and a corresponding CLI from an OpenAPI specification.',
+                'to_server' => 'Generate server boilerplate, models, and routing logic from an OpenAPI specification.',
+            ];
+            if (isset($targetDescriptions[$subcommand])) {
+                echo "Usage: cdd-php from_openapi {$subcommand} [options]\n\n";
+                echo $targetDescriptions[$subcommand] . "\n\n";
+            } else {
+                echo "Usage: cdd-php from_openapi <target> [options]\n\n";
+                echo "Targets:\n";
+                echo "  to_sdk_cli      Generate a client SDK and a corresponding CLI\n";
+                echo "  to_sdk          Generate a client SDK\n";
+                echo "  to_server       Generate server boilerplate, models, and routing logic\n\n";
+            }
+            echo "Options:\n";
+            echo "  -i, --input <spec>    Path to the OpenAPI specification file\n";
+            echo "  -d, --input-dir <dir> Path to a directory containing OpenAPI specifications\n";
+            echo "  -o, --output <dir>    Destination path for generation\n";
+            echo "  --no-github-actions   Disable GitHub Actions generation\n";
+            echo "  --no-installable-package Disable Composer package generation\n";
+            echo "  --tests               Generate PHPUnit tests\n";
+            echo "  --mcp                 Generate MCP server\n";
+            echo "  --help, -h            Show this help message\n";
             return 0;
         }
         if ($command === 'to_openapi') {
-            echo "Usage: cdd-php to_openapi [options]
-
-";
-            echo "Options:
-";
-            echo "  -i, --input <path>    Path to the source code directory or file to parse
-";
-            echo "  -o, --output <path>   Destination file for the OpenAPI specification
-";
-            echo "  --help, -h            Show this help message
-";
+            echo "Usage: cdd-php to_openapi [options]\n\n";
+            echo "Options:\n";
+            echo "  -i, --input <path>    Path to the source code directory or file to parse\n";
+            echo "  -o, --output <path>   Destination file for the OpenAPI specification\n";
+            echo "  --help, -h            Show this help message\n";
             return 0;
         }
         if ($command === 'to_docs_json') {
-            echo "Usage: cdd-php to_docs_json [options]
-
-";
-            echo "Options:
-";
-            echo "  -i, --input <spec>    Path to the OpenAPI specification file
-";
-            echo "  -o, --output <path>   Destination file for the JSON documentation
-";
-            echo "  --no-imports          Disable import statements in the generated documentation
-";
-            echo "  --no-wrapping         Disable line wrapping in the generated documentation
-";
-            echo "  --help, -h            Show this help message
-";
+            echo "Usage: cdd-php to_docs_json [options]\n\n";
+            echo "Options:\n";
+            echo "  -i, --input <spec>    Path to the OpenAPI specification file\n";
+            echo "  -o, --output <path>   Destination file for the JSON documentation\n";
+            echo "  --no-imports          Disable import statements in the generated documentation\n";
+            echo "  --no-wrapping         Disable line wrapping in the generated documentation\n";
+            echo "  --help, -h            Show this help message\n";
             return 0;
         }
         if ($command === 'serve_json_rpc') {
-            echo "Usage: cdd-php serve_json_rpc [options]
-
-";
-            echo "Options:
-";
-            echo "  -p, --port <port>     Port to listen on (e.g., 8080)
-";
-            echo "  -l, --listen <addr>   Address to bind to (e.g., 127.0.0.1)
-";
-            echo "  --help, -h            Show this help message
-";
+            echo "Usage: cdd-php serve_json_rpc [options]\n\n";
+            echo "Options:\n";
+            echo "  -p, --port <port>     Port to listen on (e.g., 8080)\n";
+            echo "  -l, --listen <addr>   Address to bind to (e.g., 127.0.0.1)\n";
+            echo "  --timeout <seconds>   Socket accept timeout in seconds\n";
+            echo "  --help, -h            Show this help message\n";
             return 0;
         }
         if ($command === 'sync') {
-            echo "Usage: cdd-php sync [options]
-
-";
-            echo "Options:
-";
-            echo "  -i, --input <directory> Target directory to synchronize
-";
-            echo "  -t, --truth <source>  Source of truth for synchronization (e.g., 'class', 'spec')
-";
-            echo "  --help, -h            Show this help message
-";
+            echo "Usage: cdd-php sync [options]\n\n";
+            echo "Options:\n";
+            echo "  -i, --input <directory> Target directory to synchronize\n";
+            echo "  -t, --truth <source>  Source of truth for synchronization (e.g., 'class', 'spec')\n";
+            echo "  --help, -h            Show this help message\n";
             return 0;
         }
         if ($command === 'mcp') {
-            echo "Usage: cdd-php mcp
-
-";
-            echo "Run the generator as an MCP server over stdio.
-";
+            echo "Usage: cdd-php mcp\n\n";
+            echo "Run the generator as an MCP server over stdio.\n";
             return 0;
         }
         if ($command === 'from_arazzo') {
-            echo "Usage: cdd-php from_arazzo <target> [options]\n";
+            echo "Usage: cdd-php from_arazzo <target> [options]\n\n";
+            echo "Targets:\n";
+            echo "  to_sdk_cli      Generate a workflow client SDK and CLI runner\n";
+            echo "  to_sdk          Generate a workflow client SDK\n";
+            echo "  to_server       Generate a server workflow engine and E2E workflow tests\n\n";
+            echo "Options:\n";
+            echo "  -i, --input <spec>    Path to the Arazzo specification file\n";
+            echo "  -d, --input-dir <dir> Path to a directory containing Arazzo specifications\n";
+            echo "  -o, --output <dir>    Destination path for generation\n";
+            echo "  --no-github-actions   Disable GitHub Actions generation\n";
+            echo "  --no-installable-package Disable Composer package generation\n";
+            echo "  --help, -h            Show this help message\n";
             return 0;
         }
         if ($command === 'to_arazzo') {
-            echo "Usage: cdd-php to_arazzo [options]\n";
+            echo "Usage: cdd-php to_arazzo [options]\n\n";
+            echo "Options:\n";
+            echo "  -i, --input <path>    Path to the workflow source file or directory to parse\n";
+            echo "  -o, --output <path>   Destination file for the Arazzo specification\n";
+            echo "  --help, -h            Show this help message\n";
             return 0;
         }
         return -1;
@@ -1267,7 +1228,7 @@ use ApiClient;";
         }
 
         if (in_array('--help', $argv, true) || in_array('-h', $argv, true)) {
-            $helpExit = self::printHelp($command);
+            $helpExit = self::printHelp($command, $argv[2] ?? '');
             if ($helpExit === 0) {
                 return 0;
             }

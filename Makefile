@@ -1,4 +1,4 @@
-.PHONY: help install_base install_deps build_docs docs build test run all build_wasm build_docker run_docker
+.PHONY: help install_base install_deps deps build_docs docs build test run all build_wasm build_docker run_docker
 
 DOCS_DIR ?= docs
 BIN_DIR ?= bin
@@ -6,7 +6,7 @@ BIN_DIR ?= bin
 help:
 	@echo "Available tasks:"
 	@echo "  install_base   Install language runtime and tools"
-	@echo "  install_deps   Install local dependencies"
+	@echo "  install_deps   Install local dependencies (alias: deps)"
 	@echo "  build_docs     Build the API docs (override with DOCS_DIR=...)"
 	@echo "  docs           Generate API documentation with Doxygen and symlink to docs/html"
 	@echo "  build	  Build the CLI binary (override with BIN_DIR=...)"
@@ -26,6 +26,8 @@ install_base:
 install_deps:
 	@echo "Installing project dependencies..."
 	@composer install
+
+deps: install_deps
 
 build_docs:
 	@echo "Building API docs in $(DOCS_DIR)..."
