@@ -102,6 +102,9 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
     }
 
     $implementation = "    // Implementation\n";
+    if (isset($operation['security']) && is_array($operation['security'])) {
+        $implementation .= \Cdd\Security\emit($operation['security']);
+    }
     if ($operationId === 'mcp_sse') {
         $implementation = "    header('Content-Type: text/event-stream');\n";
         $implementation .= "    header('Cache-Control: no-cache');\n";
@@ -126,10 +129,10 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
         $implementation .= "    }\n";
         $implementation .= "    return ['jsonrpc' => '2.0', 'id' => \$req['id'] ?? null, 'error' => ['code' => -32601, 'message' => 'Method not found']];\n";
     } elseif ($primarySchema) {
-        if (strtolower($method) === 'get') {
+        $lowerMethod = strtolower($method);
+        if ($lowerMethod === 'get') {
             if (strpos($path, '{') !== false) {
-                // it's a getById
-                $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
+                $implementation .= "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
                 $idVar = 'id';
                 if (preg_match('/\{([^}]+)\}/', $path, $matches)) {
                     $idVar = $matches[1];
@@ -143,19 +146,32 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
                 $implementation .= "    header('Content-Type: application/json');\n";
                 $implementation .= "    echo json_encode(\$record->toArray());\n";
             } else {
-                // it's a getAll
-                $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
+                $implementation .= "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
                 $implementation .= "    \$records = \$dao->getAll();\n";
                 $implementation .= "    header('Content-Type: application/json');\n";
                 $implementation .= "    echo json_encode(array_map(fn(\$r) => \$r->toArray(), \$records));\n";
             }
-        } elseif (strtolower($method) === 'post') {
-            $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
+        } elseif ($lowerMethod === 'post') {
+            $implementation .= "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
             $implementation .= "    \$record = \$dao->create(json_decode(file_get_contents('php://input'), true) ?? []);\n";
             $implementation .= "    header('Content-Type: application/json');\n";
             $implementation .= "    echo json_encode(\$record->toArray());\n";
-        } elseif (strtolower($method) === 'delete') {
-            $implementation = "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
+        } elseif ($lowerMethod === 'put' || $lowerMethod === 'patch') {
+            $implementation .= "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
+            $idVar = 'id';
+            if (preg_match('/\{([^}]+)\}/', $path, $matches)) {
+                $idVar = $matches[1];
+            }
+            $implementation .= "    \$record = \$dao->update(\${$idVar}, json_decode(file_get_contents('php://input'), true) ?? []);\n";
+            $implementation .= "    if (!\$record) {\n";
+            $implementation .= "        header('HTTP/1.1 404 Not Found');\n";
+            $implementation .= "        echo json_encode(['error' => 'Not found']);\n";
+            $implementation .= "        return;\n";
+            $implementation .= "    }\n";
+            $implementation .= "    header('Content-Type: application/json');\n";
+            $implementation .= "    echo json_encode(\$record->toArray());\n";
+        } elseif ($lowerMethod === 'delete') {
+            $implementation .= "    \$dao = \\Api\\Daos\\DaoFactory::create('{$primarySchema}');\n";
             $idVar = 'id';
             if (preg_match('/\{([^}]+)\}/', $path, $matches)) {
                 $idVar = $matches[1];

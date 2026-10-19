@@ -28,41 +28,7 @@ use PhpParser\NodeFinder;
  */
 function evaluateAstNode(?Node $node): mixed
 {
-    if ($node === null) {
-        return null;
-    }
-    if ($node instanceof String_ || $node instanceof Int_ || $node instanceof Float_) {
-        return $node->value;
-    }
-    if ($node instanceof UnaryMinus) {
-        $inner = evaluateAstNode($node->expr);
-        if (is_int($inner) || is_float($inner)) {
-            return -$inner;
-        }
-    }
-    if ($node instanceof ConstFetch) {
-        $constName = strtolower($node->name->toString());
-        if ($constName === 'true') {
-            return true;
-        }
-        if ($constName === 'false') {
-            return false;
-        }
-    }
-    if ($node instanceof Array_) {
-        $result = [];
-        foreach ($node->items as $item) {
-            $val = evaluateAstNode($item->value);
-            if ($item->key !== null) {
-                $key = evaluateAstNode($item->key);
-                $result[(string) $key] = $val;
-            } else {
-                $result[] = $val;
-            }
-        }
-        return $result;
-    }
-    return null;
+    return \Cdd\Classes\evaluate_ast_node($node);
 }
 
 /**

@@ -90,11 +90,11 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     $out .= "        \$error = curl_error(\$ch);\n";
     $out .= "        \$httpCode = curl_getinfo(\$ch, CURLINFO_HTTP_CODE);\n";
     $out .= "\n";
-    $out .= "        if (\$error) {\n";
+    $out .= "        if (\$response === false || \$error !== '') {\n";
     $out .= "            throw new \\RuntimeException('cURL Error: ' . \$error);\n";
     $out .= "        }\n";
 
-    $out .= "        \$decoded = json_decode(\$response, true);\n";
+    $out .= "        \$decoded = json_decode((string) \$response, true);\n";
     $out .= "        return ['status' => \$httpCode, 'data' => \$decoded];\n";
     $out .= "    }\n";
 
@@ -145,10 +145,7 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
                     $operationId = $addOp['operationId'] ?? "{$m}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
                     if (strpos($out, "function $operationId(") === false) {
                         $methodCode = emit($addMethod, $path, $addOp) . "\n";
-                        $pos = strrpos($out, '}');
-                        if ($pos !== false) {
-                            $out = substr($out, 0, $pos) . $methodCode . "}\n";
-                        }
+                        $out = \Cdd\Paths\append_method_to_class($out, $methodCode);
                     }
                 }
             } else {
@@ -157,10 +154,7 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
                     $operationId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', $path);
                     if (strpos($out, "function $operationId(") === false) {
                         $methodCode = emit($method, $path, $operation) . "\n";
-                        $pos = strrpos($out, '}');
-                        if ($pos !== false) {
-                            $out = substr($out, 0, $pos) . $methodCode . "}\n";
-                        }
+                        $out = \Cdd\Paths\append_method_to_class($out, $methodCode);
                     }
                 }
             }
@@ -261,10 +255,7 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
         $mcpCode .= "        };\n";
         $mcpCode .= "    }\n";
 
-        $pos = strrpos($out, '}');
-        if ($pos !== false) {
-            $out = substr($out, 0, $pos) . $mcpCode . "}\n";
-        }
+        $out = \Cdd\Paths\append_method_to_class($out, $mcpCode);
     }
 
     if (strpos($out, 'public function connect_mcp(') === false) {
@@ -386,10 +377,7 @@ function emit_class(array $paths, string $existingCode = '', array $securityDefi
         $mcpConnectCode .= "        };\n";
         $mcpConnectCode .= "    }\n";
 
-        $pos = strrpos($out, '}');
-        if ($pos !== false) {
-            $out = substr($out, 0, $pos) . $mcpConnectCode . "}\n";
-        }
+        $out = \Cdd\Paths\append_method_to_class($out, $mcpConnectCode);
     }
 
     return $out;

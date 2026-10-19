@@ -13,8 +13,8 @@ namespace Cdd\Encoding;
 /**
  * Emits PHP code representations for an Encoding Object.
  *
- * @param array<string, mixed> $encoding The Encoding object array.
- * @return string The PHP string representation.
+ * @param array<string, mixed> $encoding The Encoding Object.
+ * @return string The emitted PHP array code.
  */
 function emit(array $encoding): string
 {
@@ -28,7 +28,8 @@ function emit(array $encoding): string
         $out .= "    'headers' => [
 ";
         foreach ($encoding['headers'] as $name => $header) {
-            $out .= "        " . var_export((string) $name, true) . " => " . \Cdd\Encoding\emit_header($header) . ",
+            $exportedName = var_export((string) $name, true);
+            $out .= "        $exportedName => " . emit_header(is_array($header) ? $header : []) . ",
 ";
         }
         $out .= "    ],
@@ -39,11 +40,13 @@ function emit(array $encoding): string
 ";
     }
     if (isset($encoding['explode'])) {
-        $out .= "    'explode' => " . ($encoding['explode'] ? 'true' : 'false') . ",
+        $val = $encoding['explode'] ? 'true' : 'false';
+        $out .= "    'explode' => $val,
 ";
     }
     if (isset($encoding['allowReserved'])) {
-        $out .= "    'allowReserved' => " . ($encoding['allowReserved'] ? 'true' : 'false') . ",
+        $val = $encoding['allowReserved'] ? 'true' : 'false';
+        $out .= "    'allowReserved' => $val,
 ";
     }
     $out .= "]";
@@ -51,10 +54,10 @@ function emit(array $encoding): string
 }
 
 /**
- * Emits PHP code for an individual Header object inside an Encoding.
+ * Emits PHP code representations for a Header Object.
  *
- * @param array<string, mixed> $header The Header object array.
- * @return string The PHP string representation.
+ * @param array<string, mixed> $header The Header Object.
+ * @return string The emitted PHP array code.
  */
 function emit_header(array $header): string
 {
@@ -64,8 +67,41 @@ function emit_header(array $header): string
         $out .= "            'description' => " . var_export((string) $header['description'], true) . ",
 ";
     }
+    if (isset($header['required'])) {
+        $out .= "            'required' => " . ($header['required'] ? 'true' : 'false') . ",
+";
+    }
+    if (isset($header['deprecated'])) {
+        $out .= "            'deprecated' => " . ($header['deprecated'] ? 'true' : 'false') . ",
+";
+    }
+    if (isset($header['style'])) {
+        $out .= "            'style' => " . var_export((string) $header['style'], true) . ",
+";
+    }
+    if (isset($header['explode'])) {
+        $out .= "            'explode' => " . ($header['explode'] ? 'true' : 'false') . ",
+";
+    }
     if (isset($header['schema']) && is_array($header['schema'])) {
-        $out .= "            'schema' => ['type' => " . var_export((string) ($header['schema']['type'] ?? ''), true) . "],
+        if (count($header['schema']) === 1 && isset($header['schema']['type'])) {
+            $out .= "            'schema' => ['type' => " . var_export((string) $header['schema']['type'], true) . "],
+";
+        } else {
+            $out .= "            'schema' => " . var_export($header['schema'], true) . ",
+";
+        }
+    }
+    if (isset($header['example'])) {
+        $out .= "            'example' => " . var_export($header['example'], true) . ",
+";
+    }
+    if (isset($header['examples']) && is_array($header['examples'])) {
+        $out .= "            'examples' => " . var_export($header['examples'], true) . ",
+";
+    }
+    if (isset($header['content']) && is_array($header['content'])) {
+        $out .= "            'content' => " . var_export($header['content'], true) . ",
 ";
     }
     $out .= "        ]";

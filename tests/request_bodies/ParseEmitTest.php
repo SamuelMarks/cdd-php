@@ -35,6 +35,22 @@ class ParseEmitTest extends TestCase
 
         $rbScalar = \Cdd\RequestBodies\parse('string');
         $this->assertEquals('string', $rbScalar['content']['application/json']['schema']['type']);
+
+        $this->assertEquals('User $user', \Cdd\RequestBodies\emit($rb, 'user'));
+        $parsedRequiredSig = \Cdd\RequestBodies\parse('User $user', 'A user object');
+        $this->assertEquals($rb, $parsedRequiredSig);
+
+        $parsedNullableSig = \Cdd\RequestBodies\parse('?User $body');
+        $this->assertFalse($parsedNullableSig['required']);
+        $this->assertEquals('#/components/schemas/User', $parsedNullableSig['content']['application/json']['schema']['$ref']);
+
+        $parsedUntypedSig = \Cdd\RequestBodies\parse('$body');
+        $this->assertFalse($parsedUntypedSig['required']);
+        $this->assertEquals('object', $parsedUntypedSig['content']['application/json']['schema']['type']);
+
+        $parsedNullableType = \Cdd\RequestBodies\parse('?int');
+        $this->assertFalse($parsedNullableType['required']);
+        $this->assertEquals('integer', $parsedNullableType['content']['application/json']['schema']['type']);
     }
 
     /**

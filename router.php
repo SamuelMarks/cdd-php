@@ -8,7 +8,6 @@
 
 declare(strict_types=1);
 
-// A standalone minimal router for testing the generated CDD server
 require 'vendor/autoload.php';
 
 /**
@@ -35,11 +34,17 @@ class MockRoute
 }
 class_alias('MockRoute', 'Illuminate\Support\Facades\Route');
 
-if (file_exists('/tmp/temp-php-server/src/ApiServers.php')) {
-    require_once '/tmp/temp-php-server/src/ApiServers.php';
+$serverDir = getenv('CDD_SERVER_DIR') ?: (file_exists('/tmp/temp-php-server/src/routes.php') ? '/tmp/temp-php-server' : (sys_get_temp_dir() . '/temp-php-server'));
+
+if (file_exists($serverDir . '/src/ApiServers.php')) {
+    require_once $serverDir . '/src/ApiServers.php';
 }
-require '/tmp/temp-php-server/src/ApiController.php';
-require '/tmp/temp-php-server/src/routes.php';
+if (file_exists($serverDir . '/src/ApiController.php')) {
+    require $serverDir . '/src/ApiController.php';
+}
+if (file_exists($serverDir . '/src/routes.php')) {
+    require $serverDir . '/src/routes.php';
+}
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $uri = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
@@ -60,27 +65,46 @@ if (class_exists('ApiServers')) {
     }
 }
 
-$controller = new ApiController();
+$controller = class_exists('ApiController') ? new ApiController() : null;
 
 foreach (MockRoute::$routes as $route) {
-    // Very simple path matching
     $pattern = preg_replace('/\{[^\}]+\}/', '([^/]+)', $route['uri']);
     $pattern = '#^' . $pattern . '$#';
 
     if ($route['method'] === $method && preg_match($pattern, $uri, $matches)) {
-        array_shift($matches); // remove full match
+        array_shift($matches);
 
         $action = $route['action'];
-        if (is_string($action) && method_exists($controller, $action)) {
+        if (is_array($action)) {
+            $bs = chr(92);
+            $class = ltrim((string) $action[0], $bs);
+            $methodName = (string) $action[1];
+            $file = $serverDir . '/src/Controllers/' . basename(str_replace($bs, '/', $class)) . '.php';
+            if (file_exists($file)) {
+                require_once $file;
+            }
+            if (class_exists($class)) {
+                $instance = new $class();
+                if (method_exists($instance, $methodName)) {
+                    ob_start();
+                    $ref = new \ReflectionMethod($instance, $methodName);
+                    $callArgs = [];
+                    foreach ($ref->getParameters() as $idx => $param) {
+                        $callArgs[] = $matches[$idx] ?? null;
+                    }
+                    $result = $instance->$methodName(...$callArgs);
+                    $buffered = (string) ob_get_clean();
+                    header('Content-Type: application/json');
+                    echo $buffered !== '' ? $buffered : json_encode($result ?? ['status' => 'success']);
+                    exit;
+                }
+            }
+        } elseif ($controller !== null && is_string($action) && method_exists($controller, $action)) {
             ob_start();
             $ref = new \ReflectionMethod($controller, $action);
             $callArgs = [];
             foreach ($ref->getParameters() as $idx => $param) {
-                if (isset($matches[$idx])) {
-                    $callArgs[] = $matches[$idx];
-                } else {
-                    $callArgs[] = null;
-                }
+                $callArgs[] = $matches[$idx] ?? null;
             }
             $result = $controller->$action(...$callArgs);
             $buffered = (string) ob_get_clean();
@@ -90,7 +114,7 @@ foreach (MockRoute::$routes as $route) {
             } elseif ($result !== null) {
                 echo json_encode($result);
             } else {
-                echo json_encode(["status" => "success", "action" => $action]);
+                echo json_encode(['status' => 'success', 'action' => $action]);
             }
             exit;
         }
@@ -98,4 +122,4 @@ foreach (MockRoute::$routes as $route) {
 }
 
 http_response_code(404);
-echo "Not found";
+echo 'Not found';

@@ -134,5 +134,8 @@ class MyClass_{$expectedType} {}
         $classes = \Cdd\Classes\parse($code);
         $this->assertEquals(1, count($classes));
         $this->assertEquals('', $classes[0]['name']);
+
+        $plusNode = new \PhpParser\Node\Expr\UnaryPlus(new \PhpParser\Node\Scalar\Int_(7));
+        $this->assertEquals(7, \Cdd\Classes\evaluate_ast_node($plusNode));
     }
 }

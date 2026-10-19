@@ -10,6 +10,15 @@ declare(strict_types=1);
 
 namespace Cdd\ArazzoCli;
 
+use PhpParser\Node\Expr\Array_;
+use PhpParser\Node\Expr\Assign;
+use PhpParser\Node\Expr\BinaryOp\Identical;
+use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Scalar\String_;
+use PhpParser\Node\Stmt\Expression;
+use PhpParser\Node\Stmt\If_;
+use PhpParser\NodeFinder;
+
 /**
  * Parses a generated or hand-edited PHP CLI workflow runner into an Arazzo 1.1.0 array.
  *
@@ -19,17 +28,19 @@ namespace Cdd\ArazzoCli;
  */
 function parse(string $cliCode, ?string $sdkWorkflowsCode = null): array
 {
-    if (preg_match('/@arazzo-spec\s+(\{[^\r\n]+\})/', $cliCode, $m)) {
-        $decoded = json_decode($m[1], true);
-        if (is_array($decoded) && isset($decoded['arazzo'], $decoded['workflows'])) {
-            return $decoded;
-        }
-    }
     if ($sdkWorkflowsCode !== null && $sdkWorkflowsCode !== '') {
         $fromSdk = \Cdd\ArazzoClient\parse($sdkWorkflowsCode);
-        if (!empty($fromSdk)) {
+        if (!empty($fromSdk) && !empty($fromSdk['workflows'])) {
             return $fromSdk;
         }
+    }
+
+    $parser = \Cdd\Classes\create_parser();
+    $stmts = null;
+    try {
+        $stmts = $parser->parse($cliCode);
+    } catch (\Throwable $e) {
+        $stmts = null;
     }
 
     $arazzo = [
@@ -48,20 +59,83 @@ function parse(string $cliCode, ?string $sdkWorkflowsCode = null): array
         'workflows' => [],
     ];
 
-    preg_match_all('/if\s*\(\$command\s*===\s*\x27([^\x27]+)\x27\)/', $cliCode, $matches);
-    foreach ($matches[1] ?? [] as $wfId) {
-        if (in_array($wfId, ['--help', '-h', '--version', '-V', 'mcp'], true)) {
-            continue;
+    $extraMeta = [];
+    if ($stmts !== null && !empty($stmts)) {
+        $nodeFinder = new NodeFinder();
+        /** @var Assign[] $assigns */
+        $assigns = $nodeFinder->findInstanceOf($stmts, Assign::class);
+        foreach ($assigns as $assign) {
+            if ($assign->var instanceof Variable && $assign->var->name === 'cliMetadata' && $assign->expr instanceof Array_) {
+                $meta = \Cdd\ArazzoClient\astExprToPhpValue($assign->expr);
+                if (is_array($meta)) {
+                    $extraMeta = $meta;
+                }
+            }
         }
-        $arazzo['workflows'][] = [
-            'workflowId' => $wfId,
-            'steps' => [
-                [
-                    'stepId' => 'run_' . $wfId,
-                    'operationId' => $wfId,
-                ],
-            ],
-        ];
+
+        if (isset($extraMeta['arazzo']) && is_string($extraMeta['arazzo'])) {
+            $arazzo['arazzo'] = $extraMeta['arazzo'];
+        }
+        $ordered = ['arazzo' => $arazzo['arazzo']];
+        if (isset($extraMeta['$self']) && is_string($extraMeta['$self'])) {
+            $ordered['$self'] = $extraMeta['$self'];
+        }
+        foreach ($extraMeta as $k => $v) {
+            if (is_string($k) && str_starts_with($k, 'x-')) {
+                $ordered[$k] = $v;
+            }
+        }
+        $ordered['info'] = isset($extraMeta['info']) && is_array($extraMeta['info']) ? $extraMeta['info'] : $arazzo['info'];
+        $ordered['sourceDescriptions'] = isset($extraMeta['sourceDescriptions']) && is_array($extraMeta['sourceDescriptions']) ? $extraMeta['sourceDescriptions'] : $arazzo['sourceDescriptions'];
+        $ordered['workflows'] = [];
+        $arazzo = $ordered;
+
+        /** @var If_[] $ifs */
+        $ifs = $nodeFinder->findInstanceOf($stmts, If_::class);
+        foreach ($ifs as $ifNode) {
+            if ($ifNode->cond instanceof Identical
+                && $ifNode->cond->left instanceof Variable
+                && $ifNode->cond->left->name === 'command'
+                && $ifNode->cond->right instanceof String_
+            ) {
+                $wfId = $ifNode->cond->right->value;
+                if (in_array($wfId, ['--help', '-h', '--version', '-V', 'mcp'], true)) {
+                    continue;
+                }
+
+                $foundWfDef = null;
+                foreach ($ifNode->stmts as $stmt) {
+                    if ($stmt instanceof Expression && $stmt->expr instanceof Assign) {
+                        $assign = $stmt->expr;
+                        if ($assign->var instanceof Variable && $assign->var->name === 'workflowDefinition' && $assign->expr instanceof Array_) {
+                            $val = \Cdd\ArazzoClient\astExprToPhpValue($assign->expr);
+                            if (is_array($val) && isset($val['workflowId'])) {
+                                $foundWfDef = $val;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if ($foundWfDef !== null) {
+                    $arazzo['workflows'][] = $foundWfDef;
+                } else {
+                    $arazzo['workflows'][] = [
+                        'workflowId' => $wfId,
+                        'steps' => [
+                            [
+                                'stepId' => 'run_' . $wfId,
+                                'operationId' => $wfId,
+                            ],
+                        ],
+                    ];
+                }
+            }
+        }
+
+        if (isset($extraMeta['components']) && is_array($extraMeta['components'])) {
+            $arazzo['components'] = $extraMeta['components'];
+        }
     }
 
     return $arazzo;

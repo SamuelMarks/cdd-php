@@ -35,6 +35,7 @@ class ParseEmitTest extends TestCase
         $emitted = \Cdd\Tests\emit('get', '/api/users', ['responses' => ['200' => []]]);
         $this->assertTrue(strpos($emitted, "\$this->call('get', '/api/users')") !== false);
         $this->assertTrue(strpos($emitted, '$this->assertEquals(200') !== false);
+        $this->assertTrue(strpos($emitted, '$this->assertIsArray($response->body())') !== false);
     }
 
     /**
@@ -126,7 +127,7 @@ class ParseEmitTest extends TestCase
     }
 
     /**
-     * Tests emitting modular route test classes and verifying their AST syntax validity.
+     * Tests emitting modular route test classes and executing them against working and failing controllers.
      *
      * @return void
      */
@@ -146,5 +147,72 @@ class ParseEmitTest extends TestCase
         $this->assertStringContainsString('class TestPostRouteTest extends TestCase', $files['TestPostRouteTest.php']);
         $this->assertNotNull(\Cdd\Classes\create_parser()->parse($files['TestGetRouteTest.php']));
         $this->assertNotNull(\Cdd\Classes\create_parser()->parse($files['TestPostRouteTest.php']));
+
+        $tmpDir = sys_get_temp_dir() . '/cdd_route_test_exec_' . uniqid();
+        mkdir("$tmpDir/src/Controllers", 0777, true);
+        mkdir("$tmpDir/tests/Routes", 0777, true);
+        try {
+            $postRouteFiles = \Cdd\Tests\emit_modular([
+                '/items' => [
+                    'post' => ['operationId' => 'createItemExec', 'responses' => ['201' => []]],
+                ],
+            ]);
+            $testFile = "$tmpDir/tests/Routes/CreateItemExecTest.php";
+            $adaptedTestCode = str_replace(
+                'use PHPUnit\Framework\TestCase;',
+                'use Cdd\Tests\Framework\TestCase;',
+                $postRouteFiles['CreateItemExecTest.php']
+            );
+            file_put_contents($testFile, $adaptedTestCode);
+
+            file_put_contents(
+                "$tmpDir/src/Controllers/CreateItemExecController.php",
+                "<?php
+declare(strict_types=1);
+namespace Api\Controllers;
+class CreateItemExecController {
+    public function __invoke(array \$body = []): array {
+        return ['created' => true, 'input' => \$body];
+    }
+}
+"
+            );
+
+            require_once $testFile;
+            /** @var object $testInstance */
+            $testInstance = new \Api\Tests\Routes\CreateItemExecTest('testcreateItemExec');
+            $testInstance->testcreateItemExec();
+
+            $brokenRouteFiles = \Cdd\Tests\emit_modular([
+                '/broken' => [
+                    'get' => ['operationId' => 'brokenRouteExec', 'responses' => ['200' => []]],
+                ],
+            ]);
+            $brokenTestFile = "$tmpDir/tests/Routes/BrokenRouteExecTest.php";
+            file_put_contents(
+                $brokenTestFile,
+                str_replace('use PHPUnit\Framework\TestCase;', 'use Cdd\Tests\Framework\TestCase;', $brokenRouteFiles['BrokenRouteExecTest.php'])
+            );
+            file_put_contents(
+                "$tmpDir/src/Controllers/BrokenRouteExecController.php",
+                "<?php
+declare(strict_types=1);
+namespace Api\Controllers;
+class BrokenRouteExecController {
+    public function __invoke(): void {
+        throw new \RuntimeException('Controller failed');
+    }
+}
+"
+            );
+            require_once $brokenTestFile;
+            /** @var object $brokenTestInstance */
+            $brokenTestInstance = new \Api\Tests\Routes\BrokenRouteExecTest('testbrokenRouteExec');
+            $this->assertThrows(static function () use ($brokenTestInstance): void {
+                $brokenTestInstance->testbrokenRouteExec();
+            }, \Exception::class);
+        } finally {
+            $this->removeDir($tmpDir);
+        }
     }
 }

@@ -9,6 +9,16 @@
   ],
   "autoload": {
     "files": [
+      "src/exceptions/CddException.php",
+      "src/cli/McpServer.php",
+      "src/cli/JsonRpcHttpServer.php",
+      "src/cli/ProjectSynchronizer.php",
+      "src/cli/DocsJsonGenerator.php",
+      "src/cli/CddConfig.php",
+      "src/cli/CddCli.php",
+      "src/cli/Cli.php",
+      "src/openapi/swagger2.php",
+      "src/openapi/scaffold.php",
       "src/openapi/parse.php",
       "src/openapi/emit.php",
       "src/arazzo/parse.php",

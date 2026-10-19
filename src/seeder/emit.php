@@ -31,19 +31,33 @@ declare(strict_types=1);
 ";
     $bs = chr(92);
     if ($namespace !== '') {
-        $out .= "namespace {$namespace};\n\n";
-        $out .= "use Api{$bs}Database{$bs}DatabaseConnection;\n";
+        $out .= "namespace {$namespace};
+
+";
+        $out .= "use Api{$bs}Database{$bs}DatabaseConnection;
+";
         foreach (array_keys($schemas) as $schemaName) {
-            $out .= "use Api{$bs}Models{$bs}{$schemaName};\n";
+            $out .= "use Api{$bs}Models{$bs}{$schemaName};
+";
         }
     }
-    $out .= "use Faker{$bs}Factory as FakerFactory;\n";
-    $out .= "use Illuminate{$bs}Database{$bs}Capsule{$bs}Manager as Capsule;\n\n";
+    $out .= "use Faker{$bs}Factory as FakerFactory;
+";
+    $out .= "use Illuminate{$bs}Database{$bs}Capsule{$bs}Manager as Capsule;
 
-    $out .= "/**\n * Seeder class to populate the database with fake data.\n */\n";
-    $out .= "class DatabaseSeeder {\n";
-    $out .= "    private {$bs}Faker{$bs}Generator \$faker;\n";
-    $out .= "    private array \$entityPool = [];\n\n";
+";
+
+    $out .= "/**
+ * Seeder class to populate the database with fake data.
+ */
+";
+    $out .= "class DatabaseSeeder {
+";
+    $out .= "    private {$bs}Faker{$bs}Generator \$faker;
+";
+    $out .= "    private array \$entityPool = [];
+
+";
 
     $out .= "    public function __construct() {
 ";
@@ -53,16 +67,16 @@ declare(strict_types=1);
 
 ";
 
-    // Topological sort heuristic
+    // Topological sort heuristic with self-reference / cycle guard
     $deps = [];
     $names = array_keys($schemas);
     foreach ($schemas as $name => $schema) {
         $deps[$name] = [];
-        if (isset($schema['properties'])) {
+        if (isset($schema['properties']) && is_array($schema['properties'])) {
             foreach ($schema['properties'] as $propName => $propDef) {
-                if (preg_match('/^([a-z_]+)_id$/i', $propName, $matches)) {
+                if (preg_match('/^([a-z_]+)_id$/i', (string) $propName, $matches)) {
                     $potentialParent = str_replace('_', '', ucwords($matches[1], '_'));
-                    if (in_array($potentialParent, $names, true)) {
+                    if ($potentialParent !== $name && in_array($potentialParent, $names, true)) {
                         $deps[$name][] = $potentialParent;
                     }
                 }
@@ -96,41 +110,39 @@ declare(strict_types=1);
 
     foreach ($sorted as $name) {
         $schema = $schemas[$name];
-        $count = 10; // Default count
-        // For children, maybe more
-        if (!empty($deps[$name])) {
-            $count = 50;
-        }
+        $count = !empty($deps[$name]) ? 50 : 10;
+        $exportedName = var_export((string) $name, true);
 
         $out .= "            // Seed {$name}
 ";
-        $out .= "            \$this->entityPool['{$name}'] = [];
+        $out .= "            \$this->entityPool[{$exportedName}] = [];
 ";
         $out .= "            for (\$i = 0; \$i < {$count}; \$i++) {
 ";
         $out .= "                \$data = [
 ";
-        if (isset($schema['properties'])) {
+        if (isset($schema['properties']) && is_array($schema['properties'])) {
             foreach ($schema['properties'] as $propName => $propDef) {
                 if ($propName === 'id') {
                     continue;
                 }
                 $val = "''";
-                if (preg_match('/^([a-z_]+)_id$/i', $propName, $matches)) {
+                if (preg_match('/^([a-z_]+)_id$/i', (string) $propName, $matches)) {
                     $parent = str_replace('_', '', ucwords($matches[1], '_'));
                     if (in_array($parent, $names, true)) {
-                        $val = "\$this->entityPool['{$parent}'][array_rand(\$this->entityPool['{$parent}'])] ?? 1";
+                        $exportedParent = var_export($parent, true);
+                        $val = "!empty(\$this->entityPool[{$exportedParent}]) ? \$this->entityPool[{$exportedParent}][array_rand(\$this->entityPool[{$exportedParent}])] : 1";
                     } else {
-                        $val = "1";
+                        $val = '1';
                     }
                 } else {
-                    $type = $propDef['type'] ?? 'string';
+                    $type = is_array($propDef) ? (string) ($propDef['type'] ?? 'string') : 'string';
                     if ($type === 'string') {
-                        if (stripos($propName, 'email') !== false) {
+                        if (stripos((string) $propName, 'email') !== false) {
                             $val = "\$this->faker->email()";
-                        } elseif (stripos($propName, 'name') !== false) {
+                        } elseif (stripos((string) $propName, 'name') !== false) {
                             $val = "\$this->faker->name()";
-                        } elseif (stripos($propName, 'phone') !== false) {
+                        } elseif (stripos((string) $propName, 'phone') !== false) {
                             $val = "\$this->faker->phoneNumber()";
                         } else {
                             $val = "\$this->faker->word()";
@@ -143,7 +155,8 @@ declare(strict_types=1);
                         $val = "\$this->faker->randomFloat(2, 0, 1000)";
                     }
                 }
-                $out .= "                    '{$propName}' => {$val},
+                $exportedProp = var_export((string) $propName, true);
+                $out .= "                    {$exportedProp} => {$val},
 ";
             }
         }
@@ -151,7 +164,7 @@ declare(strict_types=1);
 ";
         $out .= "                \$record = {$name}::create(\$data);
 ";
-        $out .= "                \$this->entityPool['{$name}'][] = \$record->id;
+        $out .= "                \$this->entityPool[{$exportedName}][] = \$record->id;
 ";
         $out .= "            }
 ";

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Parses PHP source code to extract classes and OpenAPI component types.
+ * Parses PHP source code to extract classes, OpenAPI component types, and constant AST expressions.
  *
  * @package Cdd\Classes
  */
@@ -10,6 +10,14 @@ declare(strict_types=1);
 
 namespace Cdd\Classes;
 
+use PhpParser\Node;
+use PhpParser\Node\Expr\Array_;
+use PhpParser\Node\Expr\ConstFetch;
+use PhpParser\Node\Expr\UnaryMinus;
+use PhpParser\Node\Expr\UnaryPlus;
+use PhpParser\Node\Scalar\Float_;
+use PhpParser\Node\Scalar\Int_;
+use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\NodeFinder;
 use PhpParser\Parser;
@@ -27,6 +35,61 @@ function create_parser(): Parser
         $parser = (new ParserFactory())->createForNewestSupportedVersion();
     }
     return $parser;
+}
+
+/**
+ * Evaluates a PhpParser AST expression node into a native PHP scalar or array value without executing code.
+ *
+ * @param Node|null $node The AST expression node to evaluate.
+ * @return mixed The evaluated scalar or array value.
+ */
+function evaluate_ast_node(?Node $node): mixed
+{
+    if ($node === null) {
+        return null;
+    }
+    if ($node instanceof String_ || $node instanceof Int_ || $node instanceof Float_) {
+        return $node->value;
+    }
+    if ($node instanceof UnaryMinus) {
+        $inner = evaluate_ast_node($node->expr);
+        if (is_int($inner) || is_float($inner)) {
+            return -$inner;
+        }
+    }
+    if ($node instanceof UnaryPlus) {
+        $inner = evaluate_ast_node($node->expr);
+        if (is_int($inner) || is_float($inner)) {
+            return +$inner;
+        }
+    }
+    if ($node instanceof ConstFetch) {
+        $constName = strtolower($node->name->toString());
+        if ($constName === 'true') {
+            return true;
+        }
+        if ($constName === 'false') {
+            return false;
+        }
+        return null;
+    }
+    if ($node instanceof Array_) {
+        $result = [];
+        foreach ($node->items as $item) {
+            if ($item === null) {
+                continue;
+            }
+            $val = evaluate_ast_node($item->value);
+            if ($item->key !== null) {
+                $key = evaluate_ast_node($item->key);
+                $result[is_int($key) ? $key : (string) $key] = $val;
+            } else {
+                $result[] = $val;
+            }
+        }
+        return $result;
+    }
+    return null;
 }
 
 /**

@@ -18,7 +18,7 @@ namespace Cdd\Paths;
  * @param bool $hasClosingBrace Whether the target class string already has a closing brace.
  * @return string The updated PHP class code.
  */
-function append_method_to_class(string $classCode, string $methodCode, bool $hasClosingBrace): string
+function append_method_to_class(string $classCode, string $methodCode, bool $hasClosingBrace = true): string
 {
     if ($hasClosingBrace) {
         $pos = strrpos($classCode, '}');

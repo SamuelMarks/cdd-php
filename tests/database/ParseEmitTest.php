@@ -29,8 +29,14 @@ class ParseEmitTest extends TestCase
                 'type' => 'object',
                 'properties' => [
                     'id' => ['type' => 'integer'],
+                    'count' => ['type' => 'integer'],
                     'name' => ['type' => 'string'],
                     'active' => ['type' => 'boolean'],
+                    'score' => ['type' => 'number'],
+                    'tags' => ['type' => 'array'],
+                    'meta' => ['type' => 'object'],
+                    'created_at_iso' => ['type' => 'string', 'format' => 'date-time'],
+                    'bio' => ['type' => 'string', 'format' => 'text'],
                 ],
             ],
         ];
@@ -44,8 +50,14 @@ class ParseEmitTest extends TestCase
 
         $this->assertStringContainsString("Capsule::schema()->create('users'", $code);
         $this->assertStringContainsString('$table->id()', $code);
+        $this->assertStringContainsString("\$table->integer('count')->nullable()", $code);
         $this->assertStringContainsString("\$table->string('name')->nullable()", $code);
         $this->assertStringContainsString("\$table->boolean('active')->nullable()", $code);
+        $this->assertStringContainsString("\$table->float('score')->nullable()", $code);
+        $this->assertStringContainsString("\$table->json('tags')->nullable()", $code);
+        $this->assertStringContainsString("\$table->json('meta')->nullable()", $code);
+        $this->assertStringContainsString("\$table->dateTime('created_at_iso')->nullable()", $code);
+        $this->assertStringContainsString("\$table->text('bio')->nullable()", $code);
         $this->assertStringContainsString('$table->timestamps()', $code);
         $this->assertNotNull(\Cdd\Classes\create_parser()->parse($code));
     }

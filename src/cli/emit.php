@@ -39,7 +39,7 @@ function emit(array $paths, string $existingCode = ''): string
             $commands[$opId] = $operation;
             $methodNames[$opId] = $rawOpId;
             $desc = (string) ($operation['description'] ?? 'Call ' . strtoupper((string) $method) . ' ' . $path);
-            $out .= "    echo \"  " . str_pad($opId, 25) . " " . addslashes($desc) . "\\n\";\n";
+            $out .= '    echo ' . var_export('  ' . str_pad($opId, 25) . ' ' . $desc, true) . " . \"\\n\";\n";
         }
     }
     $out .= "    exit(0);\n";
@@ -51,7 +51,7 @@ function emit(array $paths, string $existingCode = ''): string
         $out .= "    if (isset(\$argv[2]) && (\$argv[2] === '--help' || \$argv[2] === '-h')) {\n";
         $out .= "        echo \"Usage: php api_cli.php $opId [args]\\n\\n\";\n";
         if (isset($operation['description'])) {
-            $out .= "        echo \"" . addslashes((string) $operation['description']) . "\\n\\n\";\n";
+            $out .= '        echo ' . var_export((string) $operation['description'], true) . " . \"\\n\\n\";\n";
         }
         $out .= "        echo \"Options:\\n\";\n";
 
@@ -59,8 +59,8 @@ function emit(array $paths, string $existingCode = ''): string
             foreach ($operation['parameters'] as $p) {
                 $name = $p['name'] ?? 'param';
                 $req = !empty($p['required']) ? '(required)' : '(optional)';
-                $desc = addslashes((string) ($p['description'] ?? ''));
-                $out .= "        echo \"  --$name $req $desc\\n\";\n";
+                $desc = (string) ($p['description'] ?? '');
+                $out .= '        echo ' . var_export("  --$name $req $desc", true) . " . \"\\n\";\n";
             }
         }
         if (isset($operation['requestBody'])) {
@@ -169,11 +169,12 @@ function emit(array $paths, string $existingCode = ''): string
             $schema['required'] = $required;
         }
 
-        $schemaJson = addslashes(json_encode($schema));
+        $schemaJson = var_export((string) json_encode($schema), true);
+        $descExport = var_export((string) $desc, true);
         $out .= "                \$tools[] = [\n";
         $out .= "                    'name' => '$opId',\n";
-        $out .= "                    'description' => '" . addslashes($desc) . "',\n";
-        $out .= "                    'inputSchema' => json_decode('$schemaJson', true)\n";
+        $out .= "                    'description' => $descExport,\n";
+        $out .= "                    'inputSchema' => json_decode($schemaJson, true)\n";
         $out .= "                ];\n";
     }
     $out .= "                \$res['result'] = ['tools' => \$tools];\n";

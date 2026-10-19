@@ -31,6 +31,36 @@ class ParseEmitTest extends TestCase
 
         $emitted = \Cdd\Info\emit($info);
         $this->assertTrue(strpos($emitted, '* Does things') !== false);
+        $this->assertEquals($info, \Cdd\Info\parse($emitted));
+
+        $fullInfo = [
+            'title' => 'Enterprise Service',
+            'version' => '3.1.0',
+            'summary' => 'Short summary',
+            'description' => "Line 1\nLine 2",
+            'termsOfService' => 'https://example.com/tos',
+            'contact' => [
+                'name' => 'Support Team',
+                'url' => 'https://example.com/support',
+                'email' => 'support@example.com',
+            ],
+            'license' => [
+                'name' => 'Apache 2.0',
+                'identifier' => 'Apache-2.0',
+                'url' => 'https://www.apache.org/licenses/LICENSE-2.0',
+            ],
+        ];
+        $emittedFull = \Cdd\Info\emit($fullInfo);
+        $parsedFromDoc = \Cdd\Info\parse($emittedFull);
+        $this->assertEquals($fullInfo, $parsedFromDoc);
+
+        $validArrayInfo = [
+            'title' => 'Valid Array Info',
+            'version' => '1.0.0',
+            'contact' => ['name' => 'Alice'],
+            'license' => ['name' => 'MIT', 'identifier' => 'MIT'],
+        ];
+        $this->assertEquals($validArrayInfo, \Cdd\Info\parse($validArrayInfo));
     }
 
     /**

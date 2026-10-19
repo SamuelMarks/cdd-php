@@ -35,6 +35,15 @@ class ParseEmitTest extends TestCase
         $emitted = \Cdd\Operations\emit($op);
         $this->assertTrue(strpos($emitted, 'public function getUser()') !== false);
         $this->assertTrue(strpos($emitted, '* Get a user') !== false);
+
+        $parsedFromMethodCode = \Cdd\Operations\parse($emitted);
+        $this->assertEquals('getUser', $parsedFromMethodCode['operationId']);
+        $this->assertEquals('Get a user', $parsedFromMethodCode['summary']);
+
+        $parsedFromFullPhp = \Cdd\Operations\parse("<?php\nclass C {\n    /**\n     * Do work\n     */\n    public function work(int \$id): string { return ''; }\n}\n");
+        $this->assertEquals('work', $parsedFromFullPhp['operationId']);
+        $this->assertEquals('Do work', $parsedFromFullPhp['summary']);
+        $this->assertEquals('integer', $parsedFromFullPhp['parameters'][0]['schema']['type']);
     }
 
     /**
@@ -131,6 +140,12 @@ Desc line 2",
 
         $emittedDelete = \Cdd\Operations\emit($op, '/items/{itemId}', 'delete');
         $this->assertStringContainsString('$dao->delete($itemId)', $emittedDelete);
+
+        $opWithSec = $op;
+        $opWithSec['security'] = [['BearerAuth' => []]];
+        $emittedPut = \Cdd\Operations\emit($opWithSec, '/items/{itemId}', 'put');
+        $this->assertStringContainsString('$dao->update($itemId,', $emittedPut);
+        $this->assertStringContainsString("\$this->requireSecurity('BearerAuth'", $emittedPut);
 
         $emittedGetById = \Cdd\Operations\emit($op, '/items/{itemId}', 'get');
         $this->assertStringContainsString('$dao->getById($itemId)', $emittedGetById);

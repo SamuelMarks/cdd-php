@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 namespace Cdd\ArazzoServer;
 
+use function Cdd\ArazzoClient\toCamelCaseIdentifier;
+
 /**
  * Generates sample seed input values from a JSON Schema 2020-12 object.
  *
@@ -58,6 +60,12 @@ function emitWorkflowEngine(array $arazzo): string
  */
 function emit(array $arazzo): string
 {
+    $version = (string) ($arazzo['arazzo'] ?? '1.1.0');
+    $info = is_array($arazzo['info'] ?? null) ? $arazzo['info'] : ['title' => 'Arazzo Workflows', 'version' => '1.0.0'];
+    $sources = is_array($arazzo['sourceDescriptions'] ?? null) ? $arazzo['sourceDescriptions'] : [];
+    $components = is_array($arazzo['components'] ?? null) ? $arazzo['components'] : [];
+    $rootExt = \Cdd\Arazzo\extractExtensions($arazzo);
+
     $out = "<?php
 
 ";
@@ -68,8 +76,6 @@ function emit(array $arazzo): string
     $out .= " *
 ";
     $out .= " * @package Api\Tests\Workflows
-";
-    $out .= " * @arazzo-spec " . json_encode($arazzo, JSON_UNESCAPED_SLASHES) . "
 ";
     $out .= " */
 
@@ -90,27 +96,44 @@ function emit(array $arazzo): string
     $out .= "class ArazzoWorkflowTest extends TestCase
 {
 ";
-    $out .= "    /**
-     * Returns the Arazzo specification under test.
-     *
-     * @return array<string, mixed>
-     */
+    $out .= "    /** @var string Arazzo specification version. */
 ";
-    $out .= "    public static function getSpecification(): array
-    {
+    $out .= "    public const ARAZZO_VERSION = " . var_export($version, true) . ";
+
 ";
-    $out .= "        return " . var_export($arazzo, true) . ";
+    $out .= "    /** @var string|null Self URI of the Arazzo document. */
 ";
-    $out .= "    }
+    $out .= "    public const SELF_URI = " . var_export($arazzo['$self'] ?? null, true) . ";
+
+";
+    $out .= "    /** @var array<string, mixed> Info Object metadata. */
+";
+    $out .= "    public const INFO = " . var_export($info, true) . ";
+
+";
+    $out .= "    /** @var array<int, array<string, mixed>> Source Description Objects. */
+";
+    $out .= "    public const SOURCE_DESCRIPTIONS = " . var_export($sources, true) . ";
+
+";
+    $out .= "    /** @var array<string, mixed> Reusable Arazzo Components Object. */
+";
+    $out .= "    public const COMPONENTS = " . var_export($components, true) . ";
+
+";
+    $out .= "    /** @var array<string, mixed> Root specification extensions. */
+";
+    $out .= "    public const EXTENSIONS = " . var_export($rootExt, true) . ";
 ";
 
     foreach ($arazzo['workflows'] ?? [] as $wf) {
         $wfId = (string) ($wf['workflowId'] ?? 'workflow');
-        $methodSuffix = ucfirst(\Cdd\ArazzoClient\toCamelCaseIdentifier($wfId));
+        $methodSuffix = ucfirst(toCamelCaseIdentifier($wfId));
         $seedInputs = isset($wf['inputs']) && is_array($wf['inputs'])
             ? generateSeedInputsFromSchema($wf['inputs'])
             : [];
         $seedExport = var_export($seedInputs, true);
+        $wfExport = var_export($wf, true);
 
         $out .= "
     /**
@@ -118,8 +141,6 @@ function emit(array $arazzo): string
         $out .= "     * E2E workflow test for {$wfId}.
 ";
         $out .= "     *
-";
-        $out .= "     * @arazzo-workflow " . json_encode($wf, JSON_UNESCAPED_SLASHES) . "
 ";
         $out .= "     * @return void
 ";
@@ -130,11 +151,13 @@ function emit(array $arazzo): string
 ";
         $out .= "        require_once __DIR__ . '/../../src/WorkflowEngine.php';
 ";
+        $out .= "        \$workflow = {$wfExport};
+";
         $out .= "        \$engine = new \Api\WorkflowEngine();
 ";
         $out .= "        \$inputs = {$seedExport};
 ";
-        $out .= "        \$outputs = \$engine->executeWorkflow(" . var_export($wfId, true) . ", \$inputs);
+        $out .= "        \$outputs = \$engine->executeWorkflow(\$workflow['workflowId'], \$inputs);
 ";
         $out .= "        \$this->assertIsArray(\$outputs);
 ";

@@ -373,6 +373,59 @@ TearDown failure in " . get_class($this) . "::$method
     }
 
     /**
+     * Asserts that a variable is an array.
+     *
+     * @param mixed $actual The value to check.
+     * @param string $message Optional failure message.
+     * @return void
+     * @throws \Exception If not an array.
+     */
+    protected function assertIsArray(mixed $actual, string $message = ''): void
+    {
+        $this->recordAssertion();
+        if (!is_array($actual)) {
+            $prefix = $message !== '' ? "$message: " : '';
+            throw new \Exception($prefix . "Expected array, got " . gettype($actual));
+        }
+    }
+
+    /**
+     * Asserts that an object is an instance of a given class or interface.
+     *
+     * @param string $expected The expected class or interface name.
+     * @param mixed $actual The value to check.
+     * @param string $message Optional failure message.
+     * @return void
+     * @throws \Exception If not an instance of $expected.
+     */
+    protected function assertInstanceOf(string $expected, mixed $actual, string $message = ''): void
+    {
+        $this->recordAssertion();
+        if (!is_object($actual) || !($actual instanceof $expected)) {
+            $prefix = $message !== '' ? "$message: " : '';
+            $got = is_object($actual) ? get_class($actual) : gettype($actual);
+            throw new \Exception($prefix . "Expected instance of $expected, got $got");
+        }
+    }
+
+    /**
+     * Asserts that a value is not empty.
+     *
+     * @param mixed $actual The value to check.
+     * @param string $message Optional failure message.
+     * @return void
+     * @throws \Exception If empty.
+     */
+    protected function assertNotEmpty(mixed $actual, string $message = ''): void
+    {
+        $this->recordAssertion();
+        if (empty($actual)) {
+            $prefix = $message !== '' ? "$message: " : '';
+            throw new \Exception($prefix . "Expected non-empty value, got empty");
+        }
+    }
+
+    /**
      * Asserts that executing a callback throws a specific exception.
      *
      * @param callable $callback The callback to execute.

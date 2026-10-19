@@ -11,33 +11,61 @@ declare(strict_types=1);
 namespace Cdd\RequestBodies;
 
 /**
- * Parses request body information to OpenAPI RequestBody Object.
+ * Parses request body information (or an emitted PHP parameter signature like `?User $body` or `User $user`) to an OpenAPI RequestBody Object.
  *
- * @param string $type The expected type or schema reference.
- * @param string $description Optional description.
+ * @param string $typeOrSignature PHP type hint (`string`, `int`, `array`, or class name) or parameter signature like `?User $body`.
+ * @param string|null $description Optional description.
+ * @param bool $required Whether the request body is required.
+ * @param string $mediaType Media type key (defaults to `application/json`).
  * @return array<string, mixed> The OpenAPI RequestBody Object.
  */
-function parse(string $type, string $description = ''): array
-{
-    $mappedType = \Cdd\Schemas\php_type_to_openapi($type);
-    $schema = $mappedType !== null
-        ? ['type' => $mappedType]
-        : ['$ref' => "#/components/schemas/$type"];
+function parse(
+    string $typeOrSignature,
+    ?string $description = null,
+    bool $required = true,
+    string $mediaType = 'application/json'
+): array {
+    $type = trim($typeOrSignature);
+    if (str_contains($type, '$')) {
+        if (preg_match('/^(\??[a-zA-Z0-9_]+)?\s*\$[a-zA-Z0-9_]+$/', $type, $m)) {
+            $rawType = trim($m[1] ?? '');
+            if ($rawType === '') {
+                $type = 'object';
+                $required = false;
+            } elseif (str_starts_with($rawType, '?')) {
+                $type = substr($rawType, 1);
+                $required = false;
+            } else {
+                $type = $rawType;
+                $required = true;
+            }
+        }
+    } elseif (str_starts_with($type, '?')) {
+        $type = substr($type, 1);
+        $required = false;
+    }
 
-    $requestBody = [
-        'required' => true,
+    $rb = [
+        'required' => $required,
         'content' => [
-            'application/json' => [
-                'schema' => $schema,
+            $mediaType => [
+                'schema' => [],
             ],
         ],
     ];
 
-    if ($description !== '') {
-        $requestBody['description'] = $description;
+    if ($description !== null) {
+        $rb['description'] = $description;
     }
 
-    return $requestBody;
+    $mappedScalar = \Cdd\Schemas\php_type_to_openapi($type);
+    if ($mappedScalar !== null) {
+        $rb['content'][$mediaType]['schema']['type'] = $mappedScalar;
+    } else {
+        $rb['content'][$mediaType]['schema']['$ref'] = "#/components/schemas/{$type}";
+    }
+
+    return $rb;
 }
 
 /**

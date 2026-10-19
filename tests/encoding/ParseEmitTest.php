@@ -48,6 +48,53 @@ class ParseEmitTest extends TestCase
         $this->assertTrue(strpos($emitted, "'style' => 'form'") !== false);
         $this->assertTrue(strpos($emitted, "'explode' => false") !== false);
         $this->assertTrue(strpos($emitted, "'allowReserved' => true") !== false);
+
+        // Roundtrip emitted code string back through parse()
+        $roundtripped = \Cdd\Encoding\parse($emitted);
+        $this->assertEquals($encodingData, $roundtripped);
+
+        // Parse full <?php expression without return
+        $exprParsed = \Cdd\Encoding\parse("<?php ['contentType' => 'text/plain'];");
+        $this->assertEquals(['contentType' => 'text/plain'], $exprParsed);
+
+        // Parse AST node directly
+        $astNode = new \PhpParser\Node\Expr\Array_([
+            new \PhpParser\Node\Expr\ArrayItem(
+                new \PhpParser\Node\Scalar\String_('application/json'),
+                new \PhpParser\Node\Scalar\String_('contentType')
+            ),
+        ]);
+        $this->assertEquals(['contentType' => 'application/json'], \Cdd\Encoding\parse($astNode));
+        $this->assertEquals([], \Cdd\Encoding\parse(new \PhpParser\Node\Scalar\String_('not_array')));
+        $this->assertEquals([], \Cdd\Encoding\parse(''));
+        $this->assertEquals([], \Cdd\Encoding\parse('<?php invalid syntax {{{'));
+        $this->assertEquals([], \Cdd\Encoding\parse('<?php return "scalar";'));
+
+        $richHeader = [
+            'description' => 'Full Header',
+            'required' => true,
+            'deprecated' => true,
+            'style' => 'simple',
+            'explode' => true,
+            'schema' => ['type' => 'string', 'format' => 'uuid'],
+            'example' => 'abc',
+            'examples' => ['ex1' => ['value' => 'abc']],
+            'content' => ['application/json' => ['schema' => ['type' => 'string']]],
+        ];
+        $emittedHeader = \Cdd\Encoding\emit_header($richHeader);
+        $this->assertStringContainsString("'required' => true", $emittedHeader);
+        $this->assertStringContainsString("'deprecated' => true", $emittedHeader);
+        $this->assertStringContainsString("'style' => 'simple'", $emittedHeader);
+        $this->assertStringContainsString("'explode' => true", $emittedHeader);
+        $this->assertStringContainsString("'format' => 'uuid'", $emittedHeader);
+        $this->assertStringContainsString("'example' => 'abc'", $emittedHeader);
+        $this->assertStringContainsString("'examples' =>", $emittedHeader);
+        $this->assertStringContainsString("'content' =>", $emittedHeader);
+
+        $falseFlagsHeader = \Cdd\Encoding\emit_header(['required' => false, 'deprecated' => false, 'explode' => false]);
+        $this->assertStringContainsString("'required' => false", $falseFlagsHeader);
+        $this->assertStringContainsString("'deprecated' => false", $falseFlagsHeader);
+        $this->assertStringContainsString("'explode' => false", $falseFlagsHeader);
     }
 
     /**

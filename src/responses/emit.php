@@ -11,19 +11,18 @@ declare(strict_types=1);
 namespace Cdd\Responses;
 
 /**
- * Emits a PHP docstring @return from an OpenAPI Responses Object.
+ * Emits a PHP docstring `@return` from an OpenAPI Responses Object.
  *
- * @param array<string|int, mixed> $responses The OpenAPI Responses Object.
- * @return string The generated docstring segment.
+ * @param array<string, mixed> $responses The OpenAPI Responses Object.
+ * @param bool $includeMetadata Whether to include status code and description after the PHP return type.
+ * @return string The emitted `@return` docblock lines.
  */
-function emit(array $responses): string
+function emit(array $responses, bool $includeMetadata = false): string
 {
     $out = '';
-
-    foreach ($responses as $response) {
-        $schema = $response['content']['application/json']['schema'] ?? [];
-
+    foreach ($responses as $statusCode => $response) {
         $type = 'mixed';
+        $schema = $response['content']['application/json']['schema'] ?? null;
         if (isset($schema['type'])) {
             $type = \Cdd\Schemas\openapi_type_to_php((string) $schema['type'], 'mixed');
         } elseif (isset($schema['$ref'])) {
@@ -31,8 +30,14 @@ function emit(array $responses): string
             $type = (string) end($parts);
         }
 
-        $out .= " * @return $type
+        if ($includeMetadata) {
+            $desc = isset($response['description']) && is_string($response['description']) ? ' ' . $response['description'] : '';
+            $out .= " * @return {$type} {$statusCode}{$desc}
 ";
+        } else {
+            $out .= " * @return $type
+";
+        }
     }
 
     return $out;

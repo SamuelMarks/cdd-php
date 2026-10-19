@@ -62,7 +62,6 @@ class ArazzoComprehensiveTest extends TestCase
                             'active' => ['type' => 'boolean'],
                             'tags' => ['type' => 'array'],
                             'meta' => ['type' => 'object'],
-                            'raw' => 'invalid_schema_node',
                         ],
                     ],
                     'parameters' => [
@@ -582,8 +581,24 @@ class ArazzoComprehensiveTest extends TestCase
         $this->assertStringContainsString('class LoginWorkflowInput', $dtoCode);
         $this->assertStringContainsString('class UserCredentialsInput', $dtoCode);
 
+        $untypedDtoSpec = [
+            'workflows' => [
+                [
+                    'workflowId' => 'untypedFlow',
+                    'inputs' => [
+                        'type' => 'object',
+                        'properties' => ['raw' => 'non_array_schema_node'],
+                    ],
+                    'steps' => [],
+                ],
+            ],
+        ];
+        $this->assertStringContainsString('class UntypedFlowInput', \Cdd\ArazzoClient\emitInputDtos($untypedDtoSpec));
+        $this->assertEquals(['raw' => 'sample'], \Cdd\ArazzoServer\generateSeedInputsFromSchema(['properties' => ['raw' => 'non_array_schema_node']]));
+
         $sdkCode = \Cdd\ArazzoClient\emit($spec);
         $this->assertStringContainsString('class ApiWorkflows', $sdkCode);
+        $this->assertFalse(str_contains($sdkCode, '@arazzo-spec'));
         $parsedFromSdk = \Cdd\ArazzoClient\parse($sdkCode);
         $this->assertEquals($spec, $parsedFromSdk);
 
@@ -643,14 +658,19 @@ class CustomWorkflows {
     public function annotatedFlow(): array {
         return [];
     }
+    public function astVarFlow(): array {
+        $workflow = ['workflowId' => 'varFlow', 'steps' => [['stepId' => 's1', 'operationId' => 'opVar']]];
+        return $workflow;
+    }
     private function helper(): void {}
 }
 PHP;
         $parsedHand = \Cdd\ArazzoClient\parse($handwrittenSdk);
         $this->assertEquals('Hand SDK', $parsedHand['info']['title']);
-        $this->assertCount(2, $parsedHand['workflows']);
+        $this->assertCount(3, $parsedHand['workflows']);
         $this->assertEquals([], \Cdd\ArazzoClient\parse('<?php invalid syntax {{{'));
         $this->assertEquals([], \Cdd\ArazzoClient\parse(''));
+        $this->assertEquals([], \Cdd\ArazzoCli\parse('<?php invalid syntax {{{')['workflows']);
         $this->assertNull(\Cdd\ArazzoClient\astExprToPhpValue(new \PhpParser\Node\Expr\Variable('x')));
         $arrWithNull = new \PhpParser\Node\Expr\Array_([null, new \PhpParser\Node\Expr\ArrayItem(new \PhpParser\Node\Scalar\Int_(1))]);
         $this->assertEquals([1], \Cdd\ArazzoClient\astExprToPhpValue($arrWithNull));

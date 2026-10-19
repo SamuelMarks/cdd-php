@@ -132,6 +132,15 @@ function emit(array $arazzo): string
     $out .= "namespace Api;
 
 ";
+    $out .= "use function Cdd\\Arazzo\\applyPayloadReplacements;
+";
+    $out .= "use function Cdd\\Arazzo\\evaluateCriterion;
+";
+    $out .= "use function Cdd\\Arazzo\\evaluateRuntimeExpression;
+";
+    $out .= "use function Cdd\\Arazzo\\resolveReusableObject;
+
+";
     $out .= "/**
  * ApiWorkflows orchestrates multi-step Arazzo workflows across OpenAPI, AsyncAPI, and Arazzo sources.
  */
@@ -139,6 +148,45 @@ function emit(array $arazzo): string
     $out .= "class ApiWorkflows
 {
 ";
+    $out .= "    /** @var string Arazzo specification version. */
+";
+    $out .= "    public const ARAZZO_VERSION = " . var_export($version, true) . ";
+
+";
+    if (isset($arazzo['$self']) && is_string($arazzo['$self'])) {
+        $out .= "    /** @var string|null Self URI of the Arazzo document. */
+";
+        $out .= "    public const SELF_URI = " . var_export($arazzo['$self'], true) . ";
+
+";
+    } else {
+        $out .= "    /** @var string|null Self URI of the Arazzo document. */
+";
+        $out .= "    public const SELF_URI = null;
+
+";
+    }
+    $out .= "    /** @var array<string, mixed> Info Object metadata. */
+";
+    $out .= "    public const INFO = " . var_export($info, true) . ";
+
+";
+    $out .= "    /** @var array<int, array<string, mixed>> Source Description Objects. */
+";
+    $out .= "    public const SOURCE_DESCRIPTIONS = " . var_export($sources, true) . ";
+
+";
+    $out .= "    /** @var array<string, mixed> Reusable Arazzo Components Object. */
+";
+    $out .= "    public const COMPONENTS = " . var_export($components, true) . ";
+
+";
+    $out .= "    /** @var array<string, mixed> Root specification extensions. */
+";
+    $out .= "    public const EXTENSIONS = " . var_export($rootExt, true) . ";
+
+";
+
     $out .= "    /** @var mixed Primary HTTP/SDK client or callable transport. */
 ";
     $out .= "    public mixed \$client;
@@ -170,17 +218,30 @@ function emit(array $arazzo): string
 ";
     }
 
-    $specExport = var_export($arazzo, true);
+    $workflowMethodMap = [];
+    foreach ($workflows as $wf) {
+        $wfId = (string) ($wf['workflowId'] ?? 'workflow');
+        $workflowMethodMap[$wfId] = toCamelCaseIdentifier($wfId);
+    }
+
     $out .= "    /**
-     * Returns the embedded Arazzo specification metadata.
+     * Returns the workflow definition registry mapped by workflowId.
      *
-     * @return array<string, mixed>
+     * @return array<string, array<string, mixed>>
      */
 ";
-    $out .= "    public static function getSpecification(): array
+    $out .= "    protected function getWorkflowRegistry(): array
     {
 ";
-    $out .= "        return {$specExport};
+    $out .= "        return [
+";
+    foreach ($workflows as $wf) {
+        $wfId = (string) ($wf['workflowId'] ?? 'workflow');
+        $wfExport = var_export($wf, true);
+        $out .= "            " . var_export($wfId, true) . " => {$wfExport},
+";
+    }
+    $out .= "        ];
 ";
     $out .= "    }
 
@@ -210,7 +271,6 @@ function emit(array $arazzo): string
 
 ";
 
-    // Runtime execution engine embedded inside ApiWorkflows so generated SDK is 100% standalone
     $out .= <<<'PHP'
     /**
      * Executes a named workflow by workflowId.
@@ -223,15 +283,25 @@ function emit(array $arazzo): string
      */
     public function executeWorkflow(string $workflowId, array $inputs = [], ?string $onlyStepId = null, bool $dryRun = false): array
     {
-        $spec = static::getSpecification();
-        $workflowsById = [];
-        foreach ($spec['workflows'] ?? [] as $wf) {
-            $workflowsById[(string) $wf['workflowId']] = $wf;
-        }
+        $workflowsById = $this->getWorkflowRegistry();
         if (!isset($workflowsById[$workflowId])) {
             throw new \RuntimeException("Unknown workflowId: {$workflowId}");
         }
-        $workflow = $workflowsById[$workflowId];
+        return $this->runWorkflowDefinition($workflowsById[$workflowId], $inputs, $onlyStepId, $dryRun);
+    }
+
+    /**
+     * Executes a structured Arazzo Workflow Object definition.
+     *
+     * @param array<string, mixed> $workflow The Workflow Object definition.
+     * @param array<string, mixed> $inputs Input parameters map.
+     * @param string|null $onlyStepId Optional single stepId filter.
+     * @param bool $dryRun When true, returns the planned step sequence without network execution.
+     * @return array<string, mixed> Workflow outputs map.
+     */
+    protected function runWorkflowDefinition(array $workflow, array $inputs = [], ?string $onlyStepId = null, bool $dryRun = false): array
+    {
+        $workflowId = (string) ($workflow['workflowId'] ?? 'workflow');
 
         if (isset($workflow['dependsOn']) && is_array($workflow['dependsOn'])) {
             foreach ($workflow['dependsOn'] as $depWfId) {
@@ -248,13 +318,13 @@ function emit(array $arazzo): string
         }
 
         $sourceMap = [];
-        foreach ($spec['sourceDescriptions'] ?? [] as $sd) {
+        foreach (static::SOURCE_DESCRIPTIONS as $sd) {
             $sourceMap[(string) $sd['name']] = $sd;
         }
-        $components = is_array($spec['components'] ?? null) ? $spec['components'] : [];
+        $components = static::COMPONENTS;
 
         $context = [
-            'self' => $spec['$self'] ?? '',
+            'self' => static::SELF_URI ?? '',
             'inputs' => $inputs,
             'outputs' => [],
             'steps' => [],
@@ -308,13 +378,13 @@ function emit(array $arazzo): string
             $subWfInputs = [];
 
             foreach ($mergedParams as $rawParam) {
-                $p = isset($rawParam['reference']) && function_exists('\Cdd\Arazzo\resolveReusableObject')
-                    ? \Cdd\Arazzo\resolveReusableObject($rawParam, $components, 'parameters')
+                $p = isset($rawParam['reference']) && function_exists('Cdd\Arazzo\resolveReusableObject')
+                    ? resolveReusableObject($rawParam, $components, 'parameters')
                     : $rawParam;
                 $pName = (string) ($p['name'] ?? '');
                 $pIn = (string) ($p['in'] ?? 'query');
-                $pVal = function_exists('\Cdd\Arazzo\evaluateRuntimeExpression')
-                    ? \Cdd\Arazzo\evaluateRuntimeExpression($p['value'] ?? null, $context)
+                $pVal = function_exists('Cdd\Arazzo\evaluateRuntimeExpression')
+                    ? evaluateRuntimeExpression($p['value'] ?? null, $context)
                     : ($p['value'] ?? null);
                 $subWfInputs[$pName] = $pVal;
                 if ($pIn === 'header') {
@@ -330,8 +400,8 @@ function emit(array $arazzo): string
             if (isset($step['requestBody']) && is_array($step['requestBody'])) {
                 $rawPayload = $step['requestBody']['payload'] ?? null;
                 $reps = is_array($step['requestBody']['replacements'] ?? null) ? $step['requestBody']['replacements'] : [];
-                $reqBody = function_exists('\Cdd\Arazzo\applyPayloadReplacements')
-                    ? \Cdd\Arazzo\applyPayloadReplacements($rawPayload, $reps, $context)
+                $reqBody = function_exists('Cdd\Arazzo\applyPayloadReplacements')
+                    ? applyPayloadReplacements($rawPayload, $reps, $context)
                     : $rawPayload;
             }
 
@@ -368,7 +438,7 @@ function emit(array $arazzo): string
 
             if (isset($step['successCriteria']) && is_array($step['successCriteria'])) {
                 foreach ($step['successCriteria'] as $criterion) {
-                    if (function_exists('\Cdd\Arazzo\evaluateCriterion') && !\Cdd\Arazzo\evaluateCriterion($criterion, $context)) {
+                    if (function_exists('Cdd\Arazzo\evaluateCriterion') && !evaluateCriterion($criterion, $context)) {
                         $stepPassed = false;
                         break;
                     }
@@ -377,8 +447,8 @@ function emit(array $arazzo): string
 
             if ($stepPassed && isset($step['outputs']) && is_array($step['outputs'])) {
                 foreach ($step['outputs'] as $outKey => $outExpr) {
-                    $stepOutputs[(string) $outKey] = function_exists('\Cdd\Arazzo\evaluateRuntimeExpression')
-                        ? \Cdd\Arazzo\evaluateRuntimeExpression($outExpr, $context)
+                    $stepOutputs[(string) $outKey] = function_exists('Cdd\Arazzo\evaluateRuntimeExpression')
+                        ? evaluateRuntimeExpression($outExpr, $context)
                         : $outExpr;
                 }
             }
@@ -396,8 +466,8 @@ function emit(array $arazzo): string
                 );
                 $jumped = false;
                 foreach ($actions as $rawAct) {
-                    $act = isset($rawAct['reference']) && function_exists('\Cdd\Arazzo\resolveReusableObject')
-                        ? \Cdd\Arazzo\resolveReusableObject($rawAct, $components, 'successActions')
+                    $act = isset($rawAct['reference']) && function_exists('Cdd\Arazzo\resolveReusableObject')
+                        ? resolveReusableObject($rawAct, $components, 'successActions')
                         : $rawAct;
                     if (!$this->matchesActionCriteria($act, $context)) {
                         continue;
@@ -426,8 +496,8 @@ function emit(array $arazzo): string
                 );
                 $handled = false;
                 foreach ($fActions as $rawAct) {
-                    $act = isset($rawAct['reference']) && function_exists('\Cdd\Arazzo\resolveReusableObject')
-                        ? \Cdd\Arazzo\resolveReusableObject($rawAct, $components, 'failureActions')
+                    $act = isset($rawAct['reference']) && function_exists('Cdd\Arazzo\resolveReusableObject')
+                        ? resolveReusableObject($rawAct, $components, 'failureActions')
                         : $rawAct;
                     if (!$this->matchesActionCriteria($act, $context)) {
                         continue;
@@ -462,44 +532,44 @@ function emit(array $arazzo): string
                     throw new \RuntimeException("Step '{$stepId}' failed successCriteria in workflow '{$workflowId}'");
                 }
             }
-        }
+            }
 
-        $finalOutputs = [];
-        if (isset($workflow['outputs']) && is_array($workflow['outputs'])) {
+            $finalOutputs = [];
+            if (isset($workflow['outputs']) && is_array($workflow['outputs'])) {
             foreach ($workflow['outputs'] as $outName => $outExpr) {
-                $finalOutputs[(string) $outName] = function_exists('\Cdd\Arazzo\evaluateRuntimeExpression')
-                    ? \Cdd\Arazzo\evaluateRuntimeExpression($outExpr, $context)
+                $finalOutputs[(string) $outName] = function_exists('Cdd\Arazzo\evaluateRuntimeExpression')
+                    ? evaluateRuntimeExpression($outExpr, $context)
                     : $outExpr;
             }
-        }
-        $context['outputs'] = $finalOutputs;
-        $this->workflowState[$workflowId] = [
+            }
+            $context['outputs'] = $finalOutputs;
+            $this->workflowState[$workflowId] = [
             'inputs' => $inputs,
             'outputs' => $finalOutputs,
-        ];
+            ];
 
-        return $finalOutputs;
-    }
+            return $finalOutputs;
+            }
 
-    /**
-     * Checks whether all criteria on a Success or Failure Action pass.
-     *
-     * @param array<string, mixed> $action The resolved Action Object.
-     * @param array<string, mixed> $context Runtime context.
-     * @return bool True if criteria are absent or all evaluate to true.
-     */
-    protected function matchesActionCriteria(array $action, array $context): bool
-    {
-        if (!isset($action['criteria']) || !is_array($action['criteria'])) {
+            /**
+            * Checks whether all criteria on a Success or Failure Action pass.
+            *
+            * @param array<string, mixed> $action The resolved Action Object.
+            * @param array<string, mixed> $context Runtime context.
+            * @return bool True if criteria are absent or all evaluate to true.
+            */
+            protected function matchesActionCriteria(array $action, array $context): bool
+            {
+            if (!isset($action['criteria']) || !is_array($action['criteria'])) {
             return true;
-        }
-        foreach ($action['criteria'] as $c) {
-            if (function_exists('\Cdd\Arazzo\evaluateCriterion') && !\Cdd\Arazzo\evaluateCriterion($c, $context)) {
+            }
+            foreach ($action['criteria'] as $c) {
+            if (function_exists('Cdd\Arazzo\evaluateCriterion') && !evaluateCriterion($c, $context)) {
                 return false;
             }
-        }
-        return true;
-    }
+            }
+            return true;
+            }
 
     /**
      * Dispatches a single step operation against the configured client or callable transport.
@@ -534,36 +604,45 @@ function emit(array $arazzo): string
         }
         return ['status' => 200, 'headers' => $headers, 'data' => $body ?? $params, 'url' => $opTarget, 'method' => 'GET'];
     }
-
 PHP;
 
     foreach ($workflows as $wf) {
         $wfId = (string) ($wf['workflowId'] ?? 'workflow');
-        $methodName = toCamelCaseIdentifier($wfId);
+        $methodName = $workflowMethodMap[$wfId];
         $summary = (string) ($wf['summary'] ?? "Executes workflow {$wfId}.");
         $desc = (string) ($wf['description'] ?? '');
+        $wfExport = var_export($wf, true);
 
-        $out .= "\n    /**\n";
-        $out .= "     * {$summary}\n";
+        $out .= "
+    /**
+";
+        $out .= "     * {$summary}
+";
         if ($desc !== '') {
-            $out .= "     * {$desc}\n";
+            $out .= "     * {$desc}
+";
         }
-        $out .= "     *\n";
+        $out .= "     *
+";
         $out .= "     * @arazzo-workflow-id {$wfId}
 ";
-        $out .= "     * @arazzo-workflow " . json_encode($wf, JSON_UNESCAPED_SLASHES) . "
-";
         $out .= "     * @param array<string, mixed> \$inputs Workflow input parameters.
+";
+        $out .= "     * @param string|null \$onlyStepId Optional single stepId filter.
+";
+        $out .= "     * @param bool \$dryRun When true, returns the planned step sequence without network execution.
 ";
         $out .= "     * @return array<string, mixed> Extracted workflow outputs.
 ";
         $out .= "     */
 ";
-        $out .= "    public function {$methodName}(array \$inputs = []): array
+        $out .= "    public function {$methodName}(array \$inputs = [], ?string \$onlyStepId = null, bool \$dryRun = false): array
 ";
         $out .= "    {
 ";
-        $out .= "        return \$this->executeWorkflow(" . var_export($wfId, true) . ", \$inputs);
+        $out .= "        \$workflow = {$wfExport};
+";
+        $out .= "        return \$this->runWorkflowDefinition(\$workflow, \$inputs, \$onlyStepId, \$dryRun);
 ";
         $out .= "    }
 ";

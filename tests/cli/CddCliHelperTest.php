@@ -107,5 +107,20 @@ class CddCliHelperTest extends TestCase
         unset($_ENV['CDD_TEST_ARG']);
 
         $this->assertEquals(0, \Cdd\Cli\Application::serveJsonRpc([], 0));
+
+        CddCli::setStreams(null, null, null);
+        $this->assertNull(CddCli::$testInStream);
+        $this->assertNull(CddCli::$testOutStream);
+        $this->assertNull(CddCli::$testSocketConn);
+
+        $valExc = \Cdd\Exceptions\CddException::validation('invalid spec');
+        $this->assertInstanceOf(\RuntimeException::class, $valExc);
+        $this->assertEquals('invalid spec', $valExc->getMessage());
+
+        $parseExc = \Cdd\Exceptions\CddException::parseError('parse failed');
+        $this->assertEquals('parse failed', $parseExc->getMessage());
+
+        $emitExc = \Cdd\Exceptions\CddException::emitError('emit failed');
+        $this->assertEquals('emit failed', $emitExc->getMessage());
     }
 }

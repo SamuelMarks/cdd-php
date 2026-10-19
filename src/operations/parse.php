@@ -11,19 +11,36 @@ declare(strict_types=1);
 namespace Cdd\Operations;
 
 /**
- * Parses an Operation Object structure from PHP tokens or reflection definitions.
+ * Parses an Operation Object structure from PHP method source code or explicit arguments.
  *
- * @param string $operationId Unique identifier.
+ * @param string $operationIdOrCode Unique operation identifier or PHP method source code snippet.
  * @param array<int, mixed> $parameters List of parameter arrays.
  * @param array<string|int, mixed> $responses Map of responses.
  * @param array<string, mixed>|null $requestBody Optional request body map.
  * @param string $summary Optional summary.
  * @return array<string, mixed> The OpenAPI Operation Object.
  */
-function parse(string $operationId, array $parameters = [], array $responses = [], ?array $requestBody = null, string $summary = ''): array
+function parse(string $operationIdOrCode, array $parameters = [], array $responses = [], ?array $requestBody = null, string $summary = ''): array
 {
+    $trimmed = trim($operationIdOrCode);
+    if (str_contains($trimmed, 'function ') || str_starts_with($trimmed, '<?php') || str_starts_with($trimmed, '/**')) {
+        $phpCode = str_starts_with($trimmed, '<?php')
+            ? $trimmed
+            : "<?php\nclass TempController {\n{$trimmed}\n}\n";
+        $parsedOps = \Cdd\Controllers\parse($phpCode);
+        if (!empty($parsedOps)) {
+            $firstOpId = (string) array_key_first($parsedOps);
+            $op = $parsedOps[$firstOpId];
+            $op['operationId'] = $firstOpId;
+            if (!isset($op['responses'])) {
+                $op['responses'] = ['200' => ['description' => 'Success']];
+            }
+            return $op;
+        }
+    }
+
     $operation = [
-        'operationId' => $operationId,
+        'operationId' => $operationIdOrCode,
         'responses' => empty($responses) ? ['200' => ['description' => 'Success']] : $responses,
     ];
     if (!empty($parameters)) {

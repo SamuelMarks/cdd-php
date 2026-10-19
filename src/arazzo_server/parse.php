@@ -10,10 +10,15 @@ declare(strict_types=1);
 
 namespace Cdd\ArazzoServer;
 
+use PhpParser\Node\Expr\Array_;
+use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Scalar\String_;
+use PhpParser\Node\Stmt\ClassConst;
 use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\Node\Stmt\Expression;
 use PhpParser\NodeFinder;
 
 /**
@@ -24,13 +29,6 @@ use PhpParser\NodeFinder;
  */
 function parse(string $code): array
 {
-    if (preg_match('/@arazzo-spec\s+(\{[^\r\n]+\})/', $code, $m)) {
-        $decoded = json_decode($m[1], true);
-        if (is_array($decoded) && isset($decoded['arazzo'], $decoded['workflows'])) {
-            return $decoded;
-        }
-    }
-
     if (!preg_match('/class\s+\w+Test\b/', $code)) {
         $fromClientAst = \Cdd\ArazzoClient\parse($code);
         if (!empty($fromClientAst) && !empty($fromClientAst['workflows'])) {
@@ -49,8 +47,17 @@ function parse(string $code): array
     }
 
     $nodeFinder = new NodeFinder();
+    /** @var ClassConst[] $classConsts */
+    $classConsts = $nodeFinder->findInstanceOf($stmts, ClassConst::class);
     /** @var ClassMethod[] $methods */
     $methods = $nodeFinder->findInstanceOf($stmts, ClassMethod::class);
+
+    $constants = [];
+    foreach ($classConsts as $constStmt) {
+        foreach ($constStmt->consts as $c) {
+            $constants[$c->name->toString()] = \Cdd\ArazzoClient\astExprToPhpValue($c->value);
+        }
+    }
 
     $workflows = [];
     foreach ($methods as $method) {
@@ -58,6 +65,27 @@ function parse(string $code): array
         if (!str_starts_with($mName, 'test')) {
             continue;
         }
+
+        // 1. Check for AST `$workflow = [...];` assignment inside the test method
+        $extractedFromVar = null;
+        foreach ($method->stmts ?? [] as $stmt) {
+            if ($stmt instanceof Expression && $stmt->expr instanceof Assign) {
+                $assign = $stmt->expr;
+                if ($assign->var instanceof Variable && $assign->var->name === 'workflow' && $assign->expr instanceof Array_) {
+                    $val = \Cdd\ArazzoClient\astExprToPhpValue($assign->expr);
+                    if (is_array($val) && isset($val['workflowId'])) {
+                        $extractedFromVar = $val;
+                        break;
+                    }
+                }
+            }
+        }
+        if ($extractedFromVar !== null) {
+            $workflows[] = $extractedFromVar;
+            continue;
+        }
+
+        // 2. Fallback: extract `$this->call(verb, path)` invocations from handwritten route flow tests
         $wfId = lcfirst(substr($mName, 4)) ?: $mName;
         /** @var MethodCall[] $calls */
         $calls = $nodeFinder->findInstanceOf($method->stmts ?? [], MethodCall::class);
@@ -88,19 +116,37 @@ function parse(string $code): array
         return [];
     }
 
-    return [
-        'arazzo' => '1.1.0',
-        'info' => [
-            'title' => 'Extracted Server Workflows',
-            'version' => '1.0.0',
-        ],
-        'sourceDescriptions' => [
+    $arazzo = [
+        'arazzo' => is_string($constants['ARAZZO_VERSION'] ?? null) ? $constants['ARAZZO_VERSION'] : '1.1.0',
+    ];
+
+    if (isset($constants['SELF_URI']) && is_string($constants['SELF_URI']) && $constants['SELF_URI'] !== '') {
+        $arazzo['$self'] = $constants['SELF_URI'];
+    }
+    if (isset($constants['EXTENSIONS']) && is_array($constants['EXTENSIONS'])) {
+        foreach ($constants['EXTENSIONS'] as $extK => $extV) {
+            $arazzo[(string) $extK] = $extV;
+        }
+    }
+
+    $arazzo['info'] = is_array($constants['INFO'] ?? null) ? $constants['INFO'] : [
+        'title' => 'Extracted Server Workflows',
+        'version' => '1.0.0',
+    ];
+    $arazzo['sourceDescriptions'] = is_array($constants['SOURCE_DESCRIPTIONS'] ?? null) && !empty($constants['SOURCE_DESCRIPTIONS'])
+        ? $constants['SOURCE_DESCRIPTIONS']
+        : [
             [
                 'name' => 'default',
                 'url' => './openapi.json',
                 'type' => 'openapi',
             ],
-        ],
-        'workflows' => $workflows,
-    ];
+        ];
+    $arazzo['workflows'] = $workflows;
+
+    if (isset($constants['COMPONENTS']) && is_array($constants['COMPONENTS']) && !empty($constants['COMPONENTS'])) {
+        $arazzo['components'] = $constants['COMPONENTS'];
+    }
+
+    return $arazzo;
 }

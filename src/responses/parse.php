@@ -11,23 +11,51 @@ declare(strict_types=1);
 namespace Cdd\Responses;
 
 /**
- * Parses response definitions to OpenAPI Responses Object.
+ * Parses response definitions (or an emitted `@return` docblock string) to an OpenAPI Responses Object.
  *
- * @param string $statusCode The HTTP status code.
- * @param string $type The response schema type.
- * @param string $description Optional description.
+ * @param string $statusCodeOrDocblock HTTP status code (`200`, `201`, etc.) or emitted `@return` docblock string.
+ * @param string|null $type Return type (`string`, `int`, `float`, `bool`, `array`, `object`, `mixed`, or class name).
+ * @param string $description Response description.
  * @return array<string, mixed> The OpenAPI Responses Object.
  */
-function parse(string $statusCode = '200', string $type = 'string', string $description = 'Successful response'): array
+function parse(string $statusCodeOrDocblock = '200', ?string $type = 'string', string $description = 'Success'): array
 {
-    $response = ['description' => $description, 'content' => ['application/json' => ['schema' => []]]];
-    $mappedType = \Cdd\Schemas\php_type_to_openapi($type);
-    if ($mappedType !== null) {
-        $response['content']['application/json']['schema']['type'] = $mappedType;
-    } else {
-        $response['content']['application/json']['schema']['$ref'] = "#/components/schemas/{$type}";
+    if (str_contains($statusCodeOrDocblock, '@return')) {
+        $responses = [];
+        if (preg_match_all('/@return\s+([^\s*]+)(?:\s+(\d{3}|[1-5]XX|default))?(?:\s+([^\n]+))?/', $statusCodeOrDocblock, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $idx => $m) {
+                $retType = trim($m[1]);
+                $code = isset($m[2]) && $m[2] !== '' ? trim($m[2]) : ($idx === 0 ? '200' : (string) (200 + $idx));
+                $desc = isset($m[3]) && trim($m[3]) !== '' ? trim($m[3]) : $description;
+                $single = parse($code, $retType === 'mixed' ? null : $retType, $desc);
+                $responses[$code] = $single[$code];
+            }
+        }
+        return $responses;
     }
-    return [$statusCode => $response];
+
+    $statusCode = $statusCodeOrDocblock;
+    $responses = [
+        $statusCode => [
+            'description' => $description,
+        ],
+    ];
+
+    if ($type !== null && $type !== 'void') {
+        $responses[$statusCode]['content'] = [
+            'application/json' => [
+                'schema' => [],
+            ],
+        ];
+        $mappedScalar = \Cdd\Schemas\php_type_to_openapi($type);
+        if ($mappedScalar !== null) {
+            $responses[$statusCode]['content']['application/json']['schema']['type'] = $mappedScalar;
+        } else {
+            $responses[$statusCode]['content']['application/json']['schema']['$ref'] = "#/components/schemas/{$type}";
+        }
+    }
+
+    return $responses;
 }
 
 /**
@@ -49,23 +77,23 @@ function validateResponseOrReferenceObject(mixed $response): void
     if (!isset($response['description']) || !is_string($response['description'])) {
         throw new \RuntimeException('Response must contain a "description" string');
     }
-    if (isset($response['content'])) {
-        if (!is_array($response['content'])) {
-            throw new \RuntimeException('Response "content" must be a map');
-        }
-        foreach ($response['content'] as $mtObj) {
-            \Cdd\Encoding\validateMediaTypeOrReferenceObject($mtObj);
-        }
-    }
     if (isset($response['headers'])) {
         if (!is_array($response['headers'])) {
             throw new \RuntimeException('Response "headers" must be a map');
         }
-        foreach ($response['headers'] as $hName => $headerObj) {
-            if (strtolower((string) $hName) === 'content-type') {
+        foreach ($response['headers'] as $headerName => $headerObj) {
+            if (strtolower((string) $headerName) === 'content-type') {
                 continue;
             }
-            \Cdd\Responses\validateHeaderOrReferenceObject($headerObj);
+            validateHeaderOrReferenceObject($headerObj);
+        }
+    }
+    if (isset($response['content'])) {
+        if (!is_array($response['content'])) {
+            throw new \RuntimeException('Response "content" must be a map');
+        }
+        foreach ($response['content'] as $mediaTypeObj) {
+            \Cdd\Encoding\validateMediaTypeOrReferenceObject($mediaTypeObj);
         }
     }
     if (isset($response['links'])) {
@@ -73,7 +101,7 @@ function validateResponseOrReferenceObject(mixed $response): void
             throw new \RuntimeException('Response "links" must be a map');
         }
         foreach ($response['links'] as $linkObj) {
-            \Cdd\Responses\validateLinkOrReferenceObject($linkObj);
+            validateLinkOrReferenceObject($linkObj);
         }
     }
 }
@@ -115,31 +143,30 @@ function validateHeaderOrReferenceObject(mixed $header): void
     if (isset($header['example']) && isset($header['examples'])) {
         throw new \RuntimeException('Header cannot contain both "example" and "examples"');
     }
-    $hasSchema = isset($header['schema']);
-    $hasContent = isset($header['content']);
-    if ($hasSchema && $hasContent) {
+    if (isset($header['schema']) && isset($header['content'])) {
         throw new \RuntimeException('Header cannot contain both "schema" and "content"');
     }
-    if (!$hasSchema && !$hasContent) {
+    if (!isset($header['schema']) && !isset($header['content'])) {
         throw new \RuntimeException('Header must contain either "schema" or "content"');
     }
-    if ($hasSchema) {
-        if (isset($header['style'])) {
-            if (!is_string($header['style'])) {
-                throw new \RuntimeException('Header "style" must be a string');
-            }
-            if ($header['style'] !== 'simple') {
-                throw new \RuntimeException('Header "style", if used, MUST be limited to "simple"');
-            }
+    if (isset($header['style'])) {
+        if (!is_string($header['style'])) {
+            throw new \RuntimeException('Header "style" must be a string');
         }
-        if (isset($header['explode']) && !is_bool($header['explode'])) {
-            throw new \RuntimeException('Header "explode" must be a boolean');
-        }
-        if (!is_array($header['schema'])) {
-            throw new \RuntimeException('Header "schema" must be an object');
+        if ($header['style'] !== 'simple') {
+            throw new \RuntimeException('Header "style", if used, MUST be limited to "simple"');
         }
     }
-    if ($hasContent) {
+    if (isset($header['explode']) && !is_bool($header['explode'])) {
+        throw new \RuntimeException('Header "explode" must be a boolean');
+    }
+    if (isset($header['schema'])) {
+        if (!is_array($header['schema']) && !is_bool($header['schema'])) {
+            throw new \RuntimeException('Header "schema" must be an object');
+        }
+        \Cdd\Schemas\validateSchemaOrReferenceObject($header['schema']);
+    }
+    if (isset($header['content'])) {
         if (!is_array($header['content'])) {
             throw new \RuntimeException('Header "content" must be a map');
         }
@@ -168,14 +195,14 @@ function validateLinkOrReferenceObject(mixed $link): void
         \Cdd\Openapi\validateReferenceObject($link);
         return;
     }
+    if (isset($link['operationRef']) && isset($link['operationId'])) {
+        throw new \RuntimeException('Link cannot contain both "operationRef" and "operationId"');
+    }
     if (isset($link['operationRef']) && !is_string($link['operationRef'])) {
         throw new \RuntimeException('Link "operationRef" must be a string');
     }
     if (isset($link['operationId']) && !is_string($link['operationId'])) {
         throw new \RuntimeException('Link "operationId" must be a string');
-    }
-    if (isset($link['operationRef']) && isset($link['operationId'])) {
-        throw new \RuntimeException('Link cannot contain both "operationRef" and "operationId"');
     }
     if (isset($link['parameters']) && !is_array($link['parameters'])) {
         throw new \RuntimeException('Link "parameters" must be a map');

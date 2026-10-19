@@ -43,6 +43,22 @@ class ParseEmitTest extends TestCase
         $paramNoSchema = ['name' => 'noType', 'in' => 'query'];
         $emittedNoSchema = \Cdd\Parameters\emit($paramNoSchema);
         $this->assertEquals('$noType', $emittedNoSchema);
+
+        // Roundtrip emitted PHP parameter signatures through Cdd\Parameters\parse
+        $parsedFromSig = \Cdd\Parameters\parse($emitted, null, 'path', true, 'User identifier');
+        $this->assertEquals('id', $parsedFromSig['name']);
+        $this->assertEquals('integer', $parsedFromSig['schema']['type']);
+        $this->assertEquals('User identifier', $parsedFromSig['description']);
+
+        $parsedNullableSig = \Cdd\Parameters\parse($emittedRef, null, 'query');
+        $this->assertEquals('userId', $parsedNullableSig['name']);
+        $this->assertFalse($parsedNullableSig['required']);
+        $this->assertEquals('#/components/schemas/User', $parsedNullableSig['schema']['$ref']);
+
+        $parsedUntypedSig = \Cdd\Parameters\parse($emittedNoSchema, null, 'query');
+        $this->assertEquals('noType', $parsedUntypedSig['name']);
+        $this->assertFalse($parsedUntypedSig['required']);
+        $this->assertEquals('string', $parsedUntypedSig['schema']['type']);
     }
 
     /**

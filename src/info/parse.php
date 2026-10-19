@@ -11,24 +11,88 @@ declare(strict_types=1);
 namespace Cdd\Info;
 
 /**
- * Parses Info Object data into an OpenAPI Info Object.
+ * Parses Info Object data (from a PHPDoc docblock string, associative Info array, or scalar parameters) into an OpenAPI Info Object.
  *
- * @param string $title The API title.
- * @param string $version The API version string.
- * @param string $description Optional API description.
- * @return array<string, string> The OpenAPI Info Object array.
+ * @param array<string, mixed>|string $titleOrDocblock The API title, emitted PHPDoc docblock string, or associative Info Object array.
+ * @param string $version The API version (when passing scalar arguments).
+ * @param string|null $description Optional description (when passing scalar arguments).
+ * @return array<string, mixed> The OpenAPI Info Object.
  */
-function parse(string $title, string $version, string $description = ''): array
+function parse(array|string $titleOrDocblock = 'API', string $version = '1.0.0', ?string $description = null): array
 {
-    $info = ['title' => $title, 'version' => $version];
-    if ($description !== '') {
+    if (is_array($titleOrDocblock)) {
+        validateInfoObject($titleOrDocblock);
+        return $titleOrDocblock;
+    }
+
+    $trimmed = trim($titleOrDocblock);
+    if (str_starts_with($trimmed, '/**')) {
+        $parsedDoc = \Cdd\Docstrings\parse($trimmed);
+        $lines = $parsedDoc['description'] !== '' ? explode("
+", $parsedDoc['description']) : [];
+        $headerLine = array_shift($lines) ?? 'API (v1.0.0)';
+        $parsedTitle = $headerLine;
+        $parsedVer = $version;
+        if (preg_match('/^(.*?)\s*\(v([^)]+)\)$/', trim($headerLine), $m)) {
+            $parsedTitle = trim($m[1]);
+            $parsedVer = trim($m[2]);
+        }
+        $info = [
+            'title' => $parsedTitle !== '' ? $parsedTitle : 'API',
+            'version' => $parsedVer !== '' ? $parsedVer : '1.0.0',
+        ];
+        if (isset($parsedDoc['tags']['summary'][0])) {
+            $info['summary'] = trim((string) $parsedDoc['tags']['summary'][0]);
+        }
+        $descBody = trim(implode("
+", $lines));
+        if ($descBody !== '') {
+            $info['description'] = $descBody;
+        }
+        if (isset($parsedDoc['tags']['termsOfService'][0])) {
+            $info['termsOfService'] = trim((string) $parsedDoc['tags']['termsOfService'][0]);
+        }
+        $contact = [];
+        if (isset($parsedDoc['tags']['contact-name'][0])) {
+            $contact['name'] = trim((string) $parsedDoc['tags']['contact-name'][0]);
+        }
+        if (isset($parsedDoc['tags']['contact-url'][0])) {
+            $contact['url'] = trim((string) $parsedDoc['tags']['contact-url'][0]);
+        }
+        if (isset($parsedDoc['tags']['contact-email'][0])) {
+            $contact['email'] = trim((string) $parsedDoc['tags']['contact-email'][0]);
+        }
+        if (!empty($contact)) {
+            $info['contact'] = $contact;
+        }
+        $license = [];
+        if (isset($parsedDoc['tags']['license-name'][0])) {
+            $license['name'] = trim((string) $parsedDoc['tags']['license-name'][0]);
+        }
+        if (isset($parsedDoc['tags']['license-identifier'][0])) {
+            $license['identifier'] = trim((string) $parsedDoc['tags']['license-identifier'][0]);
+        }
+        if (isset($parsedDoc['tags']['license-url'][0])) {
+            $license['url'] = trim((string) $parsedDoc['tags']['license-url'][0]);
+        }
+        if (!empty($license)) {
+            $info['license'] = $license;
+        }
+        return $info;
+    }
+
+    $info = [
+        'title' => $titleOrDocblock,
+        'version' => $version,
+    ];
+    if ($description !== null) {
         $info['description'] = $description;
     }
     return $info;
 }
 
 /**
- * Validates an Info Object.
+ * Validates an OpenAPI Info Object.
  *
  * @param mixed $info The Info Object to validate.
  * @return void
@@ -55,10 +119,10 @@ function validateInfoObject(mixed $info): void
         throw new \RuntimeException('Info "termsOfService" must be a string');
     }
     if (isset($info['contact'])) {
-        \Cdd\Info\validateContactObject($info['contact']);
+        validateContactObject($info['contact']);
     }
     if (isset($info['license'])) {
-        \Cdd\Info\validateLicenseObject($info['license']);
+        validateLicenseObject($info['license']);
     }
 }
 
@@ -139,7 +203,7 @@ function validateTagObject(mixed $tag): void
         throw new \RuntimeException('Tag "kind" must be a string');
     }
     if (isset($tag['externalDocs'])) {
-        \Cdd\Info\validateExternalDocsObject($tag['externalDocs']);
+        validateExternalDocsObject($tag['externalDocs']);
     }
 }
 

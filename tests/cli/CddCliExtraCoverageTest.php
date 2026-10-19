@@ -39,21 +39,36 @@ class CddCliExtraCoverageTest extends TestCase
         fwrite($stream, $httpReq);
         rewind($stream);
 
-        CddCli::handleJsonRpcConnection($stream);
+        $resp1 = CddCli::handleJsonRpcConnection($stream);
+        $this->assertStringContainsString("HTTP/1.1 200 OK{$crlf}", $resp1);
+        $this->assertStringContainsString("Content-Type: application/json{$crlf}", $resp1);
+        $parts1 = explode($sep, $resp1, 2);
+        $json1 = json_decode($parts1[1] ?? '', true);
+        $this->assertEquals('2.0', $json1['jsonrpc'] ?? '');
+        $this->assertEquals(1, $json1['id'] ?? 0);
+        $this->assertStringContainsString('0.0.4', (string) ($json1['result'] ?? ''));
 
         $invalidBody = (string) json_encode(['jsonrpc' => '2.0', 'id' => 2]);
         $invalidHttp = "POST / HTTP/1.1{$crlf}Content-Length: " . strlen($invalidBody) . $sep . $invalidBody;
         $stream2 = fopen('php://memory', 'r+');
         fwrite($stream2, $invalidHttp);
         rewind($stream2);
-        CddCli::handleJsonRpcConnection($stream2);
+        $resp2 = CddCli::handleJsonRpcConnection($stream2);
+        $parts2 = explode($sep, $resp2, 2);
+        $json2 = json_decode($parts2[1] ?? '', true);
+        $this->assertEquals(-32600, $json2['error']['code'] ?? 0);
+        $this->assertEquals('Invalid Request', $json2['error']['message'] ?? '');
 
         $body = (string) json_encode(['jsonrpc' => '2.0', 'id' => 99, 'method' => '--version', 'params' => ['input' => 'x', 0 => 'y']]);
         $chunkedHttp = "POST / HTTP/1.1{$crlf}Content-Length: " . strlen($body) . $sep . $body;
         $stream3 = fopen('php://memory', 'r+');
         fwrite($stream3, $chunkedHttp);
         rewind($stream3);
-        CddCli::handleJsonRpcConnection($stream3, 16);
+        $resp3 = CddCli::handleJsonRpcConnection($stream3, 16);
+        $parts3 = explode($sep, $resp3, 2);
+        $json3 = json_decode($parts3[1] ?? '', true);
+        $this->assertEquals(99, $json3['id'] ?? 0);
+        $this->assertStringContainsString('0.0.4', (string) ($json3['result'] ?? ''));
 
         $stream4 = fopen('php://memory', 'r+');
         fwrite($stream4, $chunkedHttp);

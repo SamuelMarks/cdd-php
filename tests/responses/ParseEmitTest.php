@@ -32,6 +32,13 @@ class ParseEmitTest extends TestCase
         $emitted = \Cdd\Responses\emit($res);
         $this->assertEquals(" * @return User
 ", $emitted);
+
+        $emittedWithMeta = \Cdd\Responses\emit($res, true);
+        $this->assertEquals(" * @return User 201 Created user
+", $emittedWithMeta);
+        $this->assertEquals($res, \Cdd\Responses\parse($emittedWithMeta));
+        $this->assertEquals(['200' => ['description' => 'Success']], \Cdd\Responses\parse(" * @return mixed
+"));
     }
 
     /**

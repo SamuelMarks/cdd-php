@@ -80,6 +80,9 @@ function getUser() {}
         $parsedCli = \Cdd\Cli\parse($cliCode);
         $this->assertArrayHasKey('/cli/get_users', $parsedCli);
         $this->assertEquals('get_users', $parsedCli['/cli/get_users']['post']['operationId']);
+        $this->assertEquals('limit', $parsedCli['/cli/get_users']['post']['parameters'][0]['name']);
+        $this->assertEquals([], \Cdd\Cli\parse('<?php invalid syntax {{{'));
+        $this->assertEquals([], \Cdd\Cli\parse(''));
 
         // cleanup
         $files = new \RecursiveIteratorIterator(

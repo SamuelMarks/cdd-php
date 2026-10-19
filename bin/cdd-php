@@ -73,6 +73,12 @@ foreach ($dirs as $dir) {
 if (file_exists("$baseDir/src/openapi/resolve_refs.php")) {
     require_once "$baseDir/src/openapi/resolve_refs.php";
 }
+if (file_exists("$baseDir/src/openapi/swagger2.php")) {
+    require_once "$baseDir/src/openapi/swagger2.php";
+}
+if (file_exists("$baseDir/src/openapi/scaffold.php")) {
+    require_once "$baseDir/src/openapi/scaffold.php";
+}
 if (file_exists("$baseDir/src/arazzo/runtime.php")) {
     require_once "$baseDir/src/arazzo/runtime.php";
 }

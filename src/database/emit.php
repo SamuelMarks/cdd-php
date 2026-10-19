@@ -29,10 +29,15 @@ declare(strict_types=1);
 
 ";
     if ($namespace !== '') {
-        $out .= "namespace {$namespace};\n\n";
+        $out .= "namespace {$namespace};
+
+";
     }
-    $out .= "use Illuminate\\Database\\Capsule\\Manager as Capsule;\n";
-    $out .= "use Illuminate\\Database\\Schema\\Blueprint;\n\n";
+    $out .= "use Illuminate\Database\Capsule\Manager as Capsule;
+";
+    $out .= "use Illuminate\Database\Schema\Blueprint;
+
+";
 
     $out .= "/**
  * Manages database connection and migrations.
@@ -67,19 +72,21 @@ declare(strict_types=1);
 ";
     $out .= "        } else {
 ";
-    $out .= "            // Parse database url roughly
+    $out .= "            \$parsed = is_string(\$dbUrl) ? parse_url(\$dbUrl) : false;
 ";
-    $out .= "            \$parsed = parse_url(\$dbUrl);
+    $out .= "            \$parsed = is_array(\$parsed) ? \$parsed : [];
+";
+    $out .= "            \$scheme = (string) (\$parsed['scheme'] ?? 'sqlite');
 ";
     $out .= "            \$capsule->addConnection([
 ";
-    $out .= "                'driver'   => \$parsed['scheme'] === 'postgres' ? 'pgsql' : \$parsed['scheme'],
+    $out .= "                'driver'   => \$scheme === 'postgres' ? 'pgsql' : \$scheme,
 ";
     $out .= "                'host'     => \$parsed['host'] ?? '127.0.0.1',
 ";
     $out .= "                'port'     => \$parsed['port'] ?? 5432,
 ";
-    $out .= "                'database' => ltrim(\$parsed['path'] ?? '', '/'),
+    $out .= "                'database' => ltrim((string) (\$parsed['path'] ?? ''), '/'),
 ";
     $out .= "                'username' => \$parsed['user'] ?? 'root',
 ";
@@ -111,30 +118,37 @@ declare(strict_types=1);
     $out .= "    public static function migrate(): void {
 ";
     foreach ($schemas as $name => $schema) {
-        $tableName = strtolower($name) . 's'; // simple pluralization
-        $out .= "        if (!Capsule::schema()->hasTable('{$tableName}')) {
+        $tableName = strtolower((string) $name) . 's';
+        $exportedTable = var_export($tableName, true);
+        $out .= "        if (!Capsule::schema()->hasTable({$exportedTable})) {
 ";
-        $out .= "            Capsule::schema()->create('{$tableName}', function (Blueprint \$table) {
+        $out .= "            Capsule::schema()->create({$exportedTable}, function (Blueprint \$table) {
 ";
         $out .= "                \$table->id();
 ";
-        if (isset($schema['properties'])) {
+        if (isset($schema['properties']) && is_array($schema['properties'])) {
             foreach ($schema['properties'] as $propName => $propDef) {
                 if ($propName === 'id') {
                     continue;
                 }
-                $type = $propDef['type'] ?? 'string';
+                $type = is_array($propDef) ? (string) ($propDef['type'] ?? 'string') : 'string';
+                $format = is_array($propDef) ? (string) ($propDef['format'] ?? '') : '';
                 $dbType = 'string';
                 if ($type === 'integer') {
                     $dbType = 'integer';
-                }
-                if ($type === 'boolean') {
+                } elseif ($type === 'boolean') {
                     $dbType = 'boolean';
-                }
-                if ($type === 'number') {
+                } elseif ($type === 'number') {
                     $dbType = 'float';
+                } elseif ($type === 'array' || $type === 'object') {
+                    $dbType = 'json';
+                } elseif ($type === 'string' && $format === 'date-time') {
+                    $dbType = 'dateTime';
+                } elseif ($type === 'string' && $format === 'text') {
+                    $dbType = 'text';
                 }
-                $out .= "                \$table->{$dbType}('{$propName}')->nullable();
+                $exportedProp = var_export((string) $propName, true);
+                $out .= "                \$table->{$dbType}({$exportedProp})->nullable();
 ";
             }
         }
