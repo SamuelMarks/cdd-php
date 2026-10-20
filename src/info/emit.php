@@ -18,61 +18,55 @@ namespace Cdd\Info;
  */
 function emit(array $info): string
 {
-    $title = (string) ($info['title'] ?? 'API');
-    $version = (string) ($info['version'] ?? '1.0.0');
-    $summary = (string) ($info['summary'] ?? '');
-    $description = (string) ($info['description'] ?? '');
+    $nl = chr(10);
+    $title = \Cdd\Docstrings\sanitize_docblock_text((string) ($info['title'] ?? 'API'));
+    $version = \Cdd\Docstrings\sanitize_docblock_text((string) ($info['version'] ?? '1.0.0'));
+    $summary = \Cdd\Docstrings\sanitize_docblock_text((string) ($info['summary'] ?? ''));
+    $description = \Cdd\Docstrings\sanitize_docblock_text((string) ($info['description'] ?? ''));
 
-    $out = "/**
-";
-    $out .= " * $title (v$version)
-";
+    $out = '/**' . $nl;
+    $out .= " * {$title} (v{$version})" . $nl;
     if ($summary !== '') {
-        $out .= " * @summary $summary
-";
+        $out .= ' * @summary ' . $summary . $nl;
     }
     if ($description !== '') {
-        $out .= " *
-";
-        foreach (explode("
-", $description) as $line) {
-            $out .= " * $line
-";
+        $out .= ' *' . $nl;
+        foreach (explode($nl, $description) as $line) {
+            $out .= ' * ' . $line . $nl;
         }
     }
     if (isset($info['termsOfService']) && is_string($info['termsOfService']) && $info['termsOfService'] !== '') {
-        $out .= " * @termsOfService {$info['termsOfService']}
-";
+        $tos = \Cdd\Docstrings\sanitize_docblock_text($info['termsOfService']);
+        $out .= ' * @termsOfService ' . $tos . $nl;
     }
     if (isset($info['contact']) && is_array($info['contact'])) {
         if (isset($info['contact']['name']) && is_string($info['contact']['name'])) {
-            $out .= " * @contact-name {$info['contact']['name']}
-";
+            $cName = \Cdd\Docstrings\sanitize_docblock_text($info['contact']['name']);
+            $out .= ' * @contact-name ' . $cName . $nl;
         }
         if (isset($info['contact']['url']) && is_string($info['contact']['url'])) {
-            $out .= " * @contact-url {$info['contact']['url']}
-";
+            $cUrl = \Cdd\Docstrings\sanitize_docblock_text($info['contact']['url']);
+            $out .= ' * @contact-url ' . $cUrl . $nl;
         }
         if (isset($info['contact']['email']) && is_string($info['contact']['email'])) {
-            $out .= " * @contact-email {$info['contact']['email']}
-";
+            $cEmail = \Cdd\Docstrings\sanitize_docblock_text($info['contact']['email']);
+            $out .= ' * @contact-email ' . $cEmail . $nl;
         }
     }
     if (isset($info['license']) && is_array($info['license'])) {
         if (isset($info['license']['name']) && is_string($info['license']['name'])) {
-            $out .= " * @license-name {$info['license']['name']}
-";
+            $lName = \Cdd\Docstrings\sanitize_docblock_text($info['license']['name']);
+            $out .= ' * @license-name ' . $lName . $nl;
         }
         if (isset($info['license']['identifier']) && is_string($info['license']['identifier'])) {
-            $out .= " * @license-identifier {$info['license']['identifier']}
-";
+            $lId = \Cdd\Docstrings\sanitize_docblock_text($info['license']['identifier']);
+            $out .= ' * @license-identifier ' . $lId . $nl;
         }
         if (isset($info['license']['url']) && is_string($info['license']['url'])) {
-            $out .= " * @license-url {$info['license']['url']}
-";
+            $lUrl = \Cdd\Docstrings\sanitize_docblock_text($info['license']['url']);
+            $out .= ' * @license-url ' . $lUrl . $nl;
         }
     }
-    $out .= " */
-";
+    $out .= ' */' . $nl;
     return $out;
 }

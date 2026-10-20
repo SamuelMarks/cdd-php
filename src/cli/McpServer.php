@@ -24,7 +24,7 @@ class McpServer
      * @param resource|null $inStream Optional input stream override.
      * @param resource|null $outStream Optional output stream override.
      * @return mixed Sampling result or null on EOF.
-     * @throws \Exception If the MCP client returns an error response.
+     * @throws \Cdd\Exceptions\CddException If the MCP client returns an error response.
      */
     public static function sampleLlm(
         array $messages,
@@ -52,12 +52,48 @@ class McpServer
             $res = json_decode($line, true);
             if ($res && isset($res['id']) && $res['id'] === $id) {
                 if (isset($res['error'])) {
-                    throw new \Exception($res['error']['message'] ?? 'Sampling failed');
+                    throw \Cdd\Exceptions\CddException::mcpError($res['error']['message'] ?? 'Sampling failed');
                 }
                 return $res['result'] ?? null;
             }
         }
         return null;
+    }
+
+    /**
+     * Builds a JSON AST summary of PHP classes and functions in the given directory.
+     *
+     * @param string $dir Directory to inspect.
+     * @return string JSON-encoded AST summary.
+     */
+    public static function inspectAstSummary(string $dir): string
+    {
+        $summary = ['classes' => [], 'functions' => []];
+        $phpFiles = array_merge(
+            glob($dir . '/*.php') ?: [],
+            glob($dir . '/src/*.php') ?: [],
+            glob($dir . '/src/*/*.php') ?: []
+        );
+        sort($phpFiles);
+        foreach (array_unique($phpFiles) as $file) {
+            $code = (string) file_get_contents($file);
+            foreach (\Cdd\Classes\parse($code) as $cls) {
+                if ($cls['name'] !== '') {
+                    $summary['classes'][] = [
+                        'name' => $cls['name'],
+                        'componentType' => $cls['componentType'],
+                        'file' => basename($file),
+                    ];
+                }
+            }
+            foreach (\Cdd\Functions\parse($code) as $fn) {
+                $summary['functions'][] = [
+                    'name' => $fn['name'],
+                    'file' => basename($file),
+                ];
+            }
+        }
+        return (string) json_encode($summary, JSON_UNESCAPED_SLASHES);
     }
 
     /**
@@ -68,12 +104,6 @@ class McpServer
      */
     public static function run(mixed $inStream = null): int
     {
-        $capabilities = [
-            'tools' => ['listChanged' => true],
-            'resources' => ['listChanged' => true, 'subscribe' => true],
-            'prompts' => ['listChanged' => true],
-            'logging' => (object) [],
-        ];
         $in = $inStream ?: CddCli::$testInStream ?: (defined('CDD_TEST_STDIN') ? CDD_TEST_STDIN : STDIN);
         while (($line = fgets($in)) !== false) {
             $req = json_decode($line, true);
@@ -86,7 +116,12 @@ class McpServer
                 if ($req['method'] === 'initialize') {
                     $res['result'] = [
                         'protocolVersion' => '2024-11-05',
-                        'capabilities' => $capabilities,
+                        'capabilities' => [
+                            'tools' => ['listChanged' => true],
+                            'resources' => ['listChanged' => true, 'subscribe' => true],
+                            'prompts' => ['listChanged' => true],
+                            'logging' => (object) [],
+                        ],
                         'serverInfo' => ['name' => 'cdd-php-mcp', 'version' => '0.0.4'],
                     ];
                 } elseif ($req['method'] === 'initialized') {
@@ -113,7 +148,7 @@ class McpServer
                     continue;
                 } elseif ($req['method'] === 'resources/list') {
                     $resources = [
-                        ['uri' => 'cdd://ast', 'name' => 'Internal AST Query Resource', 'mimeType' => 'text/plain'],
+                        ['uri' => 'cdd://ast', 'name' => 'Internal AST Query Resource', 'mimeType' => 'application/json'],
                         ['uri' => 'cdd://schema', 'name' => 'Schema Inspection Resource', 'mimeType' => 'application/json'],
                     ];
                     $cursor = $req['params']['cursor'] ?? null;
@@ -128,27 +163,35 @@ class McpServer
                         $res['result']['nextCursor'] = $nextCursor;
                     }
                 } elseif ($req['method'] === 'resources/read') {
-                    $uri = $req['params']['uri'] ?? '';
+                    $uri = (string) ($req['params']['uri'] ?? '');
                     if ($uri === 'cdd://ast' || $uri === 'cdd://schema') {
-                        $tmpFile = (string) tempnam(sys_get_temp_dir(), 'cdd_');
+                        $cwd = (string) getcwd();
                         if ($uri === 'cdd://schema') {
+                            $tmpFile = (string) tempnam(sys_get_temp_dir(), 'cdd_');
                             ob_start();
-                            CddCli::run(['cdd-php', 'to_openapi', '-i', (string) getcwd(), '-o', $tmpFile]);
+                            CddCli::run(['cdd-php', 'to_openapi', '-i', $cwd, '-o', $tmpFile]);
                             ob_end_clean();
                             $text = file_exists($tmpFile) ? (string) file_get_contents($tmpFile) : '{}';
+                            if (file_exists($tmpFile)) {
+                                unlink($tmpFile);
+                            }
                         } else {
-                            $text = '{}';
+                            $text = self::inspectAstSummary($cwd);
                         }
-                        if (file_exists($tmpFile)) {
-                            unlink($tmpFile);
-                        }
-                        $res['result'] = ['contents' => [['uri' => $uri, 'mimeType' => 'text/plain', 'text' => $text]]];
-                    } elseif (strpos($uri, 'file://') === 0) {
+                        $res['result'] = ['contents' => [['uri' => $uri, 'mimeType' => 'application/json', 'text' => $text]]];
+                    } elseif (str_starts_with($uri, 'file://')) {
                         $path = substr($uri, 7);
                         $realPath = realpath($path);
-                        $realCwd = (string) realpath((string) getcwd());
-                        if ($realPath !== false && strpos($realPath, $realCwd) === 0 && file_exists($realPath) && is_file($realPath)) {
-                            $res['result'] = ['contents' => [['uri' => $uri, 'mimeType' => 'text/plain', 'text' => file_get_contents($realPath)]]];
+                        $realCwd = realpath((string) getcwd());
+                        $cwdBoundary = $realCwd !== false ? rtrim($realCwd, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR : '';
+                        if (
+                            $realPath !== false
+                            && $realCwd !== false
+                            && (str_starts_with($realPath, $cwdBoundary) || $realPath === $realCwd)
+                            && file_exists($realPath)
+                            && is_file($realPath)
+                        ) {
+                            $res['result'] = ['contents' => [['uri' => $uri, 'mimeType' => 'text/plain', 'text' => (string) file_get_contents($realPath)]]];
                         } else {
                             $res['error'] = ['code' => -32602, 'message' => 'Access denied: Path is outside root boundary or invalid'];
                         }
@@ -216,7 +259,7 @@ class McpServer
                             }
                             CddCli::run($syncArgs);
                         } else {
-                            throw new \Exception('Unknown tool');
+                            throw \Cdd\Exceptions\CddException::mcpError('Unknown tool');
                         }
                         $output = ob_get_clean();
                         $res['result'] = ['content' => [['type' => 'text', 'text' => $output]]];

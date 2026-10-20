@@ -78,7 +78,7 @@ class ParseEmitTest extends TestCase
                 'content' => [],
                 'description' => 123,
             ]);
-        }, \RuntimeException::class, 'Request Body "description" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Request Body "description" must be a string');
     }
 
     /**
@@ -93,6 +93,6 @@ class ParseEmitTest extends TestCase
                 'content' => [],
                 'required' => 'yes',
             ]);
-        }, \RuntimeException::class, 'Request Body "required" must be a boolean');
+        }, \Cdd\Exceptions\CddException::class, 'Request Body "required" must be a boolean');
     }
 }

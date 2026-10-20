@@ -117,35 +117,35 @@ class ApiController {
     {
         $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject('not array');
-        }, \RuntimeException::class, 'Path Item must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item must be an object');
 
         $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['$ref' => 123]);
-        }, \RuntimeException::class, 'Path Item "$ref" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item "$ref" must be a string');
 
         $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['summary' => 123]);
-        }, \RuntimeException::class, 'Path Item "summary" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item "summary" must be a string');
 
         $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['description' => 123]);
-        }, \RuntimeException::class, 'Path Item "description" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item "description" must be a string');
 
         $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['additionalOperations' => 'not array']);
-        }, \RuntimeException::class, 'Path Item "additionalOperations" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item "additionalOperations" must be a map');
 
         $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['additionalOperations' => ['GET' => []]]);
-        }, \RuntimeException::class, 'Path Item "additionalOperations" MUST NOT contain any entry for fixed methods (e.g., GET)');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item "additionalOperations" MUST NOT contain any entry for fixed methods (e.g., GET)');
 
         $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['servers' => 'not array']);
-        }, \RuntimeException::class, 'Path Item "servers" must be an array');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item "servers" must be an array');
 
         $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject(['parameters' => 'not array']);
-        }, \RuntimeException::class, 'Path Item "parameters" must be an array');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item "parameters" must be an array');
 
         $this->assertThrows(function (): void {
             \Cdd\Paths\validatePathItemObject([
@@ -154,7 +154,7 @@ class ApiController {
                     ['name' => 'id', 'in' => 'query', 'schema' => []],
                 ],
             ]);
-        }, \RuntimeException::class, 'Path Item parameters list MUST NOT include duplicated parameters');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item parameters list MUST NOT include duplicated parameters');
     }
 
     /**

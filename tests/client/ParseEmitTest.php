@@ -127,5 +127,25 @@ class ApiClient {
         $this->assertTrue(strpos($emitted, 'public function connect_mcp($transport)') !== false);
         $this->assertTrue(strpos($emitted, "\$rpcCall('initialize'") !== false);
         $this->assertNotNull(\Cdd\Classes\create_parser()->parse($emitted));
+
+        // Roundtrip emitted client class with path parameters and security requirements
+        $fullClientCode = \Cdd\Client\emit_class([
+            '/users/{userId}' => [
+                'get' => [
+                    'operationId' => 'getUserById',
+                    'security' => [['BearerAuth' => ['users:read']]],
+                ],
+            ],
+        ]);
+        $roundtrippedPaths = \Cdd\Client\parse($fullClientCode);
+        $this->assertEquals('getUserById', $roundtrippedPaths['/users/{userId}']['get']['operationId']);
+        $this->assertEquals([['BearerAuth' => ['users:read']]], $roundtrippedPaths['/users/{userId}']['get']['security']);
+        $this->assertEquals('userId', $roundtrippedPaths['/users/{userId}']['get']['parameters'][0]['name']);
+        $this->assertEquals('path', $roundtrippedPaths['/users/{userId}']['get']['parameters'][0]['in']);
+
+        // Also test literal $url = 'http://localhost/ping' assignment
+        $literalUrlClient = "<?php\nclass LiteralClient {\n    public function ping() {\n        \$ch = curl_init();\n        \$url = '/ping';\n        curl_exec(\$ch);\n    }\n}\n";
+        $parsedLiteral = \Cdd\Client\parse($literalUrlClient);
+        $this->assertEquals('ping', $parsedLiteral['/ping']['get']['operationId']);
     }
 }

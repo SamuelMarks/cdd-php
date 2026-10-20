@@ -44,6 +44,9 @@ class ParseEmitTest extends TestCase
         $emittedNoSchema = \Cdd\Parameters\emit($paramNoSchema);
         $this->assertEquals('$noType', $emittedNoSchema);
 
+        $this->assertEquals('param_123', \Cdd\Parameters\sanitize_var_name('123'));
+        $this->assertEquals('X_Request_ID', \Cdd\Parameters\sanitize_var_name('X-Request-ID'));
+
         // Roundtrip emitted PHP parameter signatures through Cdd\Parameters\parse
         $parsedFromSig = \Cdd\Parameters\parse($emitted, null, 'path', true, 'User identifier');
         $this->assertEquals('id', $parsedFromSig['name']);
@@ -129,7 +132,7 @@ class ParseEmitTest extends TestCase
         foreach ($tests as $test) {
             $this->assertThrows(function () use ($test): void {
                 \Cdd\Parameters\validateParameterOrReferenceObject($test['input']);
-            }, \RuntimeException::class, $test['error']);
+            }, \Cdd\Exceptions\CddException::class, $test['error']);
         }
 
         $this->assertDoesNotThrow(function (): void {

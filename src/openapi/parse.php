@@ -10,48 +10,50 @@ declare(strict_types=1);
 
 namespace Cdd\Openapi;
 
+use Cdd\Exceptions\CddException;
+
 /**
  * Parses an OpenAPI JSON string into a PHP array structure.
  *
  * @param string $json The raw OpenAPI or Swagger JSON string.
  * @return array<string, mixed> The validated OpenAPI 3.2.0 array structure.
- * @throws \RuntimeException If JSON decoding or OpenAPI validation fails.
+ * @throws CddException If JSON decoding or OpenAPI validation fails.
  */
 function parse(string $json): array
 {
     $data = json_decode($json, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new \RuntimeException('Invalid JSON provided: ' . json_last_error_msg());
+        throw CddException::jsonDecode('Invalid JSON provided: ' . json_last_error_msg());
     }
     if (!is_array($data)) {
-        throw new \RuntimeException('OpenAPI document must be a JSON object');
+        throw CddException::validation('OpenAPI document must be a JSON object');
     }
     if (isset($data['swagger']) && !isset($data['openapi'])) {
         $data = upgrade_swagger2_to_openapi3($data);
     }
 
     if (!isset($data['openapi'])) {
-        throw new \RuntimeException('Missing REQUIRED field "openapi" in OpenAPI Object');
+        throw CddException::validation('Missing REQUIRED field "openapi" in OpenAPI Object');
     }
     if (!is_string($data['openapi']) || (!str_starts_with($data['openapi'], '3.0.') && !str_starts_with($data['openapi'], '3.1.') && $data['openapi'] !== '3.2.0')) {
-        throw new \RuntimeException('Spec must be OpenAPI 3.0.x, 3.1.x, or 3.2.0');
+        throw CddException::validation('Spec must be OpenAPI 3.0.x, 3.1.x, or 3.2.0');
     }
     $data['openapi'] = '3.2.0';
 
     if (isset($data['$self']) && !is_string($data['$self'])) {
-        throw new \RuntimeException('Field "$self" must be a string (URI reference)');
+        throw CddException::validation('Field "$self" must be a string (URI reference)');
     }
     if (!isset($data['info'])) {
-        throw new \RuntimeException('Missing REQUIRED field "info" in OpenAPI Object');
+        throw CddException::validation('Missing REQUIRED field "info" in OpenAPI Object');
     }
     \Cdd\Info\validateInfoObject($data['info']);
 
     if (isset($data['jsonSchemaDialect']) && !is_string($data['jsonSchemaDialect'])) {
-        throw new \RuntimeException('Field "jsonSchemaDialect" must be a string (URI)');
+        throw CddException::validation('Field "jsonSchemaDialect" must be a string (URI)');
     }
     if (isset($data['servers'])) {
         if (!is_array($data['servers'])) {
-            throw new \RuntimeException('Field "servers" must be an array of Server Objects');
+            throw CddException::validation('Field "servers" must be an array of Server Objects');
         }
         foreach ($data['servers'] as $server) {
             \Cdd\Servers\validateServerObject($server);
@@ -63,7 +65,7 @@ function parse(string $json): array
     $hasWebhooks = false;
     if (isset($data['webhooks'])) {
         if (!is_array($data['webhooks'])) {
-            throw new \RuntimeException('Field "webhooks" must be a map');
+            throw CddException::validation('Field "webhooks" must be a map');
         }
         $hasWebhooks = true;
         foreach ($data['webhooks'] as $pathItem) {
@@ -77,12 +79,12 @@ function parse(string $json): array
         \Cdd\Components\validateComponentsObject($data['components']);
     }
     if (!$hasPaths && !$hasComponents && !$hasWebhooks) {
-        throw new \RuntimeException('Spec must contain paths, components, or webhooks');
+        throw CddException::validation('Spec must contain paths, components, or webhooks');
     }
 
     if (isset($data['security'])) {
         if (!is_array($data['security'])) {
-            throw new \RuntimeException('Field "security" must be an array of Security Requirement Objects');
+            throw CddException::validation('Field "security" must be an array of Security Requirement Objects');
         }
         foreach ($data['security'] as $secReq) {
             \Cdd\Security\validateSecurityRequirementObject($secReq);
@@ -90,7 +92,7 @@ function parse(string $json): array
     }
     if (isset($data['tags'])) {
         if (!is_array($data['tags'])) {
-            throw new \RuntimeException('Field "tags" must be an array of Tag Objects');
+            throw CddException::validation('Field "tags" must be an array of Tag Objects');
         }
         foreach ($data['tags'] as $tag) {
             \Cdd\Info\validateTagObject($tag);
@@ -107,17 +109,17 @@ function parse(string $json): array
  *
  * @param array<string, mixed> $ref The Reference Object to validate.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws CddException If validation fails.
  */
 function validateReferenceObject(array $ref): void
 {
     if (!is_string($ref['$ref'])) {
-        throw new \RuntimeException('Reference "$ref" must be a string');
+        throw CddException::validation('Reference "$ref" must be a string');
     }
     if (isset($ref['summary']) && !is_string($ref['summary'])) {
-        throw new \RuntimeException('Reference "summary" must be a string');
+        throw CddException::validation('Reference "summary" must be a string');
     }
     if (isset($ref['description']) && !is_string($ref['description'])) {
-        throw new \RuntimeException('Reference "description" must be a string');
+        throw CddException::validation('Reference "description" must be a string');
     }
 }

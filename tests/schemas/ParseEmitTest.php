@@ -146,7 +146,7 @@ class DefaultDisc {
         foreach ($tests as $test) {
             $this->assertThrows(function () use ($test): void {
                 \Cdd\Schemas\validateSchemaOrReferenceObject($test['input']);
-            }, \RuntimeException::class, $test['error']);
+            }, \Cdd\Exceptions\CddException::class, $test['error']);
         }
 
         $this->assertDoesNotThrow(function (): void {
@@ -225,14 +225,47 @@ class NullableUnionTypeClass {
     {
         $this->assertThrows(function (): void {
             \Cdd\Schemas\validateSchemaOrReferenceObject(['xml' => ['nodeType' => 'element', 'attribute' => true]]);
-        }, \RuntimeException::class, 'XML "attribute" MUST NOT be present if "nodeType" is present');
+        }, \Cdd\Exceptions\CddException::class, 'XML "attribute" MUST NOT be present if "nodeType" is present');
 
         $this->assertThrows(function (): void {
             \Cdd\Schemas\validateSchemaOrReferenceObject(['xml' => ['nodeType' => 'element', 'wrapped' => true]]);
-        }, \RuntimeException::class, 'XML "wrapped" MUST NOT be present if "nodeType" is present');
+        }, \Cdd\Exceptions\CddException::class, 'XML "wrapped" MUST NOT be present if "nodeType" is present');
 
         $this->assertThrows(function (): void {
             \Cdd\Schemas\validateSchemaOrReferenceObject(['xml' => ['name' => 123]]);
-        }, \RuntimeException::class, 'XML "name" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'XML "name" must be a string');
+
+        // Roundtrip emitted Eloquent Model class with $ref, nullable, and required properties
+        $fullSchema = [
+            'type' => 'object',
+            'description' => 'User schema',
+            'required' => ['id', 'profile'],
+            'properties' => [
+                'id' => ['type' => 'integer'],
+                'nickname' => ['type' => 'string', 'nullable' => true],
+                'profile' => ['$ref' => '#/components/schemas/Profile'],
+            ],
+        ];
+        $emittedModel = "<?php\n" . \Cdd\Schemas\emit('User', $fullSchema);
+        $parsedClasses = \Cdd\Classes\parse($emittedModel);
+        $roundtrippedSchema = \Cdd\Schemas\parse($parsedClasses[0]['node']);
+        $this->assertEquals('integer', $roundtrippedSchema['properties']['id']['type']);
+        $this->assertEquals('string', $roundtrippedSchema['properties']['nickname']['type']);
+        $this->assertTrue($roundtrippedSchema['properties']['nickname']['nullable']);
+        $this->assertEquals('#/components/schemas/Profile', $roundtrippedSchema['properties']['profile']['$ref']);
+        $this->assertEquals(['id', 'profile'], $roundtrippedSchema['required']);
+
+        // Also test parsing a pure Eloquent class with only $fillable and $casts (no @property tags)
+        $eloquentOnly = "<?php\nclass Item extends Model {\n    protected \$fillable = ['qty', 'label'];\n    protected \$casts = ['qty' => 'integer'];\n}\n";
+        $eloquentClasses = \Cdd\Classes\parse($eloquentOnly);
+        $eloquentSchema = \Cdd\Schemas\parse($eloquentClasses[0]['node']);
+        $this->assertEquals('integer', $eloquentSchema['properties']['qty']['type']);
+        $this->assertEquals('string', $eloquentSchema['properties']['label']['type']);
+
+        // Also test @property with ?Type and mixed
+        $docPropClass = "<?php\n/**\n * @property ?int \$optInt\n * @property mixed \$anyVal\n */\nclass DocPropModel {}\n";
+        $docPropParsed = \Cdd\Schemas\parse(\Cdd\Classes\parse($docPropClass)[0]['node']);
+        $this->assertTrue($docPropParsed['properties']['optInt']['nullable']);
+        $this->assertEquals('string', $docPropParsed['properties']['anyVal']['type']);
     }
 }

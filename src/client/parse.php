@@ -12,7 +12,10 @@ namespace Cdd\Client;
 
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Identifier;
 use PhpParser\Node\InterpolatedStringPart;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\InterpolatedString;
@@ -51,6 +54,7 @@ function parse(string $clientCode): array
         $isCurl = false;
         $httpMethod = 'get';
         $path = '/';
+        $security = [];
 
         if ($methodNode->stmts === null) {
             continue;
@@ -69,15 +73,38 @@ function parse(string $clientCode): array
                 }
             }
 
+            $methodCalls = $nodeFinder->findInstanceOf([$stmt], MethodCall::class);
+            foreach ($methodCalls as $mc) {
+                if (
+                    $mc->var instanceof Variable
+                    && $mc->var->name === 'this'
+                    && $mc->name instanceof Identifier
+                    && $mc->name->toString() === 'requireSecurity'
+                    && count($mc->args) >= 1
+                ) {
+                    $schemeName = \Cdd\Classes\evaluate_ast_node($mc->args[0]->value);
+                    $scopes = isset($mc->args[1]) ? \Cdd\Classes\evaluate_ast_node($mc->args[1]->value) : [];
+                    if (is_string($schemeName)) {
+                        $security[] = [$schemeName => is_array($scopes) ? $scopes : []];
+                    }
+                }
+            }
+
             if ($stmt instanceof Expression && $stmt->expr instanceof Assign) {
-                if ($stmt->expr->var instanceof Variable && $stmt->expr->var->name === 'url') {
+                if ($stmt->expr->var instanceof Variable && $stmt->expr->var->name === 'urlPath') {
+                    if ($stmt->expr->expr instanceof String_) {
+                        $path = $stmt->expr->expr->value;
+                    }
+                } elseif ($stmt->expr->var instanceof Variable && $stmt->expr->var->name === 'url') {
                     if ($stmt->expr->expr instanceof InterpolatedString) {
                         foreach ($stmt->expr->expr->parts as $part) {
-                            if ($part instanceof InterpolatedStringPart) {
+                            if ($part instanceof InterpolatedStringPart && $part->value !== '') {
                                 $path = $part->value;
                                 break;
                             }
                         }
+                    } elseif ($stmt->expr->expr instanceof String_) {
+                        $path = $stmt->expr->expr->value;
                     }
                 }
             }
@@ -85,20 +112,33 @@ function parse(string $clientCode): array
 
         if ($isCurl) {
             $operationId = $methodNode->name->toString();
+            $opData = [
+                'operationId' => $operationId,
+            ];
+            if (!empty($security)) {
+                $opData['security'] = $security;
+            }
+            if (preg_match_all('/\{([^}]+)\}/', $path, $pathMatches)) {
+                $opData['parameters'] = [];
+                foreach ($pathMatches[1] as $pathParamName) {
+                    $opData['parameters'][] = [
+                        'name' => $pathParamName,
+                        'in' => 'path',
+                        'required' => true,
+                        'schema' => ['type' => 'string'],
+                    ];
+                }
+            }
             if (!isset($operations[$path])) {
                 $operations[$path] = [];
             }
             if (in_array($httpMethod, $validMethods, true)) {
-                $operations[$path][$httpMethod] = [
-                    'operationId' => $operationId,
-                ];
+                $operations[$path][$httpMethod] = $opData;
             } else {
                 if (!isset($operations[$path]['additionalOperations'])) {
                     $operations[$path]['additionalOperations'] = [];
                 }
-                $operations[$path]['additionalOperations'][strtoupper($httpMethod)] = [
-                    'operationId' => $operationId,
-                ];
+                $operations[$path]['additionalOperations'][strtoupper($httpMethod)] = $opData;
             }
         }
     }

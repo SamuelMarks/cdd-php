@@ -137,5 +137,23 @@ class MyClass_{$expectedType} {}
 
         $plusNode = new \PhpParser\Node\Expr\UnaryPlus(new \PhpParser\Node\Scalar\Int_(7));
         $this->assertEquals(7, \Cdd\Classes\evaluate_ast_node($plusNode));
+
+        $concatNode = new \PhpParser\Node\Expr\BinaryOp\Concat(
+            new \PhpParser\Node\Scalar\String_('hello '),
+            new \PhpParser\Node\Scalar\String_('world')
+        );
+        $this->assertEquals('hello world', \Cdd\Classes\evaluate_ast_node($concatNode));
+
+        $classConstNode = new \PhpParser\Node\Expr\ClassConstFetch(
+            new \PhpParser\Node\Name('Api\\Controllers\\UserController'),
+            new \PhpParser\Node\Identifier('class')
+        );
+        $this->assertEquals('Api\\Controllers\\UserController', \Cdd\Classes\evaluate_ast_node($classConstNode));
+
+        $namedConstNode = new \PhpParser\Node\Expr\ClassConstFetch(
+            new \PhpParser\Node\Name('MyClass'),
+            new \PhpParser\Node\Identifier('FOO')
+        );
+        $this->assertEquals('MyClass::FOO', \Cdd\Classes\evaluate_ast_node($namedConstNode));
     }
 }

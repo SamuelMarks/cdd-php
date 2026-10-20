@@ -200,7 +200,7 @@ Desc line 2",
         foreach ($tests as $test) {
             $this->assertThrows(function () use ($test): void {
                 \Cdd\Operations\validateOperationObject($test['input']);
-            }, \RuntimeException::class, $test['error']);
+            }, \Cdd\Exceptions\CddException::class, $test['error']);
         }
 
         $this->assertDoesNotThrow(function (): void {
@@ -220,7 +220,7 @@ Desc line 2",
     {
         $this->assertThrows(function (): void {
             \Cdd\Operations\validateCallbackOrReferenceObject('not array');
-        }, \RuntimeException::class, 'Callback must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Callback must be an object');
 
         $this->assertDoesNotThrow(function (): void {
             \Cdd\Operations\validateCallbackOrReferenceObject(['$ref' => '#/components/callbacks/MyCb']);
@@ -287,6 +287,29 @@ Desc line 2",
     {
         $this->assertThrows(function (): void {
             \Cdd\Operations\validateOperationObject(['responses' => ['200' => ['description' => 'OK']], 'servers' => 'not array']);
-        }, \RuntimeException::class, 'Operation "servers" must be an array');
+        }, \Cdd\Exceptions\CddException::class, 'Operation "servers" must be an array');
+
+        $roundtripOp = [
+            'operationId' => 'fetchUser',
+            'summary' => 'Fetch user',
+            'parameters' => [
+                ['name' => 'X-Request-ID', 'in' => 'header', 'required' => false, 'description' => 'Req ID', 'schema' => ['type' => 'string']],
+                ['name' => 'filterRef', 'in' => 'query', 'required' => false, 'schema' => ['$ref' => '#/components/schemas/Filter']],
+            ],
+            'security' => [['BearerAuth' => ['read:users']]],
+            'responses' => [
+                '201' => [
+                    'description' => 'Created user',
+                    'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/User']]],
+                ],
+            ],
+        ];
+        $emittedOpCode = "<?php\nclass UserController {\n" . \Cdd\Operations\emit($roundtripOp, '/users', 'post') . "\n}\n";
+        $parsedCtrl = \Cdd\Controllers\parse($emittedOpCode);
+        $this->assertEquals('X-Request-ID', $parsedCtrl['fetchUser']['parameters'][0]['name']);
+        $this->assertEquals('header', $parsedCtrl['fetchUser']['parameters'][0]['in']);
+        $this->assertEquals('Req ID', $parsedCtrl['fetchUser']['parameters'][0]['description']);
+        $this->assertEquals([['BearerAuth' => ['read:users']]], $parsedCtrl['fetchUser']['security']);
+        $this->assertEquals('Created user', $parsedCtrl['fetchUser']['responses']['201']['description']);
     }
 }

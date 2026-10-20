@@ -114,9 +114,68 @@ function parse(Class_ $classNode): array
         }
     }
     $required = [];
+    if ($docComment !== null) {
+        $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+        if (isset($parsedDoc['tags']['oas-required'])) {
+            foreach ($parsedDoc['tags']['oas-required'] as $reqLine) {
+                foreach (explode(',', (string) $reqLine) as $reqProp) {
+                    $trimmedReq = trim($reqProp);
+                    if ($trimmedReq !== '') {
+                        $required[] = $trimmedReq;
+                    }
+                }
+            }
+        }
+        if (isset($parsedDoc['tags']['property'])) {
+            foreach ($parsedDoc['tags']['property'] as $propTag) {
+                $parts = preg_split('/\s+/', trim((string) $propTag), 3);
+                if (is_array($parts) && count($parts) >= 2 && str_starts_with($parts[1], '$')) {
+                    $rawType = $parts[0];
+                    $propName = substr($parts[1], 1);
+                    $nullable = false;
+                    if (str_starts_with($rawType, '?')) {
+                        $nullable = true;
+                        $rawType = substr($rawType, 1);
+                    } elseif (str_ends_with(strtolower($rawType), '|null')) {
+                        $nullable = true;
+                        $rawType = substr($rawType, 0, -5);
+                    }
+                    $mappedScalar = php_type_to_openapi($rawType);
+                    $propSchema = [];
+                    if (strtolower($rawType) === 'mixed') {
+                        $propSchema['type'] = 'string';
+                    } elseif ($mappedScalar !== null) {
+                        $propSchema['type'] = $mappedScalar;
+                    } else {
+                        $propSchema['$ref'] = "#/components/schemas/{$rawType}";
+                    }
+                    if ($nullable) {
+                        $propSchema['nullable'] = true;
+                    }
+                    $schema['properties'][$propName] = $propSchema;
+                }
+            }
+        }
+    }
 
+    $fillableProps = [];
+    $castsMap = [];
     foreach ($classNode->getProperties() as $prop) {
-        if (!$prop->isPublic()) {
+        foreach ($prop->props as $p) {
+            $pName = $p->name->toString();
+            if ($pName === 'fillable' && $p->default !== null) {
+                $evalFillable = \Cdd\Classes\evaluate_ast_node($p->default);
+                if (is_array($evalFillable)) {
+                    $fillableProps = $evalFillable;
+                }
+            } elseif ($pName === 'casts' && $p->default !== null) {
+                $evalCasts = \Cdd\Classes\evaluate_ast_node($p->default);
+                if (is_array($evalCasts)) {
+                    $castsMap = $evalCasts;
+                }
+            }
+        }
+        if (!$prop->isPublic() || in_array($prop->props[0]->name->toString(), ['timestamps'], true)) {
             continue;
         }
         $typeNode = $prop->type;
@@ -161,6 +220,13 @@ function parse(Class_ $classNode): array
             $schema['properties'][$propName] = $propSchema;
         }
     }
+    foreach ($fillableProps as $fillProp) {
+        if (is_string($fillProp) && !isset($schema['properties'][$fillProp])) {
+            $castType = is_string($castsMap[$fillProp] ?? null) ? $castsMap[$fillProp] : 'string';
+            $mapped = php_type_to_openapi($castType) ?? 'string';
+            $schema['properties'][$fillProp] = ['type' => $mapped];
+        }
+    }
     if (!empty($required)) {
         $schema['required'] = array_values(array_unique($required));
     }
@@ -172,12 +238,12 @@ function parse(Class_ $classNode): array
  *
  * @param mixed $schema The Schema or Reference Object to validate.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws \Cdd\Exceptions\CddException If validation fails.
  */
 function validateSchemaOrReferenceObject(mixed $schema): void
 {
     if (!is_array($schema) && !is_bool($schema)) {
-        throw new \RuntimeException('Schema must be an object or boolean');
+        throw \Cdd\Exceptions\CddException::validation('Schema must be an object or boolean');
     }
     if (is_bool($schema)) {
         return;
@@ -188,12 +254,12 @@ function validateSchemaOrReferenceObject(mixed $schema): void
     }
     if (isset($schema['type'])) {
         if (!is_string($schema['type']) && !is_array($schema['type'])) {
-            throw new \RuntimeException('Schema "type" must be a string or array of strings');
+            throw \Cdd\Exceptions\CddException::validation('Schema "type" must be a string or array of strings');
         }
     }
     if (isset($schema['properties'])) {
         if (!is_array($schema['properties'])) {
-            throw new \RuntimeException('Schema "properties" must be a map');
+            throw \Cdd\Exceptions\CddException::validation('Schema "properties" must be a map');
         }
         foreach ($schema['properties'] as $prop) {
             \Cdd\Schemas\validateSchemaOrReferenceObject($prop);
@@ -204,7 +270,7 @@ function validateSchemaOrReferenceObject(mixed $schema): void
     }
     if (isset($schema['allOf'])) {
         if (!is_array($schema['allOf'])) {
-            throw new \RuntimeException('Schema "allOf" must be an array');
+            throw \Cdd\Exceptions\CddException::validation('Schema "allOf" must be an array');
         }
         foreach ($schema['allOf'] as $s) {
             \Cdd\Schemas\validateSchemaOrReferenceObject($s);
@@ -212,7 +278,7 @@ function validateSchemaOrReferenceObject(mixed $schema): void
     }
     if (isset($schema['anyOf'])) {
         if (!is_array($schema['anyOf'])) {
-            throw new \RuntimeException('Schema "anyOf" must be an array');
+            throw \Cdd\Exceptions\CddException::validation('Schema "anyOf" must be an array');
         }
         foreach ($schema['anyOf'] as $s) {
             \Cdd\Schemas\validateSchemaOrReferenceObject($s);
@@ -220,7 +286,7 @@ function validateSchemaOrReferenceObject(mixed $schema): void
     }
     if (isset($schema['oneOf'])) {
         if (!is_array($schema['oneOf'])) {
-            throw new \RuntimeException('Schema "oneOf" must be an array');
+            throw \Cdd\Exceptions\CddException::validation('Schema "oneOf" must be an array');
         }
         foreach ($schema['oneOf'] as $s) {
             \Cdd\Schemas\validateSchemaOrReferenceObject($s);
@@ -245,21 +311,21 @@ function validateSchemaOrReferenceObject(mixed $schema): void
  *
  * @param mixed $discriminator The Discriminator Object to validate.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws \Cdd\Exceptions\CddException If validation fails.
  */
 function validateDiscriminatorObject(mixed $discriminator): void
 {
     if (!is_array($discriminator)) {
-        throw new \RuntimeException('Discriminator must be an object');
+        throw \Cdd\Exceptions\CddException::validation('Discriminator must be an object');
     }
     if (!isset($discriminator['propertyName']) || !is_string($discriminator['propertyName'])) {
-        throw new \RuntimeException('Discriminator must contain a "propertyName" string');
+        throw \Cdd\Exceptions\CddException::validation('Discriminator must contain a "propertyName" string');
     }
     if (isset($discriminator['mapping']) && !is_array($discriminator['mapping'])) {
-        throw new \RuntimeException('Discriminator "mapping" must be a map');
+        throw \Cdd\Exceptions\CddException::validation('Discriminator "mapping" must be a map');
     }
     if (isset($discriminator['defaultMapping']) && !is_string($discriminator['defaultMapping'])) {
-        throw new \RuntimeException('Discriminator "defaultMapping" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('Discriminator "defaultMapping" must be a string');
     }
 }
 
@@ -268,41 +334,41 @@ function validateDiscriminatorObject(mixed $discriminator): void
  *
  * @param mixed $xml The XML Object to validate.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws \Cdd\Exceptions\CddException If validation fails.
  */
 function validateXMLObject(mixed $xml): void
 {
     if (!is_array($xml)) {
-        throw new \RuntimeException('XML must be an object');
+        throw \Cdd\Exceptions\CddException::validation('XML must be an object');
     }
     if (isset($xml['name']) && !is_string($xml['name'])) {
-        throw new \RuntimeException('XML "name" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('XML "name" must be a string');
     }
     if (isset($xml['namespace']) && !is_string($xml['namespace'])) {
-        throw new \RuntimeException('XML "namespace" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('XML "namespace" must be a string');
     }
     if (isset($xml['prefix']) && !is_string($xml['prefix'])) {
-        throw new \RuntimeException('XML "prefix" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('XML "prefix" must be a string');
     }
     if (isset($xml['attribute']) && !is_bool($xml['attribute'])) {
-        throw new \RuntimeException('XML "attribute" must be a boolean');
+        throw \Cdd\Exceptions\CddException::validation('XML "attribute" must be a boolean');
     }
     if (isset($xml['wrapped']) && !is_bool($xml['wrapped'])) {
-        throw new \RuntimeException('XML "wrapped" must be a boolean');
+        throw \Cdd\Exceptions\CddException::validation('XML "wrapped" must be a boolean');
     }
     if (isset($xml['nodeType'])) {
         if (!is_string($xml['nodeType'])) {
-            throw new \RuntimeException('XML "nodeType" must be a string');
+            throw \Cdd\Exceptions\CddException::validation('XML "nodeType" must be a string');
         }
         $validNodes = ['element', 'attribute', 'text', 'cdata', 'none'];
         if (!in_array($xml['nodeType'], $validNodes, true)) {
-            throw new \RuntimeException('XML "nodeType" must be one of: element, attribute, text, cdata, none');
+            throw \Cdd\Exceptions\CddException::validation('XML "nodeType" must be one of: element, attribute, text, cdata, none');
         }
         if (isset($xml['attribute'])) {
-            throw new \RuntimeException('XML "attribute" MUST NOT be present if "nodeType" is present');
+            throw \Cdd\Exceptions\CddException::validation('XML "attribute" MUST NOT be present if "nodeType" is present');
         }
         if (isset($xml['wrapped'])) {
-            throw new \RuntimeException('XML "wrapped" MUST NOT be present if "nodeType" is present');
+            throw \Cdd\Exceptions\CddException::validation('XML "wrapped" MUST NOT be present if "nodeType" is present');
         }
     }
 }

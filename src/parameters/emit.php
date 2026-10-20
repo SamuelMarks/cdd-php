@@ -11,6 +11,22 @@ declare(strict_types=1);
 namespace Cdd\Parameters;
 
 /**
+ * Sanitizes an arbitrary OpenAPI parameter or template name into a valid PHP variable identifier.
+ *
+ * @param string $rawName The raw OpenAPI parameter or path variable name.
+ * @return string Valid PHP variable identifier (without leading `$`).
+ */
+function sanitize_var_name(string $rawName): string
+{
+    $cleaned = (string) preg_replace('/[^a-zA-Z0-9_]+/', '_', $rawName);
+    $cleaned = trim($cleaned, '_');
+    if ($cleaned === '' || preg_match('/^[0-9]/', $cleaned) === 1) {
+        $cleaned = 'param_' . $cleaned;
+    }
+    return $cleaned;
+}
+
+/**
  * Emits a PHP parameter definition from an OpenAPI Parameter Object.
  *
  * @param array<string, mixed> $parameter The OpenAPI Parameter Object.
@@ -18,7 +34,8 @@ namespace Cdd\Parameters;
  */
 function emit(array $parameter): string
 {
-    $name = (string) ($parameter['name'] ?? 'param');
+    $rawName = (string) ($parameter['name'] ?? 'param');
+    $name = sanitize_var_name($rawName);
     $schema = $parameter['schema'] ?? [];
 
     $type = '';
@@ -36,7 +53,7 @@ function emit(array $parameter): string
 
     $typeStr = '';
     if ($type !== '') {
-        if ($required) {
+        if ($required || $type === 'mixed') {
             $typeStr = $type . ' ';
         } else {
             $typeStr = "?$type" . ' ';

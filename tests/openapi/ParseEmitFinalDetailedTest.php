@@ -26,7 +26,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"H1":{"schema":{},"content":{}}}}}');
-        }, \RuntimeException::class, 'Header cannot contain both "schema" and "content"');
+        }, \Cdd\Exceptions\CddException::class, 'Header cannot contain both "schema" and "content"');
     }
 
     /**
@@ -38,7 +38,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"H1":{"description":"Test"}}}}');
-        }, \RuntimeException::class, 'Header must contain either "schema" or "content"');
+        }, \Cdd\Exceptions\CddException::class, 'Header must contain either "schema" or "content"');
     }
 
     /**
@@ -62,7 +62,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"links":{"L1":{"operationRef":"ref","operationId":"id"}}}}');
-        }, \RuntimeException::class, 'Link cannot contain both "operationRef" and "operationId"');
+        }, \Cdd\Exceptions\CddException::class, 'Link cannot contain both "operationRef" and "operationId"');
     }
 
     /**
@@ -74,7 +74,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"responses":{"R1":{"description":"Test","headers":"invalid"}}}}');
-        }, \RuntimeException::class, 'Response "headers" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Response "headers" must be a map');
     }
 
     /**
@@ -86,7 +86,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"responses":{"R1":{"description":"Test","links":"invalid"}}}}');
-        }, \RuntimeException::class, 'Response "links" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Response "links" must be a map');
     }
 
     /**
@@ -98,7 +98,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"invalid"}}}}');
-        }, \RuntimeException::class, 'Security Scheme "type" must be one of');
+        }, \Cdd\Exceptions\CddException::class, 'Security Scheme "type" must be one of');
     }
 
     /**
@@ -110,7 +110,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"apiKey"}}}}');
-        }, \RuntimeException::class, 'Security Scheme "apiKey" requires a "name" string');
+        }, \Cdd\Exceptions\CddException::class, 'Security Scheme "apiKey" requires a "name" string');
     }
 
     /**
@@ -122,7 +122,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"apiKey","name":"key"}}}}');
-        }, \RuntimeException::class, 'Security Scheme "apiKey" requires an "in" string');
+        }, \Cdd\Exceptions\CddException::class, 'Security Scheme "apiKey" requires an "in" string');
     }
 
     /**
@@ -134,7 +134,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"http"}}}}');
-        }, \RuntimeException::class, 'Security Scheme "http" requires a "scheme" string');
+        }, \Cdd\Exceptions\CddException::class, 'Security Scheme "http" requires a "scheme" string');
     }
 
     /**
@@ -146,7 +146,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"oauth2"}}}}');
-        }, \RuntimeException::class, 'Security Scheme "oauth2" requires a "flows" map');
+        }, \Cdd\Exceptions\CddException::class, 'Security Scheme "oauth2" requires a "flows" map');
     }
 
     /**
@@ -158,7 +158,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"S1":{"type":"openIdConnect"}}}}');
-        }, \RuntimeException::class, 'Security Scheme "openIdConnect" requires an "openIdConnectUrl" string');
+        }, \Cdd\Exceptions\CddException::class, 'Security Scheme "openIdConnect" requires an "openIdConnectUrl" string');
     }
 
     /**
@@ -170,7 +170,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"requestBodies":{"R":{"content":{"multipart/form-data":{"encoding":{"a":{"contentType":123}}}}}}}}');
-        }, \RuntimeException::class, 'Encoding "contentType" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Encoding "contentType" must be a string');
     }
 
     /**
@@ -182,7 +182,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"requestBodies":{"R":{"content":{"multipart/form-data":{"encoding":{"a":{"headers":123}}}}}}}}');
-        }, \RuntimeException::class, 'Encoding "headers" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Encoding "headers" must be a map');
     }
 
     /**
@@ -194,7 +194,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"requestBodies":{"R":{"content":{"multipart/form-data":{"encoding":{"a":{"style":123}}}}}}}}');
-        }, \RuntimeException::class, 'Encoding "style" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Encoding "style" must be a string');
     }
 
     /**
@@ -206,7 +206,7 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"requestBodies":{"R":{"content":{"multipart/form-data":{"encoding":{"a":{"explode":123}}}}}}}}');
-        }, \RuntimeException::class, 'Encoding "explode" must be a boolean');
+        }, \Cdd\Exceptions\CddException::class, 'Encoding "explode" must be a boolean');
     }
 
     /**
@@ -218,6 +218,6 @@ class ParseEmitFinalDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"requestBodies":{"R":{"content":{"multipart/form-data":{"encoding":{"a":{"allowReserved":123}}}}}}}}');
-        }, \RuntimeException::class, 'Encoding "allowReserved" must be a boolean');
+        }, \Cdd\Exceptions\CddException::class, 'Encoding "allowReserved" must be a boolean');
     }
 }

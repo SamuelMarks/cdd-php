@@ -50,7 +50,7 @@ class ProjectSynchronizer
         }
         foreach ($paths as $path => &$methods) {
             foreach ($methods as $method => &$opData) {
-                if (isset($opData['operationId'])) {
+                if (is_array($opData) && isset($opData['operationId'])) {
                     $opId = (string) $opData['operationId'];
                     if ($cliPrefix !== null) {
                         $cliKey = $cliPrefix . $opId;
@@ -64,6 +64,155 @@ class ProjectSynchronizer
             }
         }
         return $paths;
+    }
+
+    /**
+     * Parses an entire generated or hand-written project directory (both single-file SDK and modular Server layouts) into an OpenAPI array.
+     *
+     * @param string $dir Root directory of the PHP project.
+     * @param array<string, mixed> $openapi Initial OpenAPI specification skeleton.
+     * @return array<string, mixed> Populated OpenAPI specification array.
+     */
+    public static function parseDirectory(string $dir, array $openapi): array
+    {
+        $openapi = self::applyApiMetadata($openapi, "$dir/src/api_metadata.php");
+
+        if (file_exists("$dir/src/routes.php")) {
+            $routes = \Cdd\Routes\parse((string) file_get_contents("$dir/src/routes.php"));
+            if (!empty($routes)) {
+                $openapi['paths'] = array_replace_recursive((array) ($openapi['paths'] ?? []), $routes);
+            }
+        }
+        if (is_dir("$dir/src/Routes")) {
+            $routeFiles = glob("$dir/src/Routes/*.php") ?: [];
+            sort($routeFiles);
+            foreach ($routeFiles as $rf) {
+                $routes = \Cdd\Routes\parse((string) file_get_contents($rf));
+                if (!empty($routes)) {
+                    $openapi['paths'] = array_replace_recursive((array) ($openapi['paths'] ?? []), $routes);
+                }
+            }
+        }
+
+        if (file_exists("$dir/src/ApiClient.php")) {
+            $clientPaths = \Cdd\Client\parse((string) file_get_contents("$dir/src/ApiClient.php"));
+            if (!empty($clientPaths)) {
+                $openapi['paths'] = array_replace_recursive((array) ($openapi['paths'] ?? []), $clientPaths);
+            }
+        }
+
+        if (file_exists("$dir/src/ApiController.php")) {
+            $controllerOps = \Cdd\Controllers\parse((string) file_get_contents("$dir/src/ApiController.php"));
+            $openapi['paths'] = self::mergeOperationMetadata((array) ($openapi['paths'] ?? []), $controllerOps);
+        }
+        if (is_dir("$dir/src/Controllers")) {
+            $ctrlFiles = glob("$dir/src/Controllers/*.php") ?: [];
+            sort($ctrlFiles);
+            $allCtrlOps = [];
+            foreach ($ctrlFiles as $cf) {
+                $ctrlOps = \Cdd\Controllers\parse((string) file_get_contents($cf));
+                $allCtrlOps = array_replace($allCtrlOps, $ctrlOps);
+            }
+            if (!empty($allCtrlOps)) {
+                $openapi['paths'] = self::mergeOperationMetadata((array) ($openapi['paths'] ?? []), $allCtrlOps);
+            }
+        }
+
+        if (file_exists("$dir/src/api_cli.php")) {
+            $cliOps = \Cdd\Cli\parse((string) file_get_contents("$dir/src/api_cli.php"));
+            if (!empty($openapi['paths'])) {
+                $openapi['paths'] = self::mergeOperationMetadata((array) $openapi['paths'], $cliOps, '/cli/');
+            } else {
+                $openapi['paths'] = $cliOps;
+            }
+        }
+
+        if (file_exists("$dir/src/Models.php")) {
+            $classes = \Cdd\Classes\parse((string) file_get_contents("$dir/src/Models.php"));
+            if (!empty($classes)) {
+                $openapi['components'] = \Cdd\Components\parse_classes($classes, (array) ($openapi['components'] ?? []));
+            }
+        }
+        if (is_dir("$dir/src/Models")) {
+            $modelFiles = glob("$dir/src/Models/*.php") ?: [];
+            sort($modelFiles);
+            foreach ($modelFiles as $mf) {
+                $classes = \Cdd\Classes\parse((string) file_get_contents($mf));
+                if (!empty($classes)) {
+                    $openapi['components'] = \Cdd\Components\parse_classes($classes, (array) ($openapi['components'] ?? []));
+                }
+            }
+        }
+
+        if (file_exists("$dir/src/mocks.php")) {
+            $mocks = \Cdd\Mocks\parse((string) file_get_contents("$dir/src/mocks.php"));
+            if (!empty($mocks)) {
+                $openapi['components']['examples'] = $mocks;
+                $openapi['components']['schemas'] = \Cdd\Components\infer_schemas_from_mocks(
+                    $mocks,
+                    (array) ($openapi['components']['schemas'] ?? [])
+                );
+            }
+        }
+        if (is_dir("$dir/src/Mocks")) {
+            $mockFiles = glob("$dir/src/Mocks/*Mock.php") ?: [];
+            sort($mockFiles);
+            $modularMocks = [];
+            foreach ($mockFiles as $mkf) {
+                $baseMockName = substr(basename($mkf, '.php'), 0, -4);
+                $parsedMock = \Cdd\Mocks\parse("<?php\nreturn ['{$baseMockName}' => " . trim((string) preg_replace('/^<\?php\s*(?:\/\/[^\n]*\n)?\s*return\s+/s', '', rtrim(trim((string) file_get_contents($mkf)), ';'))) . "];\n");
+                $modularMocks = array_replace($modularMocks, $parsedMock);
+            }
+            if (!empty($modularMocks)) {
+                $openapi['components']['examples'] = array_replace(
+                    (array) ($openapi['components']['examples'] ?? []),
+                    $modularMocks
+                );
+            }
+        }
+
+        if (file_exists("$dir/src/ApiServers.php")) {
+            $parsedServers = \Cdd\Servers\parse((string) file_get_contents("$dir/src/ApiServers.php"));
+            if (!empty($parsedServers)) {
+                $openapi['servers'] = $parsedServers;
+            }
+        }
+
+        if (file_exists("$dir/Webhooks.php")) {
+            $webhooks = \Cdd\Webhooks\parse((string) file_get_contents("$dir/Webhooks.php"));
+            if (!empty($webhooks)) {
+                $openapi['webhooks'] = $webhooks;
+            }
+        }
+
+        $testedPaths = [];
+        if (file_exists("$dir/src/ComposableTests.php")) {
+            $testedPaths = \Cdd\Tests\parse((string) file_get_contents("$dir/src/ComposableTests.php"));
+        } elseif (file_exists("$dir/src/ApiTests.php")) {
+            $testedPaths = \Cdd\Tests\parse((string) file_get_contents("$dir/src/ApiTests.php"));
+        }
+        if (is_dir("$dir/tests/Routes")) {
+            $testFiles = glob("$dir/tests/Routes/*Test.php") ?: [];
+            sort($testFiles);
+            foreach ($testFiles as $tf) {
+                $tp = \Cdd\Tests\parse((string) file_get_contents($tf));
+                $testedPaths = array_replace_recursive($testedPaths, $tp);
+            }
+        }
+        foreach ($testedPaths as $testedMethod => $pathMap) {
+            if (is_array($pathMap)) {
+                foreach (array_keys($pathMap) as $testedPath) {
+                    if (!isset($openapi['paths'][$testedPath][$testedMethod])) {
+                        $openapi['paths'][$testedPath][$testedMethod] = [
+                            'operationId' => $testedMethod . preg_replace('/[^a-zA-Z0-9]/', '', (string) $testedPath),
+                            'responses' => ['200' => ['description' => 'Successful operation']],
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $openapi;
     }
 
     /**
@@ -107,85 +256,10 @@ class ProjectSynchronizer
             $openapi = \Cdd\Openapi\parse((string) file_get_contents("$dir/openapi.json"));
         }
 
-        $openapi = self::applyApiMetadata($openapi, "$dir/src/api_metadata.php");
-
-        if (file_exists("$dir/src/routes.php")) {
-            $routes = \Cdd\Routes\parse((string) file_get_contents("$dir/src/routes.php"));
-            if (!empty($routes)) {
-                $openapi['paths'] = array_replace_recursive((array) $openapi['paths'], $routes);
-            }
-        }
-
-        if (file_exists("$dir/src/ApiClient.php")) {
-            $clientPaths = \Cdd\Client\parse((string) file_get_contents("$dir/src/ApiClient.php"));
-            if (!empty($clientPaths)) {
-                $openapi['paths'] = array_replace_recursive((array) $openapi['paths'], $clientPaths);
-            }
-        }
-
-        if (file_exists("$dir/src/ApiController.php")) {
-            $controllerOps = \Cdd\Controllers\parse((string) file_get_contents("$dir/src/ApiController.php"));
-            $openapi['paths'] = self::mergeOperationMetadata((array) $openapi['paths'], $controllerOps);
-        }
-
-        if (file_exists("$dir/src/api_cli.php")) {
-            $cliOps = \Cdd\Cli\parse((string) file_get_contents("$dir/src/api_cli.php"));
-            $openapi['paths'] = self::mergeOperationMetadata((array) $openapi['paths'], $cliOps, '/cli/');
-        }
-
-        if (file_exists("$dir/src/Models.php")) {
-            $classes = \Cdd\Classes\parse((string) file_get_contents("$dir/src/Models.php"));
-            if (!empty($classes)) {
-                $openapi['components'] = \Cdd\Components\parse_classes($classes, (array) $openapi['components']);
-            }
-        }
-
-        if (file_exists("$dir/src/mocks.php")) {
-            $mocks = \Cdd\Mocks\parse((string) file_get_contents("$dir/src/mocks.php"));
-            if (!empty($mocks)) {
-                $openapi['components']['examples'] = $mocks;
-                $openapi['components']['schemas'] = \Cdd\Components\infer_schemas_from_mocks(
-                    $mocks,
-                    (array) ($openapi['components']['schemas'] ?? [])
-                );
-            }
-        }
-
-        if (file_exists("$dir/src/ApiServers.php")) {
-            $parsedServers = \Cdd\Servers\parse((string) file_get_contents("$dir/src/ApiServers.php"));
-            if (!empty($parsedServers)) {
-                $openapi['servers'] = $parsedServers;
-            }
-        }
-
-        if (file_exists("$dir/Webhooks.php")) {
-            $webhooks = \Cdd\Webhooks\parse((string) file_get_contents("$dir/Webhooks.php"));
-            if (!empty($webhooks)) {
-                $openapi['webhooks'] = $webhooks;
-            }
-        }
-
-        $testedPaths = [];
-        if (file_exists("$dir/src/ComposableTests.php")) {
-            $testedPaths = \Cdd\Tests\parse((string) file_get_contents("$dir/src/ComposableTests.php"));
-        } elseif (file_exists("$dir/src/ApiTests.php")) {
-            $testedPaths = \Cdd\Tests\parse((string) file_get_contents("$dir/src/ApiTests.php"));
-        }
-        foreach ($testedPaths as $testedMethod => $pathMap) {
-            if (is_array($pathMap)) {
-                foreach (array_keys($pathMap) as $testedPath) {
-                    if (!isset($openapi['paths'][$testedPath][$testedMethod])) {
-                        $openapi['paths'][$testedPath][$testedMethod] = [
-                            'operationId' => $testedMethod . preg_replace('/[^a-zA-Z0-9]/', '', (string) $testedPath),
-                            'responses' => ['200' => ['description' => 'Successful operation']],
-                        ];
-                    }
-                }
-            }
-        }
+        $openapi = self::parseDirectory($dir, $openapi);
 
         $options = [];
-        if (file_exists("$dir/src/ComposableTests.php") || file_exists("$dir/src/ApiTests.php") || file_exists("$dir/src/mocks.php")) {
+        if (file_exists("$dir/src/ComposableTests.php") || file_exists("$dir/src/ApiTests.php") || file_exists("$dir/src/mocks.php") || is_dir("$dir/tests/Routes")) {
             $options['tests'] = true;
         }
         $json = \Cdd\Openapi\emit($openapi, $dir, $options);
@@ -241,8 +315,6 @@ class ProjectSynchronizer
             return 1;
         }
 
-        $code = is_dir($file) ? '' : (string) file_get_contents($file);
-
         $openapi = [
             'openapi' => '3.2.0',
             'info' => [
@@ -253,40 +325,45 @@ class ProjectSynchronizer
             'components' => ['schemas' => []],
         ];
 
-        $dir = is_dir($file) ? $file : dirname($file);
-        $openapi = self::applyApiMetadata($openapi, "$dir/src/api_metadata.php");
-
-        if (strpos($code, 'curl_exec') !== false) {
-            $openapi['paths'] = \Cdd\Client\parse($code);
+        if (is_dir($file)) {
+            $openapi = self::parseDirectory($file, $openapi);
         } else {
-            $routes = \Cdd\Routes\parse($code);
-            if (!empty($routes)) {
-                $openapi['paths'] = $routes;
-            }
+            $code = (string) file_get_contents($file);
+            $dir = dirname($file);
+            $openapi = self::applyApiMetadata($openapi, "$dir/src/api_metadata.php");
 
-            if (!empty($openapi['paths'])) {
-                $controllerOps = \Cdd\Controllers\parse($code);
-                $openapi['paths'] = self::mergeOperationMetadata((array) $openapi['paths'], $controllerOps);
+            if (strpos($code, 'curl_exec') !== false) {
+                $openapi['paths'] = \Cdd\Client\parse($code);
+            } else {
+                $routes = \Cdd\Routes\parse($code);
+                if (!empty($routes)) {
+                    $openapi['paths'] = $routes;
+                }
 
-                $cliOps = \Cdd\Cli\parse($code);
-                $openapi['paths'] = self::mergeOperationMetadata((array) $openapi['paths'], $cliOps, '/cli/');
-            }
+                if (!empty($openapi['paths'])) {
+                    $controllerOps = \Cdd\Controllers\parse($code);
+                    $openapi['paths'] = self::mergeOperationMetadata((array) $openapi['paths'], $controllerOps);
 
-            $servers = \Cdd\Servers\parse($code);
-            if (!empty($servers)) {
-                $openapi['servers'] = $servers;
-            }
+                    $cliOps = \Cdd\Cli\parse($code);
+                    $openapi['paths'] = self::mergeOperationMetadata((array) $openapi['paths'], $cliOps, '/cli/');
+                }
 
-            $classes = \Cdd\Classes\parse($code);
-            if (!empty($classes)) {
-                $openapi['components'] = \Cdd\Components\parse_classes($classes, (array) $openapi['components']);
+                $servers = \Cdd\Servers\parse($code);
+                if (!empty($servers)) {
+                    $openapi['servers'] = $servers;
+                }
+
+                $classes = \Cdd\Classes\parse($code);
+                if (!empty($classes)) {
+                    $openapi['components'] = \Cdd\Components\parse_classes($classes, (array) $openapi['components']);
+                }
             }
         }
 
-        if (empty((array) $openapi['paths'])) {
+        if (empty((array) ($openapi['paths'] ?? []))) {
             unset($openapi['paths']);
         }
-        if (empty((array) $openapi['components']['schemas'])) {
+        if (empty((array) ($openapi['components']['schemas'] ?? []))) {
             unset($openapi['components']['schemas']);
         }
         if (empty((array) ($openapi['components'] ?? []))) {

@@ -34,7 +34,7 @@ class MockRoute
 }
 class_alias('MockRoute', 'Illuminate\Support\Facades\Route');
 
-$serverDir = getenv('CDD_SERVER_DIR') ?: (file_exists('/tmp/temp-php-server/src/routes.php') ? '/tmp/temp-php-server' : (sys_get_temp_dir() . '/temp-php-server'));
+$serverDir = (string) ($_ENV['CDD_SERVER_DIR'] ?? getenv('CDD_SERVER_DIR') ?: __DIR__);
 
 if (file_exists($serverDir . '/src/ApiServers.php')) {
     require_once $serverDir . '/src/ApiServers.php';
@@ -87,34 +87,48 @@ foreach (MockRoute::$routes as $route) {
                 $instance = new $class();
                 if (method_exists($instance, $methodName)) {
                     ob_start();
-                    $ref = new \ReflectionMethod($instance, $methodName);
-                    $callArgs = [];
-                    foreach ($ref->getParameters() as $idx => $param) {
-                        $callArgs[] = $matches[$idx] ?? null;
+                    try {
+                        $ref = new \ReflectionMethod($instance, $methodName);
+                        $callArgs = [];
+                        foreach ($ref->getParameters() as $idx => $param) {
+                            $callArgs[] = $matches[$idx] ?? null;
+                        }
+                        $result = $instance->$methodName(...$callArgs);
+                        $buffered = (string) ob_get_clean();
+                        header('Content-Type: application/json');
+                        echo $buffered !== '' ? $buffered : json_encode($result ?? ['status' => 'success']);
+                    } catch (\Throwable $e) {
+                        ob_end_clean();
+                        http_response_code(is_a($e, 'Api\Exceptions\MockServerError') ? 501 : 500);
+                        header('Content-Type: application/json');
+                        echo json_encode(['error' => $e->getMessage()]);
                     }
-                    $result = $instance->$methodName(...$callArgs);
-                    $buffered = (string) ob_get_clean();
-                    header('Content-Type: application/json');
-                    echo $buffered !== '' ? $buffered : json_encode($result ?? ['status' => 'success']);
                     exit;
                 }
             }
         } elseif ($controller !== null && is_string($action) && method_exists($controller, $action)) {
             ob_start();
-            $ref = new \ReflectionMethod($controller, $action);
-            $callArgs = [];
-            foreach ($ref->getParameters() as $idx => $param) {
-                $callArgs[] = $matches[$idx] ?? null;
-            }
-            $result = $controller->$action(...$callArgs);
-            $buffered = (string) ob_get_clean();
-            header('Content-Type: application/json');
-            if ($buffered !== '') {
-                echo $buffered;
-            } elseif ($result !== null) {
-                echo json_encode($result);
-            } else {
-                echo json_encode(['status' => 'success', 'action' => $action]);
+            try {
+                $ref = new \ReflectionMethod($controller, $action);
+                $callArgs = [];
+                foreach ($ref->getParameters() as $idx => $param) {
+                    $callArgs[] = $matches[$idx] ?? null;
+                }
+                $result = $controller->$action(...$callArgs);
+                $buffered = (string) ob_get_clean();
+                header('Content-Type: application/json');
+                if ($buffered !== '') {
+                    echo $buffered;
+                } elseif ($result !== null) {
+                    echo json_encode($result);
+                } else {
+                    echo json_encode(['status' => 'success', 'action' => $action]);
+                }
+            } catch (\Throwable $e) {
+                ob_end_clean();
+                http_response_code(is_a($e, 'Api\Exceptions\MockServerError') ? 501 : 500);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => $e->getMessage()]);
             }
             exit;
         }

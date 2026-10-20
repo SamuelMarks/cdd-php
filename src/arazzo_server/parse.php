@@ -55,7 +55,7 @@ function parse(string $code): array
     $constants = [];
     foreach ($classConsts as $constStmt) {
         foreach ($constStmt->consts as $c) {
-            $constants[$c->name->toString()] = \Cdd\ArazzoClient\astExprToPhpValue($c->value);
+            $constants[$c->name->toString()] = \Cdd\Classes\evaluate_ast_node($c->value);
         }
     }
 
@@ -72,7 +72,7 @@ function parse(string $code): array
             if ($stmt instanceof Expression && $stmt->expr instanceof Assign) {
                 $assign = $stmt->expr;
                 if ($assign->var instanceof Variable && $assign->var->name === 'workflow' && $assign->expr instanceof Array_) {
-                    $val = \Cdd\ArazzoClient\astExprToPhpValue($assign->expr);
+                    $val = \Cdd\Classes\evaluate_ast_node($assign->expr);
                     if (is_array($val) && isset($val['workflowId'])) {
                         $extractedFromVar = $val;
                         break;

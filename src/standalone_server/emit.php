@@ -23,14 +23,28 @@ function emit(): string
 /**
  * Standalone development server for testing.
  * Run with: php -S 127.0.0.1:8080 server.php
+ *
+ * @package Api
  */
 
 declare(strict_types=1);
 
 require __DIR__ . '/vendor/autoload.php';
 
+/**
+ * Mock Route collector for standalone server dispatching.
+ */
 class MockRoute {
+    /** @var array<int, array<string, mixed>> Registered routes. */
     public static array \$routes = [];
+
+    /**
+     * Registers a route definition dynamically.
+     *
+     * @param string \$method HTTP method.
+     * @param array<int, mixed> \$args Route arguments.
+     * @return void
+     */
     public static function __callStatic(string \$method, array \$args): void {
         self::\$routes[] = ['method' => strtoupper(\$method), 'uri' => \$args[0], 'action' => \$args[1]];
     }
@@ -80,6 +94,7 @@ foreach (MockRoute::\$routes as \$route) {
 
         \$executed = false;
         \$output = '';
+        \$statusCode = 200;
         if (is_array(\$action)) {
             \$class = ltrim((string) \$action[0], '{$bs}{$bs}');
             \$methodName = (string) \$action[1];
@@ -104,6 +119,8 @@ foreach (MockRoute::\$routes as \$route) {
                         }
                     } catch ({$bs}Throwable \$e) {
                         ob_end_clean();
+                        \$statusCode = is_a(\$e, 'Api{$bs}Exceptions{$bs}MockServerError') ? 501 : 500;
+                        \$output = (string) json_encode(['error' => \$e->getMessage()]);
                     }
                     \$executed = true;
                 }
@@ -127,6 +144,8 @@ foreach (MockRoute::\$routes as \$route) {
                         }
                     } catch ({$bs}Throwable \$e) {
                         ob_end_clean();
+                        \$statusCode = is_a(\$e, 'Api{$bs}Exceptions{$bs}MockServerError') ? 501 : 500;
+                        \$output = (string) json_encode(['error' => \$e->getMessage()]);
                     }
                     \$executed = true;
                 }
@@ -134,6 +153,9 @@ foreach (MockRoute::\$routes as \$route) {
         }
 
         if (\$executed) {
+            if (\$statusCode !== 200) {
+                http_response_code(\$statusCode);
+            }
             header('Content-Type: application/json');
             echo \$output !== '' ? \$output : json_encode(["status" => "success"]);
             exit;

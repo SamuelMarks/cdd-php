@@ -45,62 +45,53 @@ function resolve_expected_status(array $operation): int
  */
 function emit(string $method, string $path, array $operation, bool $composable = false): string
 {
+    $nl = chr(10);
     if ($method === 'additionalOperations' && is_array($operation)) {
         $out = '';
         foreach ($operation as $addMethod => $addOp) {
-            $out .= emit((string) $addMethod, $path, is_array($addOp) ? $addOp : [], $composable) . "
-";
+            $out .= emit((string) $addMethod, $path, is_array($addOp) ? $addOp : [], $composable) . $nl;
         }
         return trim($out);
     }
 
     $m = ucfirst(strtolower($method));
-    $opId = (string) ($operation['operationId'] ?? "{$m}Route");
+    $opId = \Cdd\Parameters\sanitize_var_name((string) ($operation['operationId'] ?? "{$m}Route"));
     $status = resolve_expected_status($operation);
+    $exportedMethod = var_export($method, true);
+    $exportedPath = var_export($path, true);
 
     $bodyStr = '[]';
     if (in_array(strtolower($method), ['post', 'put', 'patch'], true)) {
         if (isset($operation['requestBody']['content']['application/json']['schema']['$ref'])) {
             $parts = explode('/', (string) $operation['requestBody']['content']['application/json']['schema']['$ref']);
-            $schemaName = end($parts);
-            $bodyStr = "\$mocks['{$schemaName}'] ?? []";
+            $schemaName = (string) end($parts);
+            $exportedSchema = var_export($schemaName, true);
+            $bodyStr = "\$mocks[{$exportedSchema}] ?? []";
         } else {
             $bodyStr = "['dummy' => 'payload']";
         }
     }
 
     if ($composable) {
-        $out = "    '{$opId}' => function(\$client, array \$mocks = []) {
-";
+        $out = "    '{$opId}' => function(\$client, array \$mocks = []) {" . $nl;
         if ($bodyStr !== '[]') {
-            $out .= "        \$response = \$client->call('$method', '$path', $bodyStr);
-";
+            $out .= "        \$response = \$client->call({$exportedMethod}, {$exportedPath}, {$bodyStr});" . $nl;
         } else {
-            $out .= "        \$response = \$client->call('$method', '$path');
-";
+            $out .= "        \$response = \$client->call({$exportedMethod}, {$exportedPath});" . $nl;
         }
-        $out .= "        return \$response->status() === $status;
-";
-        $out .= "    },
-";
+        $out .= "        return \$response->status() === {$status};" . $nl;
+        $out .= "    }," . $nl;
     } else {
-        $out = "    public function test{$opId}(): void {
-";
-        $out .= "        \$mocks = file_exists(__DIR__ . '/../../src/mocks.php') ? require __DIR__ . '/../../src/mocks.php' : [];
-";
+        $out = "    public function test{$opId}(): void {" . $nl;
+        $out .= "        \$mocks = file_exists(__DIR__ . '/../../src/mocks.php') ? require __DIR__ . '/../../src/mocks.php' : [];" . $nl;
         if ($bodyStr !== '[]') {
-            $out .= "        \$response = \$this->call('$method', '$path', $bodyStr);
-";
+            $out .= "        \$response = \$this->call({$exportedMethod}, {$exportedPath}, {$bodyStr});" . $nl;
         } else {
-            $out .= "        \$response = \$this->call('$method', '$path');
-";
+            $out .= "        \$response = \$this->call({$exportedMethod}, {$exportedPath});" . $nl;
         }
-        $out .= "        \$this->assertEquals($status, \$response->status());
-";
-        $out .= "        \$this->assertIsArray(\$response->body());
-";
-        $out .= "    }
-";
+        $out .= "        \$this->assertEquals({$status}, \$response->status());" . $nl;
+        $out .= "        \$this->assertIsArray(\$response->body());" . $nl;
+        $out .= "    }" . $nl;
     }
     return $out;
 }
@@ -138,149 +129,86 @@ function emit_modular(array $paths): array
  */
 function emit_modular_single_test(string $method, string $path, array $operation): array
 {
-    $opId = (string) ($operation['operationId'] ?? strtolower($method) . preg_replace('/[^a-zA-Z0-9]/', '', $path));
+    $nl = chr(10);
+    $opId = \Cdd\Parameters\sanitize_var_name((string) ($operation['operationId'] ?? strtolower($method) . preg_replace('/[^a-zA-Z0-9]/', '', $path)));
     $controllerClass = ucfirst($opId) . 'Controller';
     $className = ucfirst($opId) . 'Test';
     $bs = chr(92);
     $defaultStatus = resolve_expected_status($operation);
 
-    $code = "<?php
-
-declare(strict_types=1);
-
-namespace Api{$bs}Tests{$bs}Routes;
-
-use PHPUnit{$bs}Framework{$bs}TestCase;
-use Api{$bs}Controllers{$bs}{$controllerClass};
-
-class $className extends TestCase {
-";
-    $code .= "    protected function call(string \$method, string \$path, array \$body = []): object {
-";
-    $code .= "        \$controllerFile = __DIR__ . '/../../src/Controllers/{$controllerClass}.php';
-";
-    $code .= "        if (file_exists(\$controllerFile)) {
-";
-    $code .= "            require_once \$controllerFile;
-";
-    $code .= "        }
-";
-    $code .= "        \$status = 404;
-";
-    $code .= "        \$decodedBody = [];
-";
-    $code .= "        if (class_exists({$controllerClass}::class)) {
-";
-    $code .= "            \$ctrl = new {$controllerClass}();
-";
-    $code .= "            if (!method_exists(\$ctrl, '__invoke')) {
-";
-    $code .= "                \$status = 500;
-";
-    $code .= "            } else {
-";
-    $code .= "                \$status = {$defaultStatus};
-";
-    $code .= "                ob_start();
-";
-    $code .= "                try {
-";
-    $code .= "                    \$ref = new {$bs}ReflectionMethod(\$ctrl, '__invoke');
-";
-    $code .= "                    \$args = [];
-";
-    $code .= "                    foreach (\$ref->getParameters() as \$param) {
-";
-    $code .= "                        if (\$param->getName() === 'body') {
-";
-    $code .= "                            \$args[] = \$body;
-";
-    $code .= "                        } elseif (\$param->allowsNull()) {
-";
-    $code .= "                            \$args[] = null;
-";
-    $code .= "                        } else {
-";
-    $code .= "                            \$args[] = 1;
-";
-    $code .= "                        }
-";
-    $code .= "                    }
-";
-    $code .= "                    \$ret = \$ctrl->__invoke(...\$args);
-";
-    $code .= "                    \$rawOut = (string) ob_get_clean();
-";
-    $code .= "                    if (is_array(\$ret)) {
-";
-    $code .= "                        \$decodedBody = \$ret;
-";
-    $code .= "                    } elseif (\$rawOut !== '') {
-";
-    $code .= "                        \$parsed = json_decode(\$rawOut, true);
-";
-    $code .= "                        \$decodedBody = is_array(\$parsed) ? \$parsed : ['raw' => \$rawOut];
-";
-    $code .= "                        if (isset(\$decodedBody['error']) && \$decodedBody['error'] === 'Not found') {
-";
-    $code .= "                            \$status = 404;
-";
-    $code .= "                        }
-";
-    $code .= "                    }
-";
-    $code .= "                } catch ({$bs}Throwable \$e) {
-";
-    $code .= "                    ob_end_clean();
-";
-    $code .= "                    \$status = 500;
-";
-    $code .= "                    \$decodedBody = ['error' => \$e->getMessage()];
-";
-    $code .= "                }
-";
-    $code .= "            }
-";
-    $code .= "        }
-";
-    $code .= "        return new class(\$status, \$method, \$path, \$decodedBody) {
-";
-    $code .= "            private int \$status;
-";
-    $code .= "            private string \$method;
-";
-    $code .= "            private string \$path;
-";
-    $code .= "            private array \$body;
-";
-    $code .= "            public function __construct(int \$status, string \$method, string \$path, array \$body) {
-";
-    $code .= "                \$this->status = \$status;
-";
-    $code .= "                \$this->method = \$method;
-";
-    $code .= "                \$this->path = \$path;
-";
-    $code .= "                \$this->body = \$body;
-";
-    $code .= "            }
-";
-    $code .= "            public function status(): int { return \$this->status; }
-";
-    $code .= "            public function method(): string { return \$this->method; }
-";
-    $code .= "            public function path(): string { return \$this->path; }
-";
-    $code .= "            public function body(): array { return \$this->body; }
-";
-    $code .= "        };
-";
-    $code .= "    }
-
-";
+    $code = '<?php' . $nl . $nl . 'declare(strict_types=1);' . $nl . $nl;
+    $code .= "namespace Api{$bs}Tests{$bs}Routes;" . $nl . $nl;
+    $code .= "use PHPUnit{$bs}Framework{$bs}TestCase;" . $nl;
+    $code .= "use Api{$bs}Controllers{$bs}{$controllerClass};" . $nl . $nl;
+    $code .= "class {$className} extends TestCase {" . $nl;
+    $code .= "    protected function call(string \$method, string \$path, array \$body = []): object {" . $nl;
+    $code .= "        \$controllerFile = __DIR__ . '/../../src/Controllers/{$controllerClass}.php';" . $nl;
+    $code .= "        if (file_exists(\$controllerFile)) {" . $nl;
+    $code .= "            require_once \$controllerFile;" . $nl;
+    $code .= "        }" . $nl;
+    $code .= "        \$status = 404;" . $nl;
+    $code .= "        \$decodedBody = [];" . $nl;
+    $code .= "        if (class_exists({$controllerClass}::class)) {" . $nl;
+    $code .= "            \$ctrl = new {$controllerClass}();" . $nl;
+    $code .= "            if (!method_exists(\$ctrl, '__invoke')) {" . $nl;
+    $code .= "                \$status = 500;" . $nl;
+    $code .= "            } else {" . $nl;
+    $code .= "                \$status = {$defaultStatus};" . $nl;
+    $code .= "                ob_start();" . $nl;
+    $code .= "                try {" . $nl;
+    $code .= "                    \$ref = new {$bs}ReflectionMethod(\$ctrl, '__invoke');" . $nl;
+    $code .= "                    \$args = [];" . $nl;
+    $code .= "                    foreach (\$ref->getParameters() as \$param) {" . $nl;
+    $code .= "                        if (\$param->getName() === 'body') {" . $nl;
+    $code .= "                            \$args[] = \$body;" . $nl;
+    $code .= "                        } elseif (\$param->allowsNull()) {" . $nl;
+    $code .= "                            \$args[] = null;" . $nl;
+    $code .= "                        } else {" . $nl;
+    $code .= "                            \$args[] = 1;" . $nl;
+    $code .= "                        }" . $nl;
+    $code .= "                    }" . $nl;
+    $code .= "                    \$ret = \$ctrl->__invoke(...\$args);" . $nl;
+    $code .= "                    \$rawOut = (string) ob_get_clean();" . $nl;
+    $code .= "                    if (is_array(\$ret)) {" . $nl;
+    $code .= "                        if (isset(\$ret['status']) && is_int(\$ret['status'])) {" . $nl;
+    $code .= "                            \$status = \$ret['status'];" . $nl;
+    $code .= "                            \$decodedBody = is_array(\$ret['data'] ?? null) ? \$ret['data'] : \$ret;" . $nl;
+    $code .= "                        } else {" . $nl;
+    $code .= "                            \$decodedBody = \$ret;" . $nl;
+    $code .= "                        }" . $nl;
+    $code .= "                    } elseif (\$rawOut !== '') {" . $nl;
+    $code .= "                        \$parsed = json_decode(\$rawOut, true);" . $nl;
+    $code .= "                        \$decodedBody = is_array(\$parsed) ? \$parsed : ['raw' => \$rawOut];" . $nl;
+    $code .= "                    }" . $nl;
+    $code .= "                    if (isset(\$decodedBody['error'])) {" . $nl;
+    $code .= "                        \$status = \$decodedBody['error'] === 'Not found' ? 404 : (int) (\$decodedBody['status'] ?? 400);" . $nl;
+    $code .= "                    }" . $nl;
+    $code .= "                } catch ({$bs}Throwable \$e) {" . $nl;
+    $code .= "                    ob_end_clean();" . $nl;
+    $code .= "                    \$status = 500;" . $nl;
+    $code .= "                    \$decodedBody = ['error' => \$e->getMessage()];" . $nl;
+    $code .= "                }" . $nl;
+    $code .= "            }" . $nl;
+    $code .= "        }" . $nl;
+    $code .= "        return new class(\$status, \$method, \$path, \$decodedBody) {" . $nl;
+    $code .= "            private int \$status;" . $nl;
+    $code .= "            private string \$method;" . $nl;
+    $code .= "            private string \$path;" . $nl;
+    $code .= "            private array \$body;" . $nl;
+    $code .= "            public function __construct(int \$status, string \$method, string \$path, array \$body) {" . $nl;
+    $code .= "                \$this->status = \$status;" . $nl;
+    $code .= "                \$this->method = \$method;" . $nl;
+    $code .= "                \$this->path = \$path;" . $nl;
+    $code .= "                \$this->body = \$body;" . $nl;
+    $code .= "            }" . $nl;
+    $code .= "            public function status(): int { return \$this->status; }" . $nl;
+    $code .= "            public function method(): string { return \$this->method; }" . $nl;
+    $code .= "            public function path(): string { return \$this->path; }" . $nl;
+    $code .= "            public function body(): array { return \$this->body; }" . $nl;
+    $code .= "        };" . $nl;
+    $code .= "    }" . $nl . $nl;
 
     $code .= \Cdd\Tests\emit($method, $path, $operation, false);
-    $code .= "}
-";
+    $code .= '}' . $nl;
     return ["{$className}.php" => $code];
 }

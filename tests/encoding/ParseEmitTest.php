@@ -136,7 +136,7 @@ class ParseEmitTest extends TestCase
         foreach ($tests as $test) {
             $this->assertThrows(function () use ($test): void {
                 \Cdd\Encoding\validateMediaTypeOrReferenceObject($test['input']);
-            }, \RuntimeException::class, $test['error']);
+            }, \Cdd\Exceptions\CddException::class, $test['error']);
         }
 
         $this->assertDoesNotThrow(function (): void {
@@ -171,7 +171,7 @@ class ParseEmitTest extends TestCase
         foreach ($tests as $test) {
             $this->assertThrows(function () use ($test): void {
                 \Cdd\Encoding\validateEncodingObject($test['input']);
-            }, \RuntimeException::class, $test['error']);
+            }, \Cdd\Exceptions\CddException::class, $test['error']);
         }
 
         $this->assertDoesNotThrow(function (): void {

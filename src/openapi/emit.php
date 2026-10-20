@@ -18,7 +18,7 @@ namespace Cdd\Openapi;
  * @param string|null $outDir The directory to emit PHP code into
  * @param array<string, mixed> $options Generation options ('subcommand', 'tests', 'target_version', 'no_installable_package', 'no_github_actions', 'mcp')
  * @return string The JSON representation
- * @throws \RuntimeException If JSON encoding fails
+ * @throws \Cdd\Exceptions\CddException If JSON encoding fails
  */
 function emit(array $openapi, ?string $outDir = null, array $options = []): string
 {
@@ -283,7 +283,7 @@ return [
 
     $json = json_encode($openapiToEncode, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     if ($json === false) {
-        throw new \RuntimeException('Failed to encode OpenAPI array to JSON: ' . json_last_error_msg());
+        throw \Cdd\Exceptions\CddException::jsonEncode('Failed to encode OpenAPI array to JSON: ' . json_last_error_msg());
     }
 
     return $json;

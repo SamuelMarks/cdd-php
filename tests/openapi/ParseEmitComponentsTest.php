@@ -26,7 +26,7 @@ class ParseEmitComponentsTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":"invalid"}');
-        }, \RuntimeException::class, 'Field "components" must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Field "components" must be an object');
     }
 
     /**
@@ -38,7 +38,7 @@ class ParseEmitComponentsTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":"invalid"}}');
-        }, \RuntimeException::class, "Components 'schemas' must be a map");
+        }, \Cdd\Exceptions\CddException::class, "Components 'schemas' must be a map");
     }
 
     /**
@@ -50,7 +50,7 @@ class ParseEmitComponentsTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":{"invalid space":{}}}}');
-        }, \RuntimeException::class, "Components 'schemas' map keys must match");
+        }, \Cdd\Exceptions\CddException::class, "Components 'schemas' map keys must match");
     }
 
     /**
@@ -62,7 +62,7 @@ class ParseEmitComponentsTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"schemas":{"ValidName":"invalid"}}}');
-        }, \RuntimeException::class, 'Schema must be an object or boolean');
+        }, \Cdd\Exceptions\CddException::class, 'Schema must be an object or boolean');
     }
 
     /**
@@ -74,7 +74,7 @@ class ParseEmitComponentsTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"responses":{"A":{}}}}');
-        }, \RuntimeException::class, 'Response must contain a "description" string');
+        }, \Cdd\Exceptions\CddException::class, 'Response must contain a "description" string');
     }
 
     /**
@@ -86,7 +86,7 @@ class ParseEmitComponentsTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"examples":{"A":{"value":1,"externalValue":"a"}}}}');
-        }, \RuntimeException::class, 'Example cannot contain "externalValue" with "serializedValue" or "value"');
+        }, \Cdd\Exceptions\CddException::class, 'Example cannot contain "externalValue" with "serializedValue" or "value"');
     }
 
     /**
@@ -98,6 +98,6 @@ class ParseEmitComponentsTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"A":{}}}}');
-        }, \RuntimeException::class, 'Security Scheme must contain a "type" string');
+        }, \Cdd\Exceptions\CddException::class, 'Security Scheme must contain a "type" string');
     }
 }

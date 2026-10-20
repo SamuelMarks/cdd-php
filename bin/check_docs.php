@@ -7,7 +7,7 @@
  * `router.php`, and `run_test_server.php`:
  * - File-level docblocks with `@package`
  * - Class, interface, trait, and enum docblocks
- * - Property and class constant docblocks
+ * - Property and class constant docblocks with `@var`
  * - Function and method docblocks, including `@param` for every parameter,
  *   `@return` for every function/method, and `@throws` when uncaught exceptions are thrown.
  *
@@ -65,48 +65,21 @@ function has_uncaught_throw(array $nodes): bool
     return false;
 }
 
-$rootDir = dirname(__DIR__);
-$targetDirs = [
-    $rootDir . '/src',
-    $rootDir . '/bin',
-    $rootDir . '/scripts',
-    $rootDir . '/tests',
-];
-$targetFiles = [
-    $rootDir . '/router.php',
-    $rootDir . '/run_test_server.php',
-    $rootDir . '/bin/cdd-php',
-];
+/**
+ * Audits a PHP source code string for 100% documentation coverage.
+ *
+ * @param string $code The PHP source code to audit.
+ * @param string $relPath Logical or relative file path for error reporting.
+ * @return array{total: int, documented: int, details: array<int, string>} Audit summary.
+ */
+function audit_php_source_docs(string $code, string $relPath): array
+{
+    $parser = (new ParserFactory())->createForNewestSupportedVersion();
+    $nodeFinder = new NodeFinder();
 
-$allFiles = [];
-foreach ($targetDirs as $dir) {
-    if (!is_dir($dir)) {
-        continue;
-    }
-    $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir));
-    foreach ($iterator as $file) {
-        if ($file->isFile() && $file->getExtension() === 'php') {
-            $allFiles[$file->getPathname()] = true;
-        }
-    }
-}
-foreach ($targetFiles as $tf) {
-    if (is_file($tf)) {
-        $allFiles[$tf] = true;
-    }
-}
-ksort($allFiles);
-
-$parser = (new ParserFactory())->createForNewestSupportedVersion();
-$nodeFinder = new NodeFinder();
-
-$totalItems = 0;
-$documentedItems = 0;
-$undocumentedDetails = [];
-
-foreach (array_keys($allFiles) as $filePath) {
-    $relPath = substr($filePath, strlen($rootDir) + 1);
-    $code = (string) file_get_contents($filePath);
+    $totalItems = 0;
+    $documentedItems = 0;
+    $undocumentedDetails = [];
 
     // 1. Check file-level docblock
     $totalItems++;
@@ -145,25 +118,31 @@ foreach (array_keys($allFiles) as $filePath) {
             $undocumentedDetails[] = "$relPath -> Class/Interface $className missing docblock";
         }
 
-        // 3. Check properties
+        // 3. Check all properties in multi-property declarations and verify @var
         foreach ($classLike->getProperties() as $prop) {
-            $propName = $prop->props[0]->name->toString();
-            $totalItems++;
-            if ($prop->getDocComment() !== null) {
-                $documentedItems++;
-            } else {
-                $undocumentedDetails[] = "$relPath -> Property {$className}::\${$propName} missing docblock";
+            $propDoc = $prop->getDocComment();
+            foreach ($prop->props as $p) {
+                $propName = $p->name->toString();
+                $totalItems++;
+                if ($propDoc !== null && str_contains($propDoc->getText(), '@var')) {
+                    $documentedItems++;
+                } else {
+                    $undocumentedDetails[] = "$relPath -> Property {$className}::\${$propName} missing docblock with @var";
+                }
             }
         }
 
-        // 4. Check class constants
+        // 4. Check all class constants in multi-constant declarations and verify @var
         foreach ($classLike->getConstants() as $constStmt) {
-            $constName = $constStmt->consts[0]->name->toString();
-            $totalItems++;
-            if ($constStmt->getDocComment() !== null) {
-                $documentedItems++;
-            } else {
-                $undocumentedDetails[] = "$relPath -> Constant {$className}::{$constName} missing docblock";
+            $constDoc = $constStmt->getDocComment();
+            foreach ($constStmt->consts as $c) {
+                $constName = $c->name->toString();
+                $totalItems++;
+                if ($constDoc !== null && str_contains($constDoc->getText(), '@var')) {
+                    $documentedItems++;
+                } else {
+                    $undocumentedDetails[] = "$relPath -> Constant {$className}::{$constName} missing docblock with @var";
+                }
             }
         }
     }
@@ -191,7 +170,7 @@ foreach (array_keys($allFiles) as $filePath) {
         foreach ($func->getParams() as $param) {
             if ($param->var instanceof Node\Expr\Variable && is_string($param->var->name)) {
                 $paramName = $param->var->name;
-                if (!preg_match('/@param\s+.+?\s+&?\$' . preg_quote($paramName, '/') . '\b/', $docText)) {
+                if (!preg_match('/@param\s+.+?\s+(?:\.\.\.)?&?\$' . preg_quote($paramName, '/') . '\b/', $docText)) {
                     $funcValid = false;
                     $undocumentedDetails[] = "$relPath -> {$funcName}() missing @param for \${$paramName}";
                 }
@@ -217,15 +196,70 @@ foreach (array_keys($allFiles) as $filePath) {
             $documentedItems++;
         }
     }
+
+    return [
+        'total' => $totalItems,
+        'documented' => $documentedItems,
+        'details' => $undocumentedDetails,
+    ];
 }
 
-$percent = $totalItems > 0 ? round(($documentedItems / $totalItems) * 100, 2) : 100;
-foreach ($undocumentedDetails as $detail) {
-    echo "Undocumented: $detail\n";
-}
-echo "Doc Coverage: $percent%\n";
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
+    $rootDir = dirname(__DIR__);
+    $targetDirs = [
+        $rootDir . '/src',
+        $rootDir . '/bin',
+        $rootDir . '/scripts',
+        $rootDir . '/tests',
+    ];
+    $targetFiles = [
+        $rootDir . '/router.php',
+        $rootDir . '/run_test_server.php',
+        $rootDir . '/bin/cdd-php',
+    ];
 
-if ($documentedItems !== $totalItems) {
-    exit(1);
+    $allFiles = [];
+    foreach ($targetDirs as $dir) {
+        if (!is_dir($dir)) {
+            continue;
+        }
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir));
+        foreach ($iterator as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php') {
+                $allFiles[$file->getPathname()] = true;
+            }
+        }
+    }
+    foreach ($targetFiles as $tf) {
+        if (is_file($tf)) {
+            $allFiles[$tf] = true;
+        }
+    }
+    ksort($allFiles);
+
+    $totalItems = 0;
+    $documentedItems = 0;
+    $undocumentedDetails = [];
+
+    foreach (array_keys($allFiles) as $filePath) {
+        $relPath = substr($filePath, strlen($rootDir) + 1);
+        $code = (string) file_get_contents($filePath);
+        $res = audit_php_source_docs($code, $relPath);
+        $totalItems += $res['total'];
+        $documentedItems += $res['documented'];
+        $undocumentedDetails = array_merge($undocumentedDetails, $res['details']);
+    }
+
+    $percent = $totalItems > 0 ? round(($documentedItems / $totalItems) * 100, 2) : 100;
+    foreach ($undocumentedDetails as $detail) {
+        echo "Undocumented: $detail
+";
+    }
+    echo "Doc Coverage: $percent%
+";
+
+    if ($documentedItems !== $totalItems) {
+        exit(1);
+    }
+    exit(0);
 }
-exit(0);

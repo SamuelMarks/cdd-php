@@ -184,6 +184,15 @@ class ApiTests {
         $this->assertEquals(0, $code4);
         $this->assertStringContainsString('listUsers', $clientJson);
 
+        $cliOnlyDir = "$tmpDir/cli_only";
+        mkdir("$cliOnlyDir/src", 0777, true);
+        file_put_contents("$cliOnlyDir/src/api_cli.php", "<?php\nif (\$command === 'cliOnlyOp') {}\n");
+        ob_start();
+        $codeCliOnly = CddCli::run(['cdd-php', 'to_openapi', '-i', $cliOnlyDir]);
+        $cliOnlyOut = (string) ob_get_clean();
+        $this->assertEquals(0, $codeCliOnly);
+        $this->assertStringContainsString('/cli/cliOnlyOp', $cliOnlyOut);
+
         $this->removeDir($tmpDir);
     }
 

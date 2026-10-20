@@ -138,23 +138,23 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateResponseOrReferenceObject('not array');
-        }, \RuntimeException::class, 'Response must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Response must be an object');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateResponseOrReferenceObject([]);
-        }, \RuntimeException::class, 'Response must contain a "description" string');
+        }, \Cdd\Exceptions\CddException::class, 'Response must contain a "description" string');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateResponseOrReferenceObject(['description' => 'valid', 'content' => 'not array']);
-        }, \RuntimeException::class, 'Response "content" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Response "content" must be a map');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateResponseOrReferenceObject(['description' => 'valid', 'headers' => 'not array']);
-        }, \RuntimeException::class, 'Response "headers" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Response "headers" must be a map');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateResponseOrReferenceObject(['description' => 'valid', 'links' => 'not array']);
-        }, \RuntimeException::class, 'Response "links" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Response "links" must be a map');
     }
 
     /**
@@ -196,67 +196,67 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject('not array');
-        }, \RuntimeException::class, 'Header must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Header must be an object');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['name' => 'Name']);
-        }, \RuntimeException::class, 'Header "name" MUST NOT be specified');
+        }, \Cdd\Exceptions\CddException::class, 'Header "name" MUST NOT be specified');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['in' => 'header']);
-        }, \RuntimeException::class, 'Header "in" MUST NOT be specified');
+        }, \Cdd\Exceptions\CddException::class, 'Header "in" MUST NOT be specified');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['allowEmptyValue' => true]);
-        }, \RuntimeException::class, 'Header "allowEmptyValue" MUST NOT be used');
+        }, \Cdd\Exceptions\CddException::class, 'Header "allowEmptyValue" MUST NOT be used');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['description' => 123]);
-        }, \RuntimeException::class, 'Header "description" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Header "description" must be a string');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['required' => 'yes']);
-        }, \RuntimeException::class, 'Header "required" must be a boolean');
+        }, \Cdd\Exceptions\CddException::class, 'Header "required" must be a boolean');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['deprecated' => 'yes']);
-        }, \RuntimeException::class, 'Header "deprecated" must be a boolean');
+        }, \Cdd\Exceptions\CddException::class, 'Header "deprecated" must be a boolean');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['schema' => [], 'example' => '1', 'examples' => []]);
-        }, \RuntimeException::class, 'Header cannot contain both "example" and "examples"');
+        }, \Cdd\Exceptions\CddException::class, 'Header cannot contain both "example" and "examples"');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['schema' => [], 'content' => []]);
-        }, \RuntimeException::class, 'Header cannot contain both "schema" and "content"');
+        }, \Cdd\Exceptions\CddException::class, 'Header cannot contain both "schema" and "content"');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject([]);
-        }, \RuntimeException::class, 'Header must contain either "schema" or "content"');
+        }, \Cdd\Exceptions\CddException::class, 'Header must contain either "schema" or "content"');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['schema' => [], 'style' => 123]);
-        }, \RuntimeException::class, 'Header "style" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Header "style" must be a string');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['schema' => [], 'style' => 'matrix']);
-        }, \RuntimeException::class, 'Header "style", if used, MUST be limited to "simple"');
+        }, \Cdd\Exceptions\CddException::class, 'Header "style", if used, MUST be limited to "simple"');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['schema' => [], 'explode' => 'yes']);
-        }, \RuntimeException::class, 'Header "explode" must be a boolean');
+        }, \Cdd\Exceptions\CddException::class, 'Header "explode" must be a boolean');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['schema' => 'not array']);
-        }, \RuntimeException::class, 'Header "schema" must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Header "schema" must be an object');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['content' => 'not array']);
-        }, \RuntimeException::class, 'Header "content" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Header "content" must be a map');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateHeaderOrReferenceObject(['content' => ['a' => [], 'b' => []]]);
-        }, \RuntimeException::class, 'Header "content" map MUST only contain one entry');
+        }, \Cdd\Exceptions\CddException::class, 'Header "content" map MUST only contain one entry');
     }
 
     /**
@@ -288,26 +288,26 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateLinkOrReferenceObject('not array');
-        }, \RuntimeException::class, 'Link must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Link must be an object');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateLinkOrReferenceObject(['operationRef' => 123]);
-        }, \RuntimeException::class, 'Link "operationRef" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Link "operationRef" must be a string');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateLinkOrReferenceObject(['operationId' => 123]);
-        }, \RuntimeException::class, 'Link "operationId" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Link "operationId" must be a string');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateLinkOrReferenceObject(['operationRef' => 'a', 'operationId' => 'b']);
-        }, \RuntimeException::class, 'Link cannot contain both "operationRef" and "operationId"');
+        }, \Cdd\Exceptions\CddException::class, 'Link cannot contain both "operationRef" and "operationId"');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateLinkOrReferenceObject(['operationId' => 'op', 'parameters' => 'not array']);
-        }, \RuntimeException::class, 'Link "parameters" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Link "parameters" must be a map');
 
         $this->assertThrows(function (): void {
             \Cdd\Responses\validateLinkOrReferenceObject(['operationId' => 'op', 'description' => 123]);
-        }, \RuntimeException::class, 'Link "description" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Link "description" must be a string');
     }
 }

@@ -67,7 +67,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{invalid json');
-        }, \RuntimeException::class, 'Invalid JSON provided');
+        }, \Cdd\Exceptions\CddException::class, 'Invalid JSON provided');
     }
 
     /**
@@ -79,7 +79,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('"string"');
-        }, \RuntimeException::class, 'OpenAPI document must be a JSON object');
+        }, \Cdd\Exceptions\CddException::class, 'OpenAPI document must be a JSON object');
     }
 
     /**
@@ -91,7 +91,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"info":{"title":"A","version":"1"},"paths":{}}');
-        }, \RuntimeException::class, 'Missing REQUIRED field "openapi"');
+        }, \Cdd\Exceptions\CddException::class, 'Missing REQUIRED field "openapi"');
     }
 
     /**
@@ -103,7 +103,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"2.0.0","info":{"title":"A","version":"1"},"paths":{}}');
-        }, \RuntimeException::class, 'Spec must be OpenAPI 3.0.x, 3.1.x, or 3.2.0');
+        }, \Cdd\Exceptions\CddException::class, 'Spec must be OpenAPI 3.0.x, 3.1.x, or 3.2.0');
     }
 
     /**
@@ -115,7 +115,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","paths":{}}');
-        }, \RuntimeException::class, 'Missing REQUIRED field "info"');
+        }, \Cdd\Exceptions\CddException::class, 'Missing REQUIRED field "info"');
     }
 
     /**
@@ -127,7 +127,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"}}');
-        }, \RuntimeException::class, 'Spec must contain paths, components, or webhooks');
+        }, \Cdd\Exceptions\CddException::class, 'Spec must contain paths, components, or webhooks');
     }
 
     /**
@@ -139,7 +139,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","$self":123,"info":{"title":"A","version":"1"},"paths":{}}');
-        }, \RuntimeException::class, 'Field "$self" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Field "$self" must be a string');
     }
 
     /**
@@ -151,7 +151,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":"not-array","paths":{}}');
-        }, \RuntimeException::class, 'Field "info" must be an Info Object');
+        }, \Cdd\Exceptions\CddException::class, 'Field "info" must be an Info Object');
     }
 
     /**
@@ -163,7 +163,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"version":"1"},"paths":{}}');
-        }, \RuntimeException::class, 'Info object must contain a "title" string');
+        }, \Cdd\Exceptions\CddException::class, 'Info object must contain a "title" string');
     }
 
     /**
@@ -175,7 +175,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A"},"paths":{}}');
-        }, \RuntimeException::class, 'Info object must contain a "version" string');
+        }, \Cdd\Exceptions\CddException::class, 'Info object must contain a "version" string');
     }
 
     /**
@@ -187,7 +187,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"jsonSchemaDialect":123,"paths":{}}');
-        }, \RuntimeException::class, 'Field "jsonSchemaDialect" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Field "jsonSchemaDialect" must be a string');
     }
 
     /**
@@ -199,7 +199,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":"invalid","paths":{}}');
-        }, \RuntimeException::class, 'Field "servers" must be an array of Server Objects');
+        }, \Cdd\Exceptions\CddException::class, 'Field "servers" must be an array of Server Objects');
     }
 
     /**
@@ -211,7 +211,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"security":"invalid","paths":{}}');
-        }, \RuntimeException::class, 'Field "security" must be an array of Security Requirement Objects');
+        }, \Cdd\Exceptions\CddException::class, 'Field "security" must be an array of Security Requirement Objects');
     }
 
     /**
@@ -223,7 +223,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"tags":"invalid","paths":{}}');
-        }, \RuntimeException::class, 'Field "tags" must be an array of Tag Objects');
+        }, \Cdd\Exceptions\CddException::class, 'Field "tags" must be an array of Tag Objects');
     }
 
     /**
@@ -235,7 +235,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"externalDocs":"invalid","paths":{}}');
-        }, \RuntimeException::class, 'Field "externalDocs" must be an External Documentation Object');
+        }, \Cdd\Exceptions\CddException::class, 'Field "externalDocs" must be an External Documentation Object');
     }
 
     /**
@@ -247,7 +247,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"externalDocs":{"description":"docs"},"paths":{}}');
-        }, \RuntimeException::class, 'External Documentation Object must contain a "url" string');
+        }, \Cdd\Exceptions\CddException::class, 'External Documentation Object must contain a "url" string');
     }
 
     /**
@@ -259,7 +259,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","summary":123},"paths":{}}');
-        }, \RuntimeException::class, 'Info "summary" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Info "summary" must be a string');
     }
 
     /**
@@ -271,7 +271,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","description":123},"paths":{}}');
-        }, \RuntimeException::class, 'Info "description" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Info "description" must be a string');
     }
 
     /**
@@ -283,7 +283,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","termsOfService":123},"paths":{}}');
-        }, \RuntimeException::class, 'Info "termsOfService" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Info "termsOfService" must be a string');
     }
 
     /**
@@ -295,7 +295,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","contact":"invalid"},"paths":{}}');
-        }, \RuntimeException::class, 'Contact must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Contact must be an object');
     }
 
     /**
@@ -307,7 +307,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","contact":{"name":123}},"paths":{}}');
-        }, \RuntimeException::class, 'Contact "name" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Contact "name" must be a string');
     }
 
     /**
@@ -319,7 +319,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","contact":{"url":123}},"paths":{}}');
-        }, \RuntimeException::class, 'Contact "url" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Contact "url" must be a string');
     }
 
     /**
@@ -331,7 +331,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","contact":{"email":123}},"paths":{}}');
-        }, \RuntimeException::class, 'Contact "email" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Contact "email" must be a string');
     }
 
     /**
@@ -343,7 +343,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","license":"invalid"},"paths":{}}');
-        }, \RuntimeException::class, 'License must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'License must be an object');
     }
 
     /**
@@ -355,7 +355,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","license":{}},"paths":{}}');
-        }, \RuntimeException::class, 'License object must contain a "name" string');
+        }, \Cdd\Exceptions\CddException::class, 'License object must contain a "name" string');
     }
 
     /**
@@ -367,7 +367,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","license":{"name":"MIT","identifier":123}},"paths":{}}');
-        }, \RuntimeException::class, 'License "identifier" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'License "identifier" must be a string');
     }
 
     /**
@@ -379,7 +379,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","license":{"name":"MIT","url":123}},"paths":{}}');
-        }, \RuntimeException::class, 'License "url" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'License "url" must be a string');
     }
 
     /**
@@ -391,7 +391,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1","license":{"name":"MIT","identifier":"MIT","url":"url"}},"paths":{}}');
-        }, \RuntimeException::class, 'License "identifier" and "url" are mutually exclusive');
+        }, \Cdd\Exceptions\CddException::class, 'License "identifier" and "url" are mutually exclusive');
     }
 
     /**
@@ -403,7 +403,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{}],"paths":{}}');
-        }, \RuntimeException::class, 'Server object must contain a "url" string');
+        }, \Cdd\Exceptions\CddException::class, 'Server object must contain a "url" string');
     }
 
     /**
@@ -415,7 +415,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","description":123}],"paths":{}}');
-        }, \RuntimeException::class, 'Server "description" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Server "description" must be a string');
     }
 
     /**
@@ -427,7 +427,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","name":123}],"paths":{}}');
-        }, \RuntimeException::class, 'Server "name" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Server "name" must be a string');
     }
 
     /**
@@ -439,7 +439,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":"invalid"}],"paths":{}}');
-        }, \RuntimeException::class, 'Server "variables" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Server "variables" must be a map');
     }
 
     /**
@@ -451,7 +451,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":"invalid"}}],"paths":{}}');
-        }, \RuntimeException::class, 'Server variable must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Server variable must be an object');
     }
 
     /**
@@ -463,7 +463,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":{}}}],"paths":{}}');
-        }, \RuntimeException::class, 'Server variable must contain a "default" string');
+        }, \Cdd\Exceptions\CddException::class, 'Server variable must contain a "default" string');
     }
 
     /**
@@ -475,7 +475,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":{"default":"80","enum":[]}}}],"paths":{}}');
-        }, \RuntimeException::class, 'Server variable "enum" must be a non-empty array');
+        }, \Cdd\Exceptions\CddException::class, 'Server variable "enum" must be a non-empty array');
     }
 
     /**
@@ -487,7 +487,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":{"default":"80","enum":[123]}}}],"paths":{}}');
-        }, \RuntimeException::class, 'Server variable "enum" values must be strings');
+        }, \Cdd\Exceptions\CddException::class, 'Server variable "enum" values must be strings');
     }
 
     /**
@@ -499,7 +499,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":{"default":"80","enum":["443"]}}}],"paths":{}}');
-        }, \RuntimeException::class, 'Server variable "default" value must exist in "enum"');
+        }, \Cdd\Exceptions\CddException::class, 'Server variable "default" value must exist in "enum"');
     }
 
     /**
@@ -511,7 +511,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"servers":[{"url":"a","variables":{"port":{"default":"80","description":123}}}],"paths":{}}');
-        }, \RuntimeException::class, 'Server variable "description" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Server variable "description" must be a string');
     }
 
     /**
@@ -523,7 +523,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"tags":[123],"paths":{}}');
-        }, \RuntimeException::class, 'Tag must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Tag must be an object');
     }
 
     /**
@@ -535,7 +535,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"tags":[{}],"paths":{}}');
-        }, \RuntimeException::class, 'Tag object must contain a "name" string');
+        }, \Cdd\Exceptions\CddException::class, 'Tag object must contain a "name" string');
     }
 
     /**
@@ -547,7 +547,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"tags":[{"name":"t","description":123}],"paths":{}}');
-        }, \RuntimeException::class, 'Tag "description" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Tag "description" must be a string');
     }
 
     /**
@@ -559,7 +559,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"tags":[{"name":"t","externalDocs":{"description":123}}],"paths":{}}');
-        }, \RuntimeException::class, 'External Documentation Object must contain a "url" string');
+        }, \Cdd\Exceptions\CddException::class, 'External Documentation Object must contain a "url" string');
     }
 
     /**
@@ -571,7 +571,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"externalDocs":{"url":"a","description":123},"paths":{}}');
-        }, \RuntimeException::class, 'External Documentation "description" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'External Documentation "description" must be a string');
     }
 
     /**
@@ -622,7 +622,7 @@ class ParseEmitTest extends TestCase
         }';
         $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-        }, \RuntimeException::class, 'Reference "summary" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Reference "summary" must be a string');
     }
 
     /**
@@ -645,7 +645,7 @@ class ParseEmitTest extends TestCase
         }';
         $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-        }, \RuntimeException::class, 'Reference "$ref" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Reference "$ref" must be a string');
     }
 
     /**
@@ -669,7 +669,7 @@ class ParseEmitTest extends TestCase
         }';
         $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-        }, \RuntimeException::class, 'Reference "summary" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Reference "summary" must be a string');
     }
 
     /**
@@ -693,7 +693,7 @@ class ParseEmitTest extends TestCase
         }';
         $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-        }, \RuntimeException::class, 'Reference "description" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Reference "description" must be a string');
     }
 
     /**

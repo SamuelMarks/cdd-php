@@ -23,17 +23,17 @@ $router = new Router($events, $container);
 Facade::setFacadeApplication($container);
 $container->instance('router', $router);
 
-$serverDir = getenv('CDD_SERVER_DIR') ?: (is_dir(__DIR__ . '/src/Routes') ? __DIR__ : (sys_get_temp_dir() . '/temp-php-server'));
+$serverDir = (string) ($_ENV['CDD_SERVER_DIR'] ?? getenv('CDD_SERVER_DIR') ?: __DIR__);
 if (file_exists($serverDir . '/src/routes.php')) {
     require $serverDir . '/src/routes.php';
-} elseif (file_exists('/tmp/temp-php-server/src/routes.php')) {
-    require '/tmp/temp-php-server/src/routes.php';
 }
 
 $request = Request::capture();
 try {
     $response = $router->dispatch($request);
     $response->send();
-} catch (\Exception $e) {
-    echo $e->getMessage();
+} catch (\Throwable $e) {
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => $e->getMessage()]);
 }

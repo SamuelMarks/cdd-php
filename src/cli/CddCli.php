@@ -145,7 +145,7 @@ class CddCli
      * @param int $maxTokens Maximum tokens to sample.
      * @param string $systemPrompt Optional system prompt.
      * @return mixed Sampling result or null on EOF.
-     * @throws \Exception If the MCP client returns an error response.
+     * @throws \Cdd\Exceptions\CddException If the MCP client returns an error response.
      */
     public static function sample_llm(array $messages, int $maxTokens = 100, string $systemPrompt = ''): mixed
     {

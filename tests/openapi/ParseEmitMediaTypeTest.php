@@ -26,7 +26,7 @@ class ParseEmitMediaTypeTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"requestBody":{"content":{"app/json":{"example":1,"examples":{}}}}}}}}');
-        }, \RuntimeException::class, 'Media Type cannot contain both "example" and "examples"');
+        }, \Cdd\Exceptions\CddException::class, 'Media Type cannot contain both "example" and "examples"');
     }
 
     /**
@@ -38,7 +38,7 @@ class ParseEmitMediaTypeTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"requestBody":{"content":{"app/json":{"encoding":{},"prefixEncoding":[]}}}}}}}');
-        }, \RuntimeException::class, 'Media Type "encoding" cannot be present with "prefixEncoding" or "itemEncoding"');
+        }, \Cdd\Exceptions\CddException::class, 'Media Type "encoding" cannot be present with "prefixEncoding" or "itemEncoding"');
     }
 
     /**
@@ -50,7 +50,7 @@ class ParseEmitMediaTypeTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"requestBody":{"content":{"app/json":{"encoding":"invalid"}}}}}}}');
-        }, \RuntimeException::class, 'Media Type "encoding" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Media Type "encoding" must be a map');
     }
 
     /**
@@ -62,6 +62,6 @@ class ParseEmitMediaTypeTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"requestBody":{"content":{"app/json":{"encoding":{"prop":{"contentType":123}}}}}}}}}');
-        }, \RuntimeException::class, 'Encoding "contentType" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Encoding "contentType" must be a string');
     }
 }

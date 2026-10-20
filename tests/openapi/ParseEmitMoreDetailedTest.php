@@ -26,7 +26,7 @@ class ParseEmitMoreDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"A","content":"invalid"}}}}}}');
-        }, \RuntimeException::class, 'Response "content" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Response "content" must be a map');
     }
 
     /**
@@ -38,7 +38,7 @@ class ParseEmitMoreDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"callbacks":{"ev":"invalid"}}}}}');
-        }, \RuntimeException::class, 'Callback must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Callback must be an object');
     }
 
     /**
@@ -50,7 +50,7 @@ class ParseEmitMoreDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"security":[{"api_key":"invalid"}],"paths":{}}');
-        }, \RuntimeException::class, 'Security Requirement scopes must be an array of strings');
+        }, \Cdd\Exceptions\CddException::class, 'Security Requirement scopes must be an array of strings');
     }
 
     /**
@@ -62,7 +62,7 @@ class ParseEmitMoreDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"security":[{"api_key":[123]}],"paths":{}}');
-        }, \RuntimeException::class, 'Security Requirement scopes must be an array of strings');
+        }, \Cdd\Exceptions\CddException::class, 'Security Requirement scopes must be an array of strings');
     }
 
     /**
@@ -74,7 +74,7 @@ class ParseEmitMoreDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"security":["invalid"]}}}}');
-        }, \RuntimeException::class, 'Security Requirement must be an object/map');
+        }, \Cdd\Exceptions\CddException::class, 'Security Requirement must be an object/map');
     }
 
     /**
@@ -86,7 +86,7 @@ class ParseEmitMoreDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"webhooks":"invalid"}');
-        }, \RuntimeException::class, 'Field "webhooks" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Field "webhooks" must be a map');
     }
 
     /**
@@ -98,7 +98,7 @@ class ParseEmitMoreDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"webhooks":{"myHook":"invalid"}}');
-        }, \RuntimeException::class, 'Path Item must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item must be an object');
     }
 
     /**
@@ -110,7 +110,7 @@ class ParseEmitMoreDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"operationId":"dup","responses":{"200":{"description":"ok"}}}},"/b":{"post":{"operationId":"dup","responses":{"200":{"description":"ok"}}}}}}');
-        }, \RuntimeException::class, 'MUST be unique among all operations');
+        }, \Cdd\Exceptions\CddException::class, 'MUST be unique among all operations');
     }
 
     /**
@@ -122,7 +122,7 @@ class ParseEmitMoreDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"parameters":[{"name":"id","in":"query","schema":{}},{"name":"id","in":"query","schema":{}}]}}}}');
-        }, \RuntimeException::class, 'Operation parameters list MUST NOT include duplicated parameters');
+        }, \Cdd\Exceptions\CddException::class, 'Operation parameters list MUST NOT include duplicated parameters');
     }
 
     /**
@@ -134,6 +134,6 @@ class ParseEmitMoreDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query","schema":{}},{"name":"id","in":"query","schema":{}}]}}}');
-        }, \RuntimeException::class, 'Path Item parameters list MUST NOT include duplicated parameters');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item parameters list MUST NOT include duplicated parameters');
     }
 }

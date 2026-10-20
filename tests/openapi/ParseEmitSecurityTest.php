@@ -76,7 +76,7 @@ class ParseEmitSecurityTest extends TestCase
         }';
         $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-        }, \RuntimeException::class, "OAuth2 deviceAuthorization flow requires a 'deviceAuthorizationUrl' string");
+        }, \Cdd\Exceptions\CddException::class, "OAuth2 deviceAuthorization flow requires a 'deviceAuthorizationUrl' string");
     }
 
     /**

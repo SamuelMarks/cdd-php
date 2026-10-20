@@ -65,7 +65,7 @@ class ParseEmitSchemaTest extends TestCase
         }';
         $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-        }, \RuntimeException::class, 'Discriminator must contain a "propertyName" string');
+        }, \Cdd\Exceptions\CddException::class, 'Discriminator must contain a "propertyName" string');
     }
 
     /**
@@ -91,7 +91,7 @@ class ParseEmitSchemaTest extends TestCase
         }';
         $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-        }, \RuntimeException::class, 'XML "name" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'XML "name" must be a string');
     }
 
     /**
@@ -115,7 +115,7 @@ class ParseEmitSchemaTest extends TestCase
         }';
         $this->assertThrows(function () use ($json): void {
             \Cdd\Openapi\parse($json);
-        }, \RuntimeException::class, 'Schema "type" must be a string or array of strings');
+        }, \Cdd\Exceptions\CddException::class, 'Schema "type" must be a string or array of strings');
     }
 
     /**

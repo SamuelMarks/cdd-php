@@ -30,25 +30,25 @@ function parse(array $pathItems): array
  *
  * @param mixed $paths The Paths Object to validate.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws \Cdd\Exceptions\CddException If validation fails.
  */
 function validatePathsObject(mixed $paths): void
 {
     if (!is_array($paths)) {
-        throw new \RuntimeException('Field "paths" must be an object (array in PHP)');
+        throw \Cdd\Exceptions\CddException::validation('Field "paths" must be an object (array in PHP)');
     }
     $seenOperationIds = [];
     foreach ($paths as $path => $pathItem) {
         if (!is_string($path) || !str_starts_with($path, '/')) {
             if (!is_string($path) || !str_starts_with($path, 'x-')) {
-                throw new \RuntimeException('Paths object keys must start with a forward slash (/)');
+                throw \Cdd\Exceptions\CddException::validation('Paths object keys must start with a forward slash (/)');
             }
         }
         if (is_string($path) && str_starts_with($path, '/')) {
             if (preg_match_all('/\{([^}]+)\}/', $path, $matches)) {
                 $vars = $matches[1];
                 if (count($vars) !== count(array_unique($vars))) {
-                    throw new \RuntimeException("Path template expressions MUST NOT appear more than once in a single path: {$path}");
+                    throw \Cdd\Exceptions\CddException::validation("Path template expressions MUST NOT appear more than once in a single path: {$path}");
                 }
             }
             \Cdd\Paths\validatePathItemObject($pathItem, $seenOperationIds);
@@ -62,21 +62,21 @@ function validatePathsObject(mixed $paths): void
  * @param mixed $pathItem The Path Item Object to validate.
  * @param array<string, bool>|null $seenOperationIds Optional map of seen operationIds.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws \Cdd\Exceptions\CddException If validation fails.
  */
 function validatePathItemObject(mixed $pathItem, ?array &$seenOperationIds = null): void
 {
     if (!is_array($pathItem)) {
-        throw new \RuntimeException('Path Item must be an object');
+        throw \Cdd\Exceptions\CddException::validation('Path Item must be an object');
     }
     if (isset($pathItem['$ref']) && !is_string($pathItem['$ref'])) {
-        throw new \RuntimeException('Path Item "$ref" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('Path Item "$ref" must be a string');
     }
     if (isset($pathItem['summary']) && !is_string($pathItem['summary'])) {
-        throw new \RuntimeException('Path Item "summary" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('Path Item "summary" must be a string');
     }
     if (isset($pathItem['description']) && !is_string($pathItem['description'])) {
-        throw new \RuntimeException('Path Item "description" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('Path Item "description" must be a string');
     }
     $methods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'];
     $pathItemParams = isset($pathItem['parameters']) && is_array($pathItem['parameters']) ? $pathItem['parameters'] : [];
@@ -87,18 +87,18 @@ function validatePathItemObject(mixed $pathItem, ?array &$seenOperationIds = nul
     }
     if (isset($pathItem['additionalOperations'])) {
         if (!is_array($pathItem['additionalOperations'])) {
-            throw new \RuntimeException('Path Item "additionalOperations" must be a map');
+            throw \Cdd\Exceptions\CddException::validation('Path Item "additionalOperations" must be a map');
         }
         foreach ($pathItem['additionalOperations'] as $opKey => $opVal) {
             if (in_array(strtolower((string) $opKey), $methods, true)) {
-                throw new \RuntimeException('Path Item "additionalOperations" MUST NOT contain any entry for fixed methods (e.g., ' . $opKey . ')');
+                throw \Cdd\Exceptions\CddException::validation('Path Item "additionalOperations" MUST NOT contain any entry for fixed methods (e.g., ' . $opKey . ')');
             }
             \Cdd\Operations\validateOperationObject($opVal, $pathItemParams, $seenOperationIds);
         }
     }
     if (isset($pathItem['servers'])) {
         if (!is_array($pathItem['servers'])) {
-            throw new \RuntimeException('Path Item "servers" must be an array');
+            throw \Cdd\Exceptions\CddException::validation('Path Item "servers" must be an array');
         }
         foreach ($pathItem['servers'] as $server) {
             \Cdd\Servers\validateServerObject($server);
@@ -106,7 +106,7 @@ function validatePathItemObject(mixed $pathItem, ?array &$seenOperationIds = nul
     }
     if (isset($pathItem['parameters'])) {
         if (!is_array($pathItem['parameters'])) {
-            throw new \RuntimeException('Path Item "parameters" must be an array');
+            throw \Cdd\Exceptions\CddException::validation('Path Item "parameters" must be an array');
         }
         $paramSet = [];
         foreach ($pathItem['parameters'] as $parameter) {
@@ -114,7 +114,7 @@ function validatePathItemObject(mixed $pathItem, ?array &$seenOperationIds = nul
             if (!isset($parameter['$ref']) && isset($parameter['name']) && isset($parameter['in'])) {
                 $key = $parameter['name'] . ':' . $parameter['in'];
                 if (isset($paramSet[$key])) {
-                    throw new \RuntimeException('Path Item parameters list MUST NOT include duplicated parameters');
+                    throw \Cdd\Exceptions\CddException::validation('Path Item parameters list MUST NOT include duplicated parameters');
                 }
                 $paramSet[$key] = true;
             }

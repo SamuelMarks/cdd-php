@@ -66,7 +66,7 @@ function parse(string $cliCode, ?string $sdkWorkflowsCode = null): array
         $assigns = $nodeFinder->findInstanceOf($stmts, Assign::class);
         foreach ($assigns as $assign) {
             if ($assign->var instanceof Variable && $assign->var->name === 'cliMetadata' && $assign->expr instanceof Array_) {
-                $meta = \Cdd\ArazzoClient\astExprToPhpValue($assign->expr);
+                $meta = \Cdd\Classes\evaluate_ast_node($assign->expr);
                 if (is_array($meta)) {
                     $extraMeta = $meta;
                 }
@@ -108,7 +108,7 @@ function parse(string $cliCode, ?string $sdkWorkflowsCode = null): array
                     if ($stmt instanceof Expression && $stmt->expr instanceof Assign) {
                         $assign = $stmt->expr;
                         if ($assign->var instanceof Variable && $assign->var->name === 'workflowDefinition' && $assign->expr instanceof Array_) {
-                            $val = \Cdd\ArazzoClient\astExprToPhpValue($assign->expr);
+                            $val = \Cdd\Classes\evaluate_ast_node($assign->expr);
                             if (is_array($val) && isset($val['workflowId'])) {
                                 $foundWfDef = $val;
                                 break;

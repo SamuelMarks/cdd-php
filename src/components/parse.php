@@ -211,12 +211,12 @@ function infer_schemas_from_mocks(array $mocks, array $existingSchemas = []): ar
  *
  * @param mixed $components The Components Object to validate.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws \Cdd\Exceptions\CddException If validation fails.
  */
 function validateComponentsObject(mixed $components): void
 {
     if (!is_array($components)) {
-        throw new \RuntimeException('Field "components" must be an object');
+        throw \Cdd\Exceptions\CddException::validation('Field "components" must be an object');
     }
     $validKeys = [
         'schemas' => '\Cdd\Schemas\validateSchemaOrReferenceObject',
@@ -234,11 +234,11 @@ function validateComponentsObject(mixed $components): void
     foreach ($validKeys as $key => $validator) {
         if (isset($components[$key])) {
             if (!is_array($components[$key])) {
-                throw new \RuntimeException("Components '{$key}' must be a map");
+                throw \Cdd\Exceptions\CddException::validation("Components '{$key}' must be a map");
             }
             foreach ($components[$key] as $name => $item) {
                 if (!preg_match('/^[a-zA-Z0-9\.\-_]+$/', (string) $name)) {
-                    throw new \RuntimeException("Components '{$key}' map keys must match ^[a-zA-Z0-9\.\-_]+\$");
+                    throw \Cdd\Exceptions\CddException::validation("Components '{$key}' map keys must match ^[a-zA-Z0-9\.\-_]+\$");
                 }
                 if (is_callable($validator)) {
                     $validator($item);

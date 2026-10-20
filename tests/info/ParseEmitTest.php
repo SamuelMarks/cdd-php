@@ -72,7 +72,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Info\validateTagObject(['name' => 'test', 'summary' => 123]);
-        }, \RuntimeException::class, 'Tag "summary" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Tag "summary" must be a string');
     }
 
     /**
@@ -84,7 +84,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Info\validateTagObject(['name' => 'test', 'parent' => 123]);
-        }, \RuntimeException::class, 'Tag "parent" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Tag "parent" must be a string');
     }
 
     /**
@@ -96,7 +96,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Info\validateTagObject(['name' => 'test', 'kind' => 123]);
-        }, \RuntimeException::class, 'Tag "kind" must be a string');
+        }, \Cdd\Exceptions\CddException::class, 'Tag "kind" must be a string');
     }
 
     /**

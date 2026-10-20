@@ -62,7 +62,7 @@ class ApiServers {
                 'url' => 'http://example.com',
                 'variables' => 'not an array',
             ]);
-        }, \RuntimeException::class, 'Server "variables" must be a map');
+        }, \Cdd\Exceptions\CddException::class, 'Server "variables" must be a map');
     }
 
     /**
@@ -74,7 +74,7 @@ class ApiServers {
     {
         $this->assertThrows(function (): void {
             \Cdd\Servers\validateServerObject('not an array');
-        }, \RuntimeException::class, 'Server must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Server must be an object');
     }
 
     /**

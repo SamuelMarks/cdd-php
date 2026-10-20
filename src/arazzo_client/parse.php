@@ -10,31 +10,17 @@ declare(strict_types=1);
 
 namespace Cdd\ArazzoClient;
 
-use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\Array_;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
-use PhpParser\Node\Scalar\Float_;
-use PhpParser\Node\Scalar\Int_;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\ClassConst;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Expression;
 use PhpParser\Node\Stmt\Return_;
 use PhpParser\NodeFinder;
-
-/**
- * Converts a `PhpParser` AST expression node (Array_, String_, Int_, Float_, ConstFetch) into a native PHP value.
- *
- * @param Expr $expr The AST expression node.
- * @return mixed The converted PHP scalar or array value.
- */
-function astExprToPhpValue(Expr $expr): mixed
-{
-    return \Cdd\Classes\evaluate_ast_node($expr);
-}
 
 /**
  * Parses PHP client workflow source code (`ApiWorkflows.php` or chained SDK classes) into an Arazzo 1.1.0 specification array.
@@ -63,7 +49,7 @@ function parse(string $code): array
     $constants = [];
     foreach ($classConsts as $constStmt) {
         foreach ($constStmt->consts as $c) {
-            $constants[$c->name->toString()] = astExprToPhpValue($c->value);
+            $constants[$c->name->toString()] = \Cdd\Classes\evaluate_ast_node($c->value);
         }
     }
 
@@ -141,7 +127,7 @@ function parse(string $code): array
         if ($method->name->toString() === 'getWorkflowRegistry' && $method->stmts !== null) {
             foreach ($method->stmts as $stmt) {
                 if ($stmt instanceof Return_ && $stmt->expr instanceof Array_) {
-                    $registry = astExprToPhpValue($stmt->expr);
+                    $registry = \Cdd\Classes\evaluate_ast_node($stmt->expr);
                     if (is_array($registry) && !empty($registry)) {
                         $arazzo['workflows'] = array_values($registry);
                     }
@@ -165,7 +151,7 @@ function parse(string $code): array
                 if ($stmt instanceof Expression && $stmt->expr instanceof Assign) {
                     $assign = $stmt->expr;
                     if ($assign->var instanceof Variable && $assign->var->name === 'workflow' && $assign->expr instanceof Array_) {
-                        $val = astExprToPhpValue($assign->expr);
+                        $val = \Cdd\Classes\evaluate_ast_node($assign->expr);
                         if (is_array($val) && isset($val['workflowId'])) {
                             $extractedFromVar = $val;
                             break;

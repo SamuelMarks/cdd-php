@@ -409,6 +409,23 @@ TearDown failure in " . get_class($this) . "::$method
     }
 
     /**
+     * Asserts that a value is empty.
+     *
+     * @param mixed $actual The value to check.
+     * @param string $message Optional failure message.
+     * @return void
+     * @throws \Exception If not empty.
+     */
+    protected function assertEmpty(mixed $actual, string $message = ''): void
+    {
+        $this->recordAssertion();
+        if (!empty($actual)) {
+            $prefix = $message !== '' ? "$message: " : '';
+            throw new \Exception($prefix . "Expected empty value, got " . print_r($actual, true));
+        }
+    }
+
+    /**
      * Asserts that a value is not empty.
      *
      * @param mixed $actual The value to check.

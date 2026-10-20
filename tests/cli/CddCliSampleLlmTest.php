@@ -142,7 +142,7 @@ class CddCliSampleLlmTest extends TestCase
 
         $this->assertThrows(function (): void {
             CddCli::sample_llm([['role' => 'user', 'content' => 'trigger_error']], 10, 'sys');
-        }, \Exception::class, 'err');
+        }, \Cdd\Exceptions\CddException::class, 'err');
 
         CddCli::$testInStream = null;
         CddCli::$testOutStream = null;

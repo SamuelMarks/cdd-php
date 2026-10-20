@@ -61,7 +61,7 @@ function downgradeArazzo11To10(array $arazzo): array
  * @param string|null $outDir Optional target directory for PHP project generation.
  * @param array<string, mixed> $options Generation options (`subcommand`, `target_version`, `no_installable_package`, `no_github_actions`, `tests`).
  * @return string Formatted Arazzo JSON document.
- * @throws \RuntimeException If JSON encoding fails.
+ * @throws \Cdd\Exceptions\CddException If JSON encoding fails.
  */
 function emit(array $arazzo, ?string $outDir = null, array $options = []): string
 {

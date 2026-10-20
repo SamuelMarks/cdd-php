@@ -113,14 +113,37 @@ class CddCliHelperTest extends TestCase
         $this->assertNull(CddCli::$testOutStream);
         $this->assertNull(CddCli::$testSocketConn);
 
-        $valExc = \Cdd\Exceptions\CddException::validation('invalid spec');
+        $valExc = \Cdd\Exceptions\CddException::validation('invalid spec', '#/info');
         $this->assertInstanceOf(\RuntimeException::class, $valExc);
         $this->assertEquals('invalid spec', $valExc->getMessage());
+        $this->assertEquals(\Cdd\Exceptions\CddErrorCode::OpenApiValidationError, $valExc->errorCode);
+        $this->assertEquals('#/info', $valExc->contextPath);
 
-        $parseExc = \Cdd\Exceptions\CddException::parseError('parse failed');
+        $arazzoValExc = \Cdd\Exceptions\CddException::arazzoValidation('invalid arazzo', '#/workflows/0');
+        $this->assertEquals(\Cdd\Exceptions\CddErrorCode::ArazzoValidationError, $arazzoValExc->errorCode);
+        $this->assertEquals('#/workflows/0', $arazzoValExc->contextPath);
+
+        $arazzoRunExc = \Cdd\Exceptions\CddException::arazzoRuntime('missing step', '#/steps/0');
+        $this->assertEquals(\Cdd\Exceptions\CddErrorCode::ArazzoRuntimeError, $arazzoRunExc->errorCode);
+
+        $jsonDecExc = \Cdd\Exceptions\CddException::jsonDecode('bad json', 'openapi.json');
+        $this->assertEquals(\Cdd\Exceptions\CddErrorCode::JsonDecodeError, $jsonDecExc->errorCode);
+        $this->assertEquals('openapi.json', $jsonDecExc->sourceFile);
+
+        $jsonEncExc = \Cdd\Exceptions\CddException::jsonEncode('encode failed');
+        $this->assertEquals(\Cdd\Exceptions\CddErrorCode::JsonEncodeError, $jsonEncExc->errorCode);
+
+        $parseExc = \Cdd\Exceptions\CddException::parseError('parse failed', 'src/Models.php');
         $this->assertEquals('parse failed', $parseExc->getMessage());
+        $this->assertEquals(\Cdd\Exceptions\CddErrorCode::AstParseError, $parseExc->errorCode);
+        $this->assertEquals('src/Models.php', $parseExc->sourceFile);
 
         $emitExc = \Cdd\Exceptions\CddException::emitError('emit failed');
         $this->assertEquals('emit failed', $emitExc->getMessage());
+        $this->assertEquals(\Cdd\Exceptions\CddErrorCode::CodeEmissionError, $emitExc->errorCode);
+
+        $mcpExc = \Cdd\Exceptions\CddException::mcpError('mcp failed');
+        $this->assertEquals('mcp failed', $mcpExc->getMessage());
+        $this->assertEquals(\Cdd\Exceptions\CddErrorCode::McpProtocolError, $mcpExc->errorCode);
     }
 }

@@ -23,21 +23,26 @@ function emit(array $paths, string $existingCode = ''): string
     if ($existingCode !== '') {
         $out = $existingCode;
         foreach ($paths as $path => $methods) {
-            foreach ((array)$methods as $method => $operation) {
+            $exportedPath = var_export((string) $path, true);
+            foreach ((array) $methods as $method => $operation) {
                 if ($method === 'additionalOperations' && is_array($operation)) {
                     foreach ($operation as $addMethod => $addOp) {
                         $m = strtolower((string) $addMethod);
-                        $controller = $addOp['operationId'] ?? 'SomeController@action';
-                        if (strpos($out, "Route::$m('$path',") === false && strpos($out, 'Route::' . $m . '("' . $path . '",') === false) {
-                            $out .= "Route::$m('$path', '$controller');\n";
+                        $controller = (string) ($addOp['operationId'] ?? 'SomeController@action');
+                        $exportedCtrl = var_export($controller, true);
+                        if (strpos($out, "Route::$m($exportedPath,") === false && strpos($out, 'Route::' . $m . '("' . $path . '",') === false) {
+                            $out .= "Route::$m($exportedPath, $exportedCtrl);
+";
                         }
                     }
                 } else {
                     $method = strtolower((string) $method);
                     if (in_array($method, $validMethods, true)) {
-                        $controller = $operation['operationId'] ?? 'SomeController@action';
-                        if (strpos($out, "Route::$method('$path',") === false && strpos($out, 'Route::' . $method . '("' . $path . '",') === false) {
-                            $out .= "Route::$method('$path', '$controller');\n";
+                        $controller = (string) ($operation['operationId'] ?? 'SomeController@action');
+                        $exportedCtrl = var_export($controller, true);
+                        if (strpos($out, "Route::$method($exportedPath,") === false && strpos($out, 'Route::' . $method . '("' . $path . '",') === false) {
+                            $out .= "Route::$method($exportedPath, $exportedCtrl);
+";
                         }
                     }
                 }
@@ -46,20 +51,29 @@ function emit(array $paths, string $existingCode = ''): string
         return $out;
     }
 
-    $out = "<?php\n\nuse Illuminate\\Support\\Facades\\Route;\n\n";
+    $out = "<?php
+
+use Illuminate\Support\Facades\Route;
+
+";
     foreach ($paths as $path => $methods) {
-        foreach ((array)$methods as $method => $operation) {
+        $exportedPath = var_export((string) $path, true);
+        foreach ((array) $methods as $method => $operation) {
             if ($method === 'additionalOperations' && is_array($operation)) {
                 foreach ($operation as $addMethod => $addOp) {
                     $m = strtolower((string) $addMethod);
-                    $controller = $addOp['operationId'] ?? 'SomeController@action';
-                    $out .= "Route::$m('$path', '$controller');\n";
+                    $controller = (string) ($addOp['operationId'] ?? 'SomeController@action');
+                    $exportedCtrl = var_export($controller, true);
+                    $out .= "Route::$m($exportedPath, $exportedCtrl);
+";
                 }
             } else {
                 $method = strtolower((string) $method);
                 if (in_array($method, $validMethods, true)) {
-                    $controller = $operation['operationId'] ?? 'SomeController@action';
-                    $out .= "Route::$method('$path', '$controller');\n";
+                    $controller = (string) ($operation['operationId'] ?? 'SomeController@action');
+                    $exportedCtrl = var_export($controller, true);
+                    $out .= "Route::$method($exportedPath, $exportedCtrl);
+";
                 }
             }
         }
@@ -83,10 +97,14 @@ function emit_modular(array $paths): array
         $group = !empty($parts[0]) ? ucfirst((string) preg_replace('/[^a-zA-Z0-9]/', '', $parts[0])) : 'Default';
 
         if (!isset($grouped[$group])) {
-            $grouped[$group] = "<?php\n\nuse Illuminate\\Support\\Facades\\Route;\n\n";
+            $grouped[$group] = "<?php
+
+use Illuminate\Support\Facades\Route;
+
+";
         }
 
-        foreach ((array)$methods as $method => $operation) {
+        foreach ((array) $methods as $method => $operation) {
             if ($method === 'additionalOperations' && is_array($operation)) {
                 foreach ($operation as $addMethod => $addOp) {
                     $grouped[$group] .= emit_modular_single_route((string) $addMethod, (string) $path, $addOp);
@@ -118,8 +136,10 @@ function emit_modular_single_route(string $method, string $path, array $operatio
     if (!in_array($methodStr, ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'])) {
         return '';
     }
-    $opId = $operation['operationId'] ?? $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', $path);
-    $className = ucfirst($opId) . 'Controller';
+    $opId = (string) ($operation['operationId'] ?? $methodStr . preg_replace('/[^a-zA-Z0-9]/', '', $path));
+    $className = ucfirst((string) preg_replace('/[^a-zA-Z0-9_]/', '', $opId)) . 'Controller';
+    $exportedPath = var_export($path, true);
     $bs = chr(92);
-    return "Route::$methodStr('$path', [{$bs}Api{$bs}Controllers{$bs}{$className}::class, '__invoke']);\n";
+    return "Route::$methodStr($exportedPath, [{$bs}Api{$bs}Controllers{$bs}{$className}::class, '__invoke']);
+";
 }

@@ -10,10 +10,12 @@ declare(strict_types=1);
 
 namespace Cdd\Controllers;
 
+use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\NullableType;
+use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\NodeFinder;
 
@@ -33,17 +35,32 @@ function parse(string $code): array
     }
 
     $nodeFinder = new NodeFinder();
+    /** @var Class_[] $classes */
+    $classes = $nodeFinder->findInstanceOf($stmts ?? [], Class_::class);
+    $enclosingClassName = '';
+    if (!empty($classes) && $classes[0]->name !== null) {
+        $enclosingClassName = $classes[0]->name->toString();
+    }
+
     /** @var ClassMethod[] $methods */
     $methods = $nodeFinder->findInstanceOf($stmts ?? [], ClassMethod::class);
 
     $operations = [];
     foreach ($methods as $method) {
         $operationId = $method->name->toString();
+        if ($operationId === '__invoke' && $enclosingClassName !== '' && str_ends_with($enclosingClassName, 'Controller')) {
+            $baseOpName = substr($enclosingClassName, 0, -10);
+            if ($baseOpName !== '') {
+                $operationId = lcfirst($baseOpName);
+            }
+        }
         $op = [];
+        $paramMetaMap = [];
 
         $docComment = $method->getDocComment();
         if ($docComment !== null) {
-            $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+            $rawDocText = $docComment->getText();
+            $parsedDoc = \Cdd\Docstrings\parse($rawDocText);
 
             if ($parsedDoc['description'] !== '') {
                 $descLines = explode("
@@ -71,8 +88,8 @@ function parse(string $code): array
             if (isset($parsedDoc['tags']['externalDocs'])) {
                 $ext = explode(' ', (string) $parsedDoc['tags']['externalDocs'][0], 2);
                 $op['externalDocs'] = ['url' => $ext[0]];
-                if (isset($ext[1])) {
-                    $op['externalDocs']['description'] = $ext[1];
+                if (isset($ext[1]) && trim($ext[1]) !== '') {
+                    $op['externalDocs']['description'] = trim($ext[1]);
                 }
             }
 
@@ -98,6 +115,43 @@ function parse(string $code): array
                         }
                         $op['responses'][$codeKey]['links'][$linkName] = $linkObj;
                     }
+                }
+            }
+
+            if (isset($parsedDoc['tags']['param']) && is_array($parsedDoc['tags']['param'])) {
+                foreach ($parsedDoc['tags']['param'] as $pTag) {
+                    $rest = trim((string) ($pTag['name'] ?? ''));
+                    if (preg_match('/^\$([a-zA-Z0-9_]+)(?:\s+\[([^\]]+)\])?(?:\s+(.*))?$/s', $rest, $pm)) {
+                        $vName = $pm[1];
+                        $metaStr = $pm[2] ?? '';
+                        $descText = isset($pm[3]) ? trim($pm[3]) : null;
+                        $inLoc = 'query';
+                        $wireName = $vName;
+                        if ($metaStr !== '') {
+                            foreach (explode(';', $metaStr) as $kv) {
+                                $kvParts = explode('=', $kv, 2);
+                                if (count($kvParts) === 2) {
+                                    if ($kvParts[0] === 'in') {
+                                        $inLoc = $kvParts[1];
+                                    } elseif ($kvParts[0] === 'name') {
+                                        $wireName = $kvParts[1];
+                                    }
+                                }
+                            }
+                        }
+                        $paramMetaMap[$vName] = [
+                            'in' => $inLoc,
+                            'name' => $wireName,
+                            'description' => ($descText !== null && $descText !== '') ? $descText : null,
+                        ];
+                    }
+                }
+            }
+
+            if (str_contains($rawDocText, '@return')) {
+                $parsedReturns = \Cdd\Responses\parse($rawDocText);
+                foreach ($parsedReturns as $statusCode => $respObj) {
+                    $op['responses'][$statusCode] = array_replace_recursive($respObj, (array) ($op['responses'][$statusCode] ?? []));
                 }
             }
         }
@@ -127,7 +181,34 @@ function parse(string $code): array
                 if (!isset($op['parameters'])) {
                     $op['parameters'] = [];
                 }
-                $op['parameters'][] = \Cdd\Parameters\parse($paramName, $typeName, 'query', $required);
+                $inLoc = $paramMetaMap[$paramName]['in'] ?? 'query';
+                $wireName = $paramMetaMap[$paramName]['name'] ?? $paramName;
+                $pDesc = $paramMetaMap[$paramName]['description'] ?? null;
+                $op['parameters'][] = \Cdd\Parameters\parse($wireName, $typeName, $inLoc, $required, $pDesc);
+            }
+        }
+
+        // Parse requireSecurity calls in method body
+        if ($method->stmts !== null) {
+            $methodCalls = $nodeFinder->findInstanceOf($method->stmts, MethodCall::class);
+            $secReqs = [];
+            foreach ($methodCalls as $mc) {
+                if (
+                    $mc->var instanceof Variable
+                    && $mc->var->name === 'this'
+                    && $mc->name instanceof Identifier
+                    && $mc->name->toString() === 'requireSecurity'
+                    && count($mc->args) >= 1
+                ) {
+                    $schemeName = \Cdd\Classes\evaluate_ast_node($mc->args[0]->value);
+                    $scopes = isset($mc->args[1]) ? \Cdd\Classes\evaluate_ast_node($mc->args[1]->value) : [];
+                    if (is_string($schemeName)) {
+                        $secReqs[$schemeName] = is_array($scopes) ? array_map('strval', $scopes) : [];
+                    }
+                }
+            }
+            if (!empty($secReqs)) {
+                $op['security'] = \Cdd\Security\parse($secReqs);
             }
         }
 

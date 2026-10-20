@@ -59,12 +59,13 @@ function emitInputDtos(array $arazzo): string
 }
 
 /**
- * Emits the `ApiWorkflows` PHP SDK orchestrator class from a validated Arazzo specification.
+ * Emits the `ApiWorkflows` (or `WorkflowEngine`) PHP SDK orchestrator class from a validated Arazzo specification.
  *
  * @param array<string, mixed> $arazzo The normalized Arazzo 1.1.0 specification array.
- * @return string The generated `ApiWorkflows.php` source code.
+ * @param string $className The class name to emit (`ApiWorkflows` or `WorkflowEngine`).
+ * @return string The generated workflow orchestrator PHP source code.
  */
-function emit(array $arazzo): string
+function emit(array $arazzo, string $className = 'ApiWorkflows'): string
 {
     $version = (string) ($arazzo['arazzo'] ?? '1.1.0');
     $info = is_array($arazzo['info'] ?? null) ? $arazzo['info'] : ['title' => 'Arazzo Workflows', 'version' => '1.0.0'];
@@ -142,10 +143,10 @@ function emit(array $arazzo): string
 
 ";
     $out .= "/**
- * ApiWorkflows orchestrates multi-step Arazzo workflows across OpenAPI, AsyncAPI, and Arazzo sources.
+ * {$className} orchestrates multi-step Arazzo workflows across OpenAPI, AsyncAPI, and Arazzo sources.
  */
 ";
-    $out .= "class ApiWorkflows
+    $out .= "class {$className}
 {
 ";
     $out .= "    /** @var string Arazzo specification version. */

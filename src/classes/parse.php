@@ -12,9 +12,13 @@ namespace Cdd\Classes;
 
 use PhpParser\Node;
 use PhpParser\Node\Expr\Array_;
+use PhpParser\Node\Expr\BinaryOp\Concat;
+use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\ConstFetch;
 use PhpParser\Node\Expr\UnaryMinus;
 use PhpParser\Node\Expr\UnaryPlus;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\Float_;
 use PhpParser\Node\Scalar\Int_;
 use PhpParser\Node\Scalar\String_;
@@ -50,6 +54,20 @@ function evaluate_ast_node(?Node $node): mixed
     }
     if ($node instanceof String_ || $node instanceof Int_ || $node instanceof Float_) {
         return $node->value;
+    }
+    if ($node instanceof Concat) {
+        $left = evaluate_ast_node($node->left);
+        $right = evaluate_ast_node($node->right);
+        if ((is_scalar($left) || $left === null) && (is_scalar($right) || $right === null)) {
+            return (string) $left . (string) $right;
+        }
+    }
+    if ($node instanceof ClassConstFetch && $node->class instanceof Name && $node->name instanceof Identifier) {
+        $constName = $node->name->toString();
+        if (strtolower($constName) === 'class') {
+            return $node->class->toString();
+        }
+        return $node->class->toString() . '::' . $constName;
     }
     if ($node instanceof UnaryMinus) {
         $inner = evaluate_ast_node($node->expr);

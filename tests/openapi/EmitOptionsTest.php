@@ -435,6 +435,6 @@ class EmitOptionsTest extends TestCase
 
         $this->assertThrows(function () use (&$openapi): void {
             @\Cdd\Openapi\emit($openapi);
-        }, \RuntimeException::class, 'Failed to encode OpenAPI array to JSON');
+        }, \Cdd\Exceptions\CddException::class, 'Failed to encode OpenAPI array to JSON');
     }
 }

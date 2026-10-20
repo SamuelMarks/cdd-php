@@ -32,9 +32,7 @@ function parse(string $operationIdOrCode, array $parameters = [], array $respons
             $firstOpId = (string) array_key_first($parsedOps);
             $op = $parsedOps[$firstOpId];
             $op['operationId'] = $firstOpId;
-            if (!isset($op['responses'])) {
-                $op['responses'] = ['200' => ['description' => 'Success']];
-            }
+            $op['responses'] = $op['responses'] ?? ['200' => ['description' => 'Success']];
             return $op;
         }
     }
@@ -62,12 +60,12 @@ function parse(string $operationIdOrCode, array $parameters = [], array $respons
  * @param array<int, mixed> $pathItemParams Parameters inherited from the parent Path Item.
  * @param array<string, bool>|null $seenOperationIds Optional map of seen operationIds for uniqueness validation.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws \Cdd\Exceptions\CddException If validation fails.
  */
 function validateOperationObject(mixed $operation, array $pathItemParams = [], ?array &$seenOperationIds = null): void
 {
     if (!is_array($operation)) {
-        throw new \RuntimeException('Operation must be an object');
+        throw \Cdd\Exceptions\CddException::validation('Operation must be an object');
     }
     $hasQuery = false;
     $hasQueryString = false;
@@ -82,48 +80,48 @@ function validateOperationObject(mixed $operation, array $pathItemParams = [], ?
             }
             if ($parameter['in'] === 'querystring') {
                 if ($hasQueryString) {
-                    throw new \RuntimeException('querystring parameter MUST NOT appear more than once');
+                    throw \Cdd\Exceptions\CddException::validation('querystring parameter MUST NOT appear more than once');
                 }
                 $hasQueryString = true;
             }
         }
     }
     if ($hasQuery && $hasQueryString) {
-        throw new \RuntimeException('query and querystring parameters are mutually exclusive');
+        throw \Cdd\Exceptions\CddException::validation('query and querystring parameters are mutually exclusive');
     }
     if (isset($operation['tags'])) {
         if (!is_array($operation['tags'])) {
-            throw new \RuntimeException('Operation "tags" must be an array of strings');
+            throw \Cdd\Exceptions\CddException::validation('Operation "tags" must be an array of strings');
         }
         foreach ($operation['tags'] as $tag) {
             if (!is_string($tag)) {
-                throw new \RuntimeException('Operation "tags" items must be strings');
+                throw \Cdd\Exceptions\CddException::validation('Operation "tags" items must be strings');
             }
         }
     }
     if (isset($operation['summary']) && !is_string($operation['summary'])) {
-        throw new \RuntimeException('Operation "summary" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('Operation "summary" must be a string');
     }
     if (isset($operation['description']) && !is_string($operation['description'])) {
-        throw new \RuntimeException('Operation "description" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('Operation "description" must be a string');
     }
     if (isset($operation['externalDocs'])) {
         \Cdd\Info\validateExternalDocsObject($operation['externalDocs']);
     }
     if (isset($operation['operationId'])) {
         if (!is_string($operation['operationId'])) {
-            throw new \RuntimeException('Operation "operationId" must be a string');
+            throw \Cdd\Exceptions\CddException::validation('Operation "operationId" must be a string');
         }
         if ($seenOperationIds !== null) {
             if (isset($seenOperationIds[$operation['operationId']])) {
-                throw new \RuntimeException('Operation "operationId" MUST be unique among all operations described in the API');
+                throw \Cdd\Exceptions\CddException::validation('Operation "operationId" MUST be unique among all operations described in the API');
             }
             $seenOperationIds[$operation['operationId']] = true;
         }
     }
     if (isset($operation['parameters'])) {
         if (!is_array($operation['parameters'])) {
-            throw new \RuntimeException('Operation "parameters" must be an array');
+            throw \Cdd\Exceptions\CddException::validation('Operation "parameters" must be an array');
         }
         $paramSet = [];
         foreach ($operation['parameters'] as $parameter) {
@@ -131,7 +129,7 @@ function validateOperationObject(mixed $operation, array $pathItemParams = [], ?
             if (!isset($parameter['$ref']) && isset($parameter['name']) && isset($parameter['in'])) {
                 $key = $parameter['name'] . ':' . $parameter['in'];
                 if (isset($paramSet[$key])) {
-                    throw new \RuntimeException('Operation parameters list MUST NOT include duplicated parameters');
+                    throw \Cdd\Exceptions\CddException::validation('Operation parameters list MUST NOT include duplicated parameters');
                 }
                 $paramSet[$key] = true;
             }
@@ -141,19 +139,19 @@ function validateOperationObject(mixed $operation, array $pathItemParams = [], ?
         \Cdd\RequestBodies\validateRequestBodyOrReferenceObject($operation['requestBody']);
     }
     if (!isset($operation['responses'])) {
-        throw new \RuntimeException('Operation must contain a "responses" object');
+        throw \Cdd\Exceptions\CddException::validation('Operation must contain a "responses" object');
     }
     if (!is_array($operation['responses'])) {
-        throw new \RuntimeException('Operation "responses" must be a Responses Object map');
+        throw \Cdd\Exceptions\CddException::validation('Operation "responses" must be a Responses Object map');
     }
     if (empty($operation['responses'])) {
-        throw new \RuntimeException('Responses Object MUST contain at least one response code');
+        throw \Cdd\Exceptions\CddException::validation('Responses Object MUST contain at least one response code');
     }
     foreach ($operation['responses'] as $key => $val) {
         $keyStr = (string) $key;
         if ($keyStr !== 'default' && !preg_match('/^[1-5](?:[0-9]{2}|XX)$/', $keyStr)) {
             if (!str_starts_with($keyStr, 'x-')) {
-                throw new \RuntimeException('Responses keys must be HTTP status codes, ranges like 2XX, or "default"');
+                throw \Cdd\Exceptions\CddException::validation('Responses keys must be HTTP status codes, ranges like 2XX, or "default"');
             }
         }
         if (!str_starts_with($keyStr, 'x-')) {
@@ -162,18 +160,18 @@ function validateOperationObject(mixed $operation, array $pathItemParams = [], ?
     }
     if (isset($operation['callbacks'])) {
         if (!is_array($operation['callbacks'])) {
-            throw new \RuntimeException('Operation "callbacks" must be a map');
+            throw \Cdd\Exceptions\CddException::validation('Operation "callbacks" must be a map');
         }
         foreach ($operation['callbacks'] as $callback) {
             \Cdd\Operations\validateCallbackOrReferenceObject($callback, $seenOperationIds);
         }
     }
     if (isset($operation['deprecated']) && !is_bool($operation['deprecated'])) {
-        throw new \RuntimeException('Operation "deprecated" must be a boolean');
+        throw \Cdd\Exceptions\CddException::validation('Operation "deprecated" must be a boolean');
     }
     if (isset($operation['security'])) {
         if (!is_array($operation['security'])) {
-            throw new \RuntimeException('Operation "security" must be an array');
+            throw \Cdd\Exceptions\CddException::validation('Operation "security" must be an array');
         }
         foreach ($operation['security'] as $secReq) {
             \Cdd\Security\validateSecurityRequirementObject($secReq);
@@ -181,7 +179,7 @@ function validateOperationObject(mixed $operation, array $pathItemParams = [], ?
     }
     if (isset($operation['servers'])) {
         if (!is_array($operation['servers'])) {
-            throw new \RuntimeException('Operation "servers" must be an array');
+            throw \Cdd\Exceptions\CddException::validation('Operation "servers" must be an array');
         }
         foreach ($operation['servers'] as $server) {
             \Cdd\Servers\validateServerObject($server);
@@ -195,12 +193,12 @@ function validateOperationObject(mixed $operation, array $pathItemParams = [], ?
  * @param mixed $callback The Callback or Reference Object to validate.
  * @param array<string, bool>|null $seenOperationIds Optional map of seen operationIds.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws \Cdd\Exceptions\CddException If validation fails.
  */
 function validateCallbackOrReferenceObject(mixed $callback, ?array &$seenOperationIds = null): void
 {
     if (!is_array($callback)) {
-        throw new \RuntimeException('Callback must be an object');
+        throw \Cdd\Exceptions\CddException::validation('Callback must be an object');
     }
     if (isset($callback['$ref'])) {
         \Cdd\Openapi\validateReferenceObject($callback);

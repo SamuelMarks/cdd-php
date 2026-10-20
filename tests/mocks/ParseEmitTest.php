@@ -106,7 +106,7 @@ return [
         $this->assertFalse($parsedRich['ex1']['dataValue']['flagFalse']);
         $this->assertNull($parsedRich['ex1']['dataValue']['flagNull']);
         $this->assertEquals(['a', 'b'], $parsedRich['ex1']['dataValue']['list']);
-        $this->assertNull(\Cdd\Mocks\evaluateAstNode(null));
+        $this->assertNull(\Cdd\Classes\evaluate_ast_node(null));
     }
 
     /**
@@ -129,7 +129,7 @@ return [
         foreach ($tests as $test) {
             $this->assertThrows(function () use ($test): void {
                 \Cdd\Mocks\validateExampleOrReferenceObject($test['input']);
-            }, \RuntimeException::class, $test['error']);
+            }, \Cdd\Exceptions\CddException::class, $test['error']);
         }
 
         $this->assertDoesNotThrow(function (): void {

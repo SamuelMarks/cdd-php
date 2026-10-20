@@ -256,33 +256,33 @@ class ArazzoComprehensiveTest extends TestCase
         $this->assertEquals('1.1.0', $parsed10['arazzo']);
 
         // Root errors
-        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{bad json'), \RuntimeException::class, 'Invalid JSON');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('"string"'), \RuntimeException::class, 'must be a JSON object');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{}'), \RuntimeException::class, 'Missing REQUIRED field "arazzo"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{"arazzo":"2.0.0"}'), \RuntimeException::class, 'version must be 1.0.x or 1.1.x');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{"arazzo":"1.1.0","$self":""}'), \RuntimeException::class, 'Field "$self" must be');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{"arazzo":"1.1.0"}'), \RuntimeException::class, 'Missing REQUIRED field "info"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{bad json'), \Cdd\Exceptions\CddException::class, 'Invalid JSON');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('"string"'), \Cdd\Exceptions\CddException::class, 'must be a JSON object');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{}'), \Cdd\Exceptions\CddException::class, 'Missing REQUIRED field "arazzo"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{"arazzo":"2.0.0"}'), \Cdd\Exceptions\CddException::class, 'version must be 1.0.x or 1.1.x');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{"arazzo":"1.1.0","$self":""}'), \Cdd\Exceptions\CddException::class, 'Field "$self" must be');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{"arazzo":"1.1.0"}'), \Cdd\Exceptions\CddException::class, 'Missing REQUIRED field "info"');
 
         // Info errors
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoInfoObject('bad'), \RuntimeException::class, '"info" must be an object');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoInfoObject([]), \RuntimeException::class, '"title"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoInfoObject(['title' => 'T']), \RuntimeException::class, '"version"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoInfoObject(['title' => 'T', 'version' => '1', 'summary' => 123]), \RuntimeException::class, '"summary"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoInfoObject(['title' => 'T', 'version' => '1', 'description' => 123]), \RuntimeException::class, '"description"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoInfoObject('bad'), \Cdd\Exceptions\CddException::class, '"info" must be an object');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoInfoObject([]), \Cdd\Exceptions\CddException::class, '"title"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoInfoObject(['title' => 'T']), \Cdd\Exceptions\CddException::class, '"version"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoInfoObject(['title' => 'T', 'version' => '1', 'summary' => 123]), \Cdd\Exceptions\CddException::class, '"summary"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoInfoObject(['title' => 'T', 'version' => '1', 'description' => 123]), \Cdd\Exceptions\CddException::class, '"description"');
 
         // SourceDescriptions errors
-        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{"arazzo":"1.1.0","info":{"title":"T","version":"1"}}'), \RuntimeException::class, 'Missing REQUIRED field "sourceDescriptions"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptions([]), \RuntimeException::class, 'non-empty list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptionObject('bad'), \RuntimeException::class, 'must be an object');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptionObject(['name' => 'bad name!']), \RuntimeException::class, '"name" is REQUIRED');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptionObject(['name' => 'ok']), \RuntimeException::class, '"url" is REQUIRED');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptionObject(['name' => 'ok', 'url' => '/a', 'type' => 'soap']), \RuntimeException::class, '"type" must be one of');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptions([['name' => 'dup', 'url' => '/a'], ['name' => 'dup', 'url' => '/b']]), \RuntimeException::class, 'Duplicate sourceDescription');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{"arazzo":"1.1.0","info":{"title":"T","version":"1"}}'), \Cdd\Exceptions\CddException::class, 'Missing REQUIRED field "sourceDescriptions"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptions([]), \Cdd\Exceptions\CddException::class, 'non-empty list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptionObject('bad'), \Cdd\Exceptions\CddException::class, 'must be an object');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptionObject(['name' => 'bad name!']), \Cdd\Exceptions\CddException::class, '"name" is REQUIRED');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptionObject(['name' => 'ok']), \Cdd\Exceptions\CddException::class, '"url" is REQUIRED');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptionObject(['name' => 'ok', 'url' => '/a', 'type' => 'soap']), \Cdd\Exceptions\CddException::class, '"type" must be one of');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSourceDescriptions([['name' => 'dup', 'url' => '/a'], ['name' => 'dup', 'url' => '/b']]), \Cdd\Exceptions\CddException::class, 'Duplicate sourceDescription');
 
         // Workflows missing
-        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{"arazzo":"1.1.0","info":{"title":"T","version":"1"},"sourceDescriptions":[{"name":"s","url":"/s"}]}'), \RuntimeException::class, 'Missing REQUIRED field "workflows"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflows([]), \RuntimeException::class, 'non-empty list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflows([['workflowId' => 'w1', 'steps' => [['stepId' => 's1', 'operationId' => 'op']]], ['workflowId' => 'w1', 'steps' => [['stepId' => 's1', 'operationId' => 'op']]]]), \RuntimeException::class, 'Duplicate workflowId');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\parse('{"arazzo":"1.1.0","info":{"title":"T","version":"1"},"sourceDescriptions":[{"name":"s","url":"/s"}]}'), \Cdd\Exceptions\CddException::class, 'Missing REQUIRED field "workflows"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflows([]), \Cdd\Exceptions\CddException::class, 'non-empty list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflows([['workflowId' => 'w1', 'steps' => [['stepId' => 's1', 'operationId' => 'op']]], ['workflowId' => 'w1', 'steps' => [['stepId' => 's1', 'operationId' => 'op']]]]), \Cdd\Exceptions\CddException::class, 'Duplicate workflowId');
     }
 
     /**
@@ -293,120 +293,120 @@ class ArazzoComprehensiveTest extends TestCase
     public function testValidateElementsAndDagBranches(): void
     {
         // Expression Type & Selector & Criterion
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateExpressionTypeObject('bad'), \RuntimeException::class, 'Expression Type Object must be');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateExpressionTypeObject(['type' => 'bad']), \RuntimeException::class, 'must be one of');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateExpressionTypeObject(['type' => 'jsonpath', 'version' => 'bad']), \RuntimeException::class, 'Invalid version');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateExpressionTypeObject('bad'), \Cdd\Exceptions\CddException::class, 'Expression Type Object must be');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateExpressionTypeObject(['type' => 'bad']), \Cdd\Exceptions\CddException::class, 'must be one of');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateExpressionTypeObject(['type' => 'jsonpath', 'version' => 'bad']), \Cdd\Exceptions\CddException::class, 'Invalid version');
 
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSelectorObject('bad'), \RuntimeException::class, 'Selector Object must be');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSelectorObject([]), \RuntimeException::class, '"context"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSelectorObject(['context' => '$response.body']), \RuntimeException::class, '"selector"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSelectorObject(['context' => '$response.body', 'selector' => '$.a', 'type' => 'bad']), \RuntimeException::class, 'Selector Object "type" string');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSelectorObject('bad'), \Cdd\Exceptions\CddException::class, 'Selector Object must be');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSelectorObject([]), \Cdd\Exceptions\CddException::class, '"context"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSelectorObject(['context' => '$response.body']), \Cdd\Exceptions\CddException::class, '"selector"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSelectorObject(['context' => '$response.body', 'selector' => '$.a', 'type' => 'bad']), \Cdd\Exceptions\CddException::class, 'Selector Object "type" string');
         \Cdd\Arazzo\validateSelectorObject(['context' => '$response.body', 'selector' => '$.a', 'type' => ['type' => 'jsonpath', 'version' => 'rfc9535']]);
 
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject('bad'), \RuntimeException::class, 'Criterion Object must be');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject([]), \RuntimeException::class, '"condition"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject(['condition' => 'a', 'context' => 123]), \RuntimeException::class, '"context" must be a string');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject(['condition' => 'a', 'type' => 'bad']), \RuntimeException::class, 'Criterion Object "type" string');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject(['condition' => 'a', 'type' => 'regex']), \RuntimeException::class, '"context" is required when type is regex');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject(['condition' => 'a', 'type' => ['type' => 'jsonpath', 'version' => 'rfc9535']]), \RuntimeException::class, '"context" is required when using an Expression Type Object');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject('bad'), \Cdd\Exceptions\CddException::class, 'Criterion Object must be');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject([]), \Cdd\Exceptions\CddException::class, '"condition"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject(['condition' => 'a', 'context' => 123]), \Cdd\Exceptions\CddException::class, '"context" must be a string');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject(['condition' => 'a', 'type' => 'bad']), \Cdd\Exceptions\CddException::class, 'Criterion Object "type" string');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject(['condition' => 'a', 'type' => 'regex']), \Cdd\Exceptions\CddException::class, '"context" is required when type is regex');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateCriterionObject(['condition' => 'a', 'type' => ['type' => 'jsonpath', 'version' => 'rfc9535']]), \Cdd\Exceptions\CddException::class, '"context" is required when using an Expression Type Object');
 
         // Reusable Object
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateReusableObject(['reference' => 'bad'], '$components.parameters.'), \RuntimeException::class, 'must start with');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateReusableObject(['reference' => '$components.parameters.p1', 'extra' => 1], '$components.parameters.'), \RuntimeException::class, 'cannot contain additional field');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\resolveReusableObject(['reference' => '$components.parameters.missing'], [], 'parameters'), \RuntimeException::class, 'Referenced component not found');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateReusableObject(['reference' => 'bad'], '$components.parameters.'), \Cdd\Exceptions\CddException::class, 'must start with');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateReusableObject(['reference' => '$components.parameters.p1', 'extra' => 1], '$components.parameters.'), \Cdd\Exceptions\CddException::class, 'cannot contain additional field');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\resolveReusableObject(['reference' => '$components.parameters.missing'], [], 'parameters'), \Cdd\Exceptions\CddException::class, 'Referenced component not found');
 
         // Parameter Object
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoParameterObject('bad'), \RuntimeException::class, 'Parameter Object must be');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoParameterObject([]), \RuntimeException::class, '"name"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoParameterObject(['name' => 'p']), \RuntimeException::class, '"value"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoParameterObject(['name' => 'p', 'value' => 1, 'in' => 'bad']), \RuntimeException::class, '"in" must be one of');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoParameterObject(['name' => 'p', 'value' => 1], true), \RuntimeException::class, '"in" is required');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoParameterObject('bad'), \Cdd\Exceptions\CddException::class, 'Parameter Object must be');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoParameterObject([]), \Cdd\Exceptions\CddException::class, '"name"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoParameterObject(['name' => 'p']), \Cdd\Exceptions\CddException::class, '"value"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoParameterObject(['name' => 'p', 'value' => 1, 'in' => 'bad']), \Cdd\Exceptions\CddException::class, '"in" must be one of');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoParameterObject(['name' => 'p', 'value' => 1], true), \Cdd\Exceptions\CddException::class, '"in" is required');
 
         // Payload Replacement & RequestBody
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validatePayloadReplacementObject('bad'), \RuntimeException::class, 'Payload Replacement Object must be');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validatePayloadReplacementObject([]), \RuntimeException::class, '"target"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validatePayloadReplacementObject(['target' => '/a']), \RuntimeException::class, '"value"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validatePayloadReplacementObject(['target' => '/a', 'value' => 1, 'targetSelectorType' => 'bad']), \RuntimeException::class, 'targetSelectorType');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoRequestBodyObject('bad'), \RuntimeException::class, 'Step "requestBody" must be');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoRequestBodyObject(['contentType' => 123]), \RuntimeException::class, '"contentType" must be a string');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoRequestBodyObject(['replacements' => 'bad']), \RuntimeException::class, '"replacements" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validatePayloadReplacementObject('bad'), \Cdd\Exceptions\CddException::class, 'Payload Replacement Object must be');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validatePayloadReplacementObject([]), \Cdd\Exceptions\CddException::class, '"target"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validatePayloadReplacementObject(['target' => '/a']), \Cdd\Exceptions\CddException::class, '"value"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validatePayloadReplacementObject(['target' => '/a', 'value' => 1, 'targetSelectorType' => 'bad']), \Cdd\Exceptions\CddException::class, 'targetSelectorType');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoRequestBodyObject('bad'), \Cdd\Exceptions\CddException::class, 'Step "requestBody" must be');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoRequestBodyObject(['contentType' => 123]), \Cdd\Exceptions\CddException::class, '"contentType" must be a string');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoRequestBodyObject(['replacements' => 'bad']), \Cdd\Exceptions\CddException::class, '"replacements" must be a list');
 
         // SuccessAction & FailureAction
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject('bad'), \RuntimeException::class, 'Success Action Object must be');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject([]), \RuntimeException::class, '"name"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'bad']), \RuntimeException::class, '"type" must be "end" or "goto"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'end', 'stepId' => 's1']), \RuntimeException::class, 'cannot specify workflowId or stepId');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'goto']), \RuntimeException::class, 'exactly one of workflowId or stepId');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'goto', 'workflowId' => 123]), \RuntimeException::class, '"workflowId" must be a string');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'goto', 'stepId' => 123]), \RuntimeException::class, '"stepId" must be a string');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'end', 'parameters' => 'bad']), \RuntimeException::class, '"parameters" must be a list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'end', 'criteria' => 'bad']), \RuntimeException::class, '"criteria" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject('bad'), \Cdd\Exceptions\CddException::class, 'Success Action Object must be');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject([]), \Cdd\Exceptions\CddException::class, '"name"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'bad']), \Cdd\Exceptions\CddException::class, '"type" must be "end" or "goto"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'end', 'stepId' => 's1']), \Cdd\Exceptions\CddException::class, 'cannot specify workflowId or stepId');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'goto']), \Cdd\Exceptions\CddException::class, 'exactly one of workflowId or stepId');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'goto', 'workflowId' => 123]), \Cdd\Exceptions\CddException::class, '"workflowId" must be a string');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'goto', 'stepId' => 123]), \Cdd\Exceptions\CddException::class, '"stepId" must be a string');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'end', 'parameters' => 'bad']), \Cdd\Exceptions\CddException::class, '"parameters" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'end', 'criteria' => 'bad']), \Cdd\Exceptions\CddException::class, '"criteria" must be a list');
         \Cdd\Arazzo\validateSuccessActionObject(['name' => 'a', 'type' => 'goto', 'workflowId' => 'w', 'parameters' => [['name' => 'p', 'value' => 1]], 'criteria' => [['condition' => '$statusCode == 200']]]);
 
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject('bad'), \RuntimeException::class, 'Failure Action Object must be');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject([]), \RuntimeException::class, '"name"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'bad']), \RuntimeException::class, '"type" must be');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'end', 'stepId' => 's']), \RuntimeException::class, 'cannot specify workflowId or stepId');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'goto']), \RuntimeException::class, 'exactly one of workflowId or stepId');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'workflowId' => 'w', 'stepId' => 's']), \RuntimeException::class, 'cannot specify both');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'workflowId' => 123]), \RuntimeException::class, '"workflowId" must be a string');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'stepId' => 123]), \RuntimeException::class, '"stepId" must be a string');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'retryAfter' => -1]), \RuntimeException::class, '"retryAfter"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'retryLimit' => -1]), \RuntimeException::class, '"retryLimit"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'parameters' => 'bad']), \RuntimeException::class, '"parameters" must be a list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'criteria' => 'bad']), \RuntimeException::class, '"criteria" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject('bad'), \Cdd\Exceptions\CddException::class, 'Failure Action Object must be');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject([]), \Cdd\Exceptions\CddException::class, '"name"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'bad']), \Cdd\Exceptions\CddException::class, '"type" must be');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'end', 'stepId' => 's']), \Cdd\Exceptions\CddException::class, 'cannot specify workflowId or stepId');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'goto']), \Cdd\Exceptions\CddException::class, 'exactly one of workflowId or stepId');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'workflowId' => 'w', 'stepId' => 's']), \Cdd\Exceptions\CddException::class, 'cannot specify both');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'workflowId' => 123]), \Cdd\Exceptions\CddException::class, '"workflowId" must be a string');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'stepId' => 123]), \Cdd\Exceptions\CddException::class, '"stepId" must be a string');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'retryAfter' => -1]), \Cdd\Exceptions\CddException::class, '"retryAfter"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'retryLimit' => -1]), \Cdd\Exceptions\CddException::class, '"retryLimit"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'parameters' => 'bad']), \Cdd\Exceptions\CddException::class, '"parameters" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'criteria' => 'bad']), \Cdd\Exceptions\CddException::class, '"criteria" must be a list');
         \Cdd\Arazzo\validateFailureActionObject(['name' => 'a', 'type' => 'retry', 'parameters' => [['name' => 'p', 'value' => 1]]]);
 
         // Outputs map
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateOutputsMap('bad'), \RuntimeException::class, '"outputs" must be a map');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateOutputsMap(['bad key!' => '$url']), \RuntimeException::class, 'Invalid output key');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateOutputsMap(['ok' => 123]), \RuntimeException::class, 'must be a runtime expression string');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateOutputsMap('bad'), \Cdd\Exceptions\CddException::class, '"outputs" must be a map');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateOutputsMap(['bad key!' => '$url']), \Cdd\Exceptions\CddException::class, 'Invalid output key');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateOutputsMap(['ok' => 123]), \Cdd\Exceptions\CddException::class, 'must be a runtime expression string');
 
         // Step validation errors
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject('bad'), \RuntimeException::class, 'Step must be an object');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject([]), \RuntimeException::class, '"stepId"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => '']), \RuntimeException::class, 'non-empty string');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1']), \RuntimeException::class, 'exactly one of');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'description' => 1]), \RuntimeException::class, '"description" must be a string');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'parameters' => 'bad']), \RuntimeException::class, '"parameters" must be a list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'workflowId' => 'wf', 'requestBody' => []]), \RuntimeException::class, 'cannot contain "requestBody"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'successCriteria' => 'bad']), \RuntimeException::class, '"successCriteria" must be a list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'onSuccess' => 'bad']), \RuntimeException::class, '"onSuccess" must be a list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'onFailure' => 'bad']), \RuntimeException::class, '"onFailure" must be a list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'timeout' => -1]), \RuntimeException::class, '"timeout"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'correlationId' => 123]), \RuntimeException::class, '"correlationId"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'action' => 'bad']), \RuntimeException::class, '"action"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'dependsOn' => 'bad']), \RuntimeException::class, '"dependsOn" must be a list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'dependsOn' => ['']]), \RuntimeException::class, 'Each item in step "dependsOn"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject('bad'), \Cdd\Exceptions\CddException::class, 'Step must be an object');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject([]), \Cdd\Exceptions\CddException::class, '"stepId"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => '']), \Cdd\Exceptions\CddException::class, 'non-empty string');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1']), \Cdd\Exceptions\CddException::class, 'exactly one of');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'description' => 1]), \Cdd\Exceptions\CddException::class, '"description" must be a string');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'parameters' => 'bad']), \Cdd\Exceptions\CddException::class, '"parameters" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'workflowId' => 'wf', 'requestBody' => []]), \Cdd\Exceptions\CddException::class, 'cannot contain "requestBody"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'successCriteria' => 'bad']), \Cdd\Exceptions\CddException::class, '"successCriteria" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'onSuccess' => 'bad']), \Cdd\Exceptions\CddException::class, '"onSuccess" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'onFailure' => 'bad']), \Cdd\Exceptions\CddException::class, '"onFailure" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'timeout' => -1]), \Cdd\Exceptions\CddException::class, '"timeout"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'correlationId' => 123]), \Cdd\Exceptions\CddException::class, '"correlationId"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'action' => 'bad']), \Cdd\Exceptions\CddException::class, '"action"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'dependsOn' => 'bad']), \Cdd\Exceptions\CddException::class, '"dependsOn" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateStepObject(['stepId' => 's1', 'operationId' => 'op', 'dependsOn' => ['']]), \Cdd\Exceptions\CddException::class, 'Each item in step "dependsOn"');
 
         // DAG cycle & unknown dependency
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateDagAcyclic(['a' => ['b'], 'b' => ['a']], 'step'), \RuntimeException::class, 'Cyclic step dependency');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateDagAcyclic(['a' => ['missing']], 'step'), \RuntimeException::class, 'Unknown step dependency');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateDagAcyclic(['a' => ['b'], 'b' => ['a']], 'step'), \Cdd\Exceptions\CddException::class, 'Cyclic step dependency');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateDagAcyclic(['a' => ['missing']], 'step'), \Cdd\Exceptions\CddException::class, 'Unknown step dependency');
 
         // Workflow validation errors
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject('bad'), \RuntimeException::class, 'Workflow must be an object');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject([]), \RuntimeException::class, '"workflowId"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'summary' => 1]), \RuntimeException::class, '"summary"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'description' => 1]), \RuntimeException::class, '"description"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'inputs' => 'bad']), \RuntimeException::class, '"inputs"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'dependsOn' => 'bad']), \RuntimeException::class, '"dependsOn" must be a list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'dependsOn' => ['']]), \RuntimeException::class, 'Each item in workflow "dependsOn"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'steps' => []]), \RuntimeException::class, 'non-empty list of "steps"');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'steps' => [['stepId' => 's', 'operationId' => 'o'], ['stepId' => 's', 'operationId' => 'o']]]), \RuntimeException::class, 'Duplicate stepId');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'steps' => [['stepId' => 's', 'operationId' => 'o']], 'successActions' => 'bad']), \RuntimeException::class, '"successActions" must be a list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'steps' => [['stepId' => 's', 'operationId' => 'o']], 'failureActions' => 'bad']), \RuntimeException::class, '"failureActions" must be a list');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'steps' => [['stepId' => 's', 'operationId' => 'o']], 'parameters' => 'bad']), \RuntimeException::class, '"parameters" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject('bad'), \Cdd\Exceptions\CddException::class, 'Workflow must be an object');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject([]), \Cdd\Exceptions\CddException::class, '"workflowId"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'summary' => 1]), \Cdd\Exceptions\CddException::class, '"summary"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'description' => 1]), \Cdd\Exceptions\CddException::class, '"description"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'inputs' => 'bad']), \Cdd\Exceptions\CddException::class, '"inputs"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'dependsOn' => 'bad']), \Cdd\Exceptions\CddException::class, '"dependsOn" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'dependsOn' => ['']]), \Cdd\Exceptions\CddException::class, 'Each item in workflow "dependsOn"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'steps' => []]), \Cdd\Exceptions\CddException::class, 'non-empty list of "steps"');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'steps' => [['stepId' => 's', 'operationId' => 'o'], ['stepId' => 's', 'operationId' => 'o']]]), \Cdd\Exceptions\CddException::class, 'Duplicate stepId');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'steps' => [['stepId' => 's', 'operationId' => 'o']], 'successActions' => 'bad']), \Cdd\Exceptions\CddException::class, '"successActions" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'steps' => [['stepId' => 's', 'operationId' => 'o']], 'failureActions' => 'bad']), \Cdd\Exceptions\CddException::class, '"failureActions" must be a list');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateWorkflowObject(['workflowId' => 'w', 'steps' => [['stepId' => 's', 'operationId' => 'o']], 'parameters' => 'bad']), \Cdd\Exceptions\CddException::class, '"parameters" must be a list');
 
         // Components validation errors
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject('bad'), \RuntimeException::class, '"components" must be an object');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['inputs' => 'bad']), \RuntimeException::class, 'Components "inputs" must be a map');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['inputs' => ['bad key!' => []]]), \RuntimeException::class, 'Invalid component input');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['parameters' => 'bad']), \RuntimeException::class, 'Components "parameters" must be a map');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['parameters' => ['bad key!' => []]]), \RuntimeException::class, 'Invalid component parameter key');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['successActions' => 'bad']), \RuntimeException::class, 'Components "successActions" must be a map');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['successActions' => ['bad key!' => []]]), \RuntimeException::class, 'Invalid component successAction key');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['failureActions' => 'bad']), \RuntimeException::class, 'Components "failureActions" must be a map');
-        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['failureActions' => ['bad key!' => []]]), \RuntimeException::class, 'Invalid component failureAction key');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject('bad'), \Cdd\Exceptions\CddException::class, '"components" must be an object');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['inputs' => 'bad']), \Cdd\Exceptions\CddException::class, 'Components "inputs" must be a map');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['inputs' => ['bad key!' => []]]), \Cdd\Exceptions\CddException::class, 'Invalid component input');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['parameters' => 'bad']), \Cdd\Exceptions\CddException::class, 'Components "parameters" must be a map');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['parameters' => ['bad key!' => []]]), \Cdd\Exceptions\CddException::class, 'Invalid component parameter key');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['successActions' => 'bad']), \Cdd\Exceptions\CddException::class, 'Components "successActions" must be a map');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['successActions' => ['bad key!' => []]]), \Cdd\Exceptions\CddException::class, 'Invalid component successAction key');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['failureActions' => 'bad']), \Cdd\Exceptions\CddException::class, 'Components "failureActions" must be a map');
+        $this->assertThrows(static fn () => \Cdd\Arazzo\validateArazzoComponentsObject(['failureActions' => ['bad key!' => []]]), \Cdd\Exceptions\CddException::class, 'Invalid component failureAction key');
     }
 
     /**
@@ -671,13 +671,13 @@ PHP;
         $this->assertEquals([], \Cdd\ArazzoClient\parse('<?php invalid syntax {{{'));
         $this->assertEquals([], \Cdd\ArazzoClient\parse(''));
         $this->assertEquals([], \Cdd\ArazzoCli\parse('<?php invalid syntax {{{')['workflows']);
-        $this->assertNull(\Cdd\ArazzoClient\astExprToPhpValue(new \PhpParser\Node\Expr\Variable('x')));
+        $this->assertNull(\Cdd\Classes\evaluate_ast_node(new \PhpParser\Node\Expr\Variable('x')));
         $arrWithNull = new \PhpParser\Node\Expr\Array_([null, new \PhpParser\Node\Expr\ArrayItem(new \PhpParser\Node\Scalar\Int_(1))]);
-        $this->assertEquals([1], \Cdd\ArazzoClient\astExprToPhpValue($arrWithNull));
-        $this->assertTrue(\Cdd\ArazzoClient\astExprToPhpValue(new \PhpParser\Node\Expr\ConstFetch(new \PhpParser\Node\Name('true'))));
-        $this->assertFalse(\Cdd\ArazzoClient\astExprToPhpValue(new \PhpParser\Node\Expr\ConstFetch(new \PhpParser\Node\Name('false'))));
-        $this->assertNull(\Cdd\ArazzoClient\astExprToPhpValue(new \PhpParser\Node\Expr\ConstFetch(new \PhpParser\Node\Name('null'))));
-        $this->assertEquals(1.5, \Cdd\ArazzoClient\astExprToPhpValue(new \PhpParser\Node\Scalar\Float_(1.5)));
+        $this->assertEquals([1], \Cdd\Classes\evaluate_ast_node($arrWithNull));
+        $this->assertTrue(\Cdd\Classes\evaluate_ast_node(new \PhpParser\Node\Expr\ConstFetch(new \PhpParser\Node\Name('true'))));
+        $this->assertFalse(\Cdd\Classes\evaluate_ast_node(new \PhpParser\Node\Expr\ConstFetch(new \PhpParser\Node\Name('false'))));
+        $this->assertNull(\Cdd\Classes\evaluate_ast_node(new \PhpParser\Node\Expr\ConstFetch(new \PhpParser\Node\Name('null'))));
+        $this->assertEquals(1.5, \Cdd\Classes\evaluate_ast_node(new \PhpParser\Node\Scalar\Float_(1.5)));
 
         // 2. Client CLI emit + parse roundtrip
         $cliCode = \Cdd\ArazzoCli\emit($spec);

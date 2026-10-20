@@ -26,7 +26,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":"invalid"}');
-        }, \RuntimeException::class, 'Field "paths" must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Field "paths" must be an object');
     }
 
     /**
@@ -38,7 +38,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"no-slash":{}}}');
-        }, \RuntimeException::class, 'Paths object keys must start with a forward slash (/)');
+        }, \Cdd\Exceptions\CddException::class, 'Paths object keys must start with a forward slash (/)');
     }
 
     /**
@@ -50,7 +50,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":"invalid"}}');
-        }, \RuntimeException::class, 'Path Item must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Path Item must be an object');
     }
 
     /**
@@ -62,7 +62,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":"invalid"}}}');
-        }, \RuntimeException::class, 'Operation must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Operation must be an object');
     }
 
     /**
@@ -74,7 +74,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"tags":[123]}}}}');
-        }, \RuntimeException::class, 'Operation "tags" items must be strings');
+        }, \Cdd\Exceptions\CddException::class, 'Operation "tags" items must be strings');
     }
 
     /**
@@ -86,7 +86,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"requestBody":"invalid"}}}}');
-        }, \RuntimeException::class, 'Request Body must be an object');
+        }, \Cdd\Exceptions\CddException::class, 'Request Body must be an object');
     }
 
     /**
@@ -98,7 +98,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"requestBody":{}}}}}');
-        }, \RuntimeException::class, 'Request Body must contain a "content" map');
+        }, \Cdd\Exceptions\CddException::class, 'Request Body must contain a "content" map');
     }
 
     /**
@@ -110,7 +110,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{}]}}}');
-        }, \RuntimeException::class, 'Parameter must contain a "name" string');
+        }, \Cdd\Exceptions\CddException::class, 'Parameter must contain a "name" string');
     }
 
     /**
@@ -122,7 +122,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id"}]}}}');
-        }, \RuntimeException::class, 'Parameter must contain an "in" string');
+        }, \Cdd\Exceptions\CddException::class, 'Parameter must contain an "in" string');
     }
 
     /**
@@ -134,7 +134,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"body"}]}}}');
-        }, \RuntimeException::class, 'Parameter "in" must be one of');
+        }, \Cdd\Exceptions\CddException::class, 'Parameter "in" must be one of');
     }
 
     /**
@@ -146,7 +146,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"path","required":false}]}}}');
-        }, \RuntimeException::class, 'Parameter with in: path MUST have required: true');
+        }, \Cdd\Exceptions\CddException::class, 'Parameter with in: path MUST have required: true');
     }
 
     /**
@@ -158,7 +158,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query","schema":{},"content":{}}]}}}');
-        }, \RuntimeException::class, 'Parameter cannot contain both "schema" and "content"');
+        }, \Cdd\Exceptions\CddException::class, 'Parameter cannot contain both "schema" and "content"');
     }
 
     /**
@@ -170,7 +170,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query"}]}}}');
-        }, \RuntimeException::class, 'Parameter must contain either "schema" or "content"');
+        }, \Cdd\Exceptions\CddException::class, 'Parameter must contain either "schema" or "content"');
     }
 
     /**
@@ -182,7 +182,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"query","schema":{},"example":1,"examples":{"a":{}}}]}}}');
-        }, \RuntimeException::class, 'Parameter cannot contain both "example" and "examples"');
+        }, \Cdd\Exceptions\CddException::class, 'Parameter cannot contain both "example" and "examples"');
     }
 
     /**
@@ -194,7 +194,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"header","schema":{},"allowEmptyValue":true}]}}}');
-        }, \RuntimeException::class, 'Parameter "allowEmptyValue" is only allowed for in: query');
+        }, \Cdd\Exceptions\CddException::class, 'Parameter "allowEmptyValue" is only allowed for in: query');
     }
 
     /**
@@ -206,7 +206,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"parameters":[{"name":"id","in":"querystring","schema":{},"style":"form"}]}}}');
-        }, \RuntimeException::class, 'schema, style, explode, allowReserved MUST NOT be used with in: querystring');
+        }, \Cdd\Exceptions\CddException::class, 'schema, style, explode, allowReserved MUST NOT be used with in: querystring');
     }
 
     /**
@@ -218,7 +218,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"headers":{"MyHeader":{"schema":{},"example":1,"examples":{"a":{}}}}}}');
-        }, \RuntimeException::class, 'Header cannot contain both "example" and "examples"');
+        }, \Cdd\Exceptions\CddException::class, 'Header cannot contain both "example" and "examples"');
     }
 
     /**
@@ -230,7 +230,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"mediaTypes":{"MyMediaType":{"schema":{},"encoding":{"a":{}},"prefixEncoding":[{}]}}}}');
-        }, \RuntimeException::class, 'Media Type "encoding" cannot be present with "prefixEncoding" or "itemEncoding"');
+        }, \Cdd\Exceptions\CddException::class, 'Media Type "encoding" cannot be present with "prefixEncoding" or "itemEncoding"');
     }
 
     /**
@@ -242,7 +242,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"parameters":[{"name":"a","in":"query","schema":{}},{"name":"b","in":"querystring","content":{}}]}}}}');
-        }, \RuntimeException::class, 'query and querystring parameters are mutually exclusive');
+        }, \Cdd\Exceptions\CddException::class, 'query and querystring parameters are mutually exclusive');
     }
 
     /**
@@ -254,7 +254,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"200":{"description":"ok"}},"parameters":[{"name":"a","in":"querystring","content":{}},{"name":"b","in":"querystring","content":{}}]}}}}');
-        }, \RuntimeException::class, 'querystring parameter MUST NOT appear more than once');
+        }, \Cdd\Exceptions\CddException::class, 'querystring parameter MUST NOT appear more than once');
     }
 
     /**
@@ -266,7 +266,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"paths":{"/a":{"get":{"responses":{"invalid":{"description":"ok"}}}}}}');
-        }, \RuntimeException::class, 'Responses keys must be HTTP status codes, ranges like 2XX, or "default"');
+        }, \Cdd\Exceptions\CddException::class, 'Responses keys must be HTTP status codes, ranges like 2XX, or "default"');
     }
 
     /**
@@ -289,7 +289,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"o":{"type":"oauth2","flows":{"implicit":{"scopes":{}}}}}}}');
-        }, \RuntimeException::class, "OAuth2 implicit flow requires an 'authorizationUrl' string");
+        }, \Cdd\Exceptions\CddException::class, "OAuth2 implicit flow requires an 'authorizationUrl' string");
     }
 
     /**
@@ -301,7 +301,7 @@ class ParseEmitDetailedTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Openapi\parse('{"openapi":"3.2.0","info":{"title":"A","version":"1"},"components":{"securitySchemes":{"o":{"type":"oauth2","flows":{"password":{"scopes":{}}}}}}}');
-        }, \RuntimeException::class, "OAuth2 password flow requires a 'tokenUrl' string");
+        }, \Cdd\Exceptions\CddException::class, "OAuth2 password flow requires a 'tokenUrl' string");
     }
 
     /**

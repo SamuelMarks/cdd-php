@@ -48,8 +48,7 @@ function generateSeedInputsFromSchema(array $schema): array
  */
 function emitWorkflowEngine(array $arazzo): string
 {
-    $sdkCode = \Cdd\ArazzoClient\emit($arazzo);
-    return str_replace('class ApiWorkflows', 'class WorkflowEngine', $sdkCode);
+    return \Cdd\ArazzoClient\emit($arazzo, 'WorkflowEngine');
 }
 
 /**

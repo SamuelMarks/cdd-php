@@ -43,7 +43,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Security\validateSecurityRequirementObject('string');
-        }, \RuntimeException::class, 'Security Requirement must be an object/map');
+        }, \Cdd\Exceptions\CddException::class, 'Security Requirement must be an object/map');
     }
 
     /**
@@ -55,7 +55,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Security\validateSecurityRequirementObject(['api_key' => 'not_array']);
-        }, \RuntimeException::class, 'Security Requirement scopes must be an array of strings');
+        }, \Cdd\Exceptions\CddException::class, 'Security Requirement scopes must be an array of strings');
     }
 
     /**
@@ -67,7 +67,7 @@ class ParseEmitTest extends TestCase
     {
         $this->assertThrows(function (): void {
             \Cdd\Security\validateSecurityRequirementObject(['oauth' => [123]]);
-        }, \RuntimeException::class, 'Security Requirement scopes must be an array of strings');
+        }, \Cdd\Exceptions\CddException::class, 'Security Requirement scopes must be an array of strings');
 
         $this->assertDoesNotThrow(function (): void {
             \Cdd\Security\validateSecurityRequirementObject(['oauth' => [], 'api_key' => []]);
@@ -107,7 +107,7 @@ class ParseEmitTest extends TestCase
         foreach ($tests as $test) {
             $this->assertThrows(function () use ($test): void {
                 \Cdd\Security\validateSecuritySchemeOrReferenceObject($test['input']);
-            }, \RuntimeException::class, $test['error']);
+            }, \Cdd\Exceptions\CddException::class, $test['error']);
         }
 
         $this->assertDoesNotThrow(function (): void {

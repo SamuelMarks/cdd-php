@@ -72,37 +72,37 @@ function parse(array|string|Node $encoding): array
  *
  * @param mixed $mediaTypeObj The Media Type or Reference Object to validate.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws \Cdd\Exceptions\CddException If validation fails.
  */
 function validateMediaTypeOrReferenceObject(mixed $mediaTypeObj): void
 {
     if (!is_array($mediaTypeObj)) {
-        throw new \RuntimeException('Media Type must be an object');
+        throw \Cdd\Exceptions\CddException::validation('Media Type must be an object');
     }
     if (isset($mediaTypeObj['$ref'])) {
         \Cdd\Openapi\validateReferenceObject($mediaTypeObj);
         return;
     }
     if (isset($mediaTypeObj['schema']) && !is_array($mediaTypeObj['schema']) && !is_bool($mediaTypeObj['schema'])) {
-        throw new \RuntimeException('Media Type "schema" must be an object');
+        throw \Cdd\Exceptions\CddException::validation('Media Type "schema" must be an object');
     }
     if (isset($mediaTypeObj['itemSchema']) && !is_array($mediaTypeObj['itemSchema']) && !is_bool($mediaTypeObj['itemSchema'])) {
-        throw new \RuntimeException('Media Type "itemSchema" must be an object');
+        throw \Cdd\Exceptions\CddException::validation('Media Type "itemSchema" must be an object');
     }
     if (isset($mediaTypeObj['examples']) && !is_array($mediaTypeObj['examples'])) {
-        throw new \RuntimeException('Media Type "examples" must be a map');
+        throw \Cdd\Exceptions\CddException::validation('Media Type "examples" must be a map');
     }
     if (isset($mediaTypeObj['example']) && isset($mediaTypeObj['examples'])) {
-        throw new \RuntimeException('Media Type cannot contain both "example" and "examples"');
+        throw \Cdd\Exceptions\CddException::validation('Media Type cannot contain both "example" and "examples"');
     }
     if (isset($mediaTypeObj['encoding']) && !is_array($mediaTypeObj['encoding'])) {
-        throw new \RuntimeException('Media Type "encoding" must be a map');
+        throw \Cdd\Exceptions\CddException::validation('Media Type "encoding" must be a map');
     }
     if (isset($mediaTypeObj['prefixEncoding']) && !is_array($mediaTypeObj['prefixEncoding'])) {
-        throw new \RuntimeException('Media Type "prefixEncoding" must be an array');
+        throw \Cdd\Exceptions\CddException::validation('Media Type "prefixEncoding" must be an array');
     }
     if (isset($mediaTypeObj['encoding']) && (isset($mediaTypeObj['prefixEncoding']) || isset($mediaTypeObj['itemEncoding']))) {
-        throw new \RuntimeException('Media Type "encoding" cannot be present with "prefixEncoding" or "itemEncoding"');
+        throw \Cdd\Exceptions\CddException::validation('Media Type "encoding" cannot be present with "prefixEncoding" or "itemEncoding"');
     }
     if (isset($mediaTypeObj['encoding'])) {
         foreach ($mediaTypeObj['encoding'] as $enc) {
@@ -124,41 +124,41 @@ function validateMediaTypeOrReferenceObject(mixed $mediaTypeObj): void
  *
  * @param mixed $encodingObj The Encoding Object to validate.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws \Cdd\Exceptions\CddException If validation fails.
  */
 function validateEncodingObject(mixed $encodingObj): void
 {
     if (!is_array($encodingObj)) {
-        throw new \RuntimeException('Encoding must be an object');
+        throw \Cdd\Exceptions\CddException::validation('Encoding must be an object');
     }
     if (isset($encodingObj['contentType']) && !is_string($encodingObj['contentType'])) {
-        throw new \RuntimeException('Encoding "contentType" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('Encoding "contentType" must be a string');
     }
     if (isset($encodingObj['headers'])) {
         if (!is_array($encodingObj['headers'])) {
-            throw new \RuntimeException('Encoding "headers" must be a map');
+            throw \Cdd\Exceptions\CddException::validation('Encoding "headers" must be a map');
         }
         foreach ($encodingObj['headers'] as $headerObj) {
             \Cdd\Responses\validateHeaderOrReferenceObject($headerObj);
         }
     }
     if (isset($encodingObj['style']) && !is_string($encodingObj['style'])) {
-        throw new \RuntimeException('Encoding "style" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('Encoding "style" must be a string');
     }
     if (isset($encodingObj['explode']) && !is_bool($encodingObj['explode'])) {
-        throw new \RuntimeException('Encoding "explode" must be a boolean');
+        throw \Cdd\Exceptions\CddException::validation('Encoding "explode" must be a boolean');
     }
     if (isset($encodingObj['allowReserved']) && !is_bool($encodingObj['allowReserved'])) {
-        throw new \RuntimeException('Encoding "allowReserved" must be a boolean');
+        throw \Cdd\Exceptions\CddException::validation('Encoding "allowReserved" must be a boolean');
     }
     if (isset($encodingObj['encoding']) && !is_array($encodingObj['encoding'])) {
-        throw new \RuntimeException('Encoding "encoding" must be a map');
+        throw \Cdd\Exceptions\CddException::validation('Encoding "encoding" must be a map');
     }
     if (isset($encodingObj['prefixEncoding']) && !is_array($encodingObj['prefixEncoding'])) {
-        throw new \RuntimeException('Encoding "prefixEncoding" must be an array');
+        throw \Cdd\Exceptions\CddException::validation('Encoding "prefixEncoding" must be an array');
     }
     if (isset($encodingObj['encoding']) && (isset($encodingObj['prefixEncoding']) || isset($encodingObj['itemEncoding']))) {
-        throw new \RuntimeException('Encoding "encoding" cannot be present with "prefixEncoding" or "itemEncoding"');
+        throw \Cdd\Exceptions\CddException::validation('Encoding "encoding" cannot be present with "prefixEncoding" or "itemEncoding"');
     }
     if (isset($encodingObj['encoding'])) {
         foreach ($encodingObj['encoding'] as $subEnc) {

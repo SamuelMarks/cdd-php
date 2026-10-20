@@ -22,12 +22,20 @@ function emit(string $className, array $schema, string $namespace = ''): string
 {
     $out = '';
     if ($namespace !== '') {
-        $out .= "<?php\n\ndeclare(strict_types=1);\n\nnamespace {$namespace};\n\nuse Illuminate\\Database\\Eloquent\\Model;\n\n";
+        $out .= "<?php
+
+declare(strict_types=1);
+
+namespace {$namespace};
+
+use Illuminate\Database\Eloquent\Model;
+
+";
     }
 
     $docTags = [];
     if (isset($schema['description'])) {
-        $docTags[] = $schema['description'];
+        $docTags[] = \Cdd\Docstrings\sanitize_docblock_text((string) $schema['description']);
     }
     if (isset($schema['xml']['nodeType'])) {
         $docTags[] = "@xml nodeType {$schema['xml']['nodeType']}";
@@ -43,6 +51,27 @@ function emit(string $className, array $schema, string $namespace = ''): string
             foreach ($schema['discriminator']['mapping'] as $key => $val) {
                 $docTags[] = "@discriminator mapping {$key} {$val}";
             }
+        }
+    }
+    if (isset($schema['required']) && is_array($schema['required']) && !empty($schema['required'])) {
+        $docTags[] = '@oas-required ' . implode(',', array_map('strval', $schema['required']));
+    }
+    if (isset($schema['properties']) && is_array($schema['properties'])) {
+        foreach ($schema['properties'] as $propName => $propSchema) {
+            if (!is_array($propSchema)) {
+                continue;
+            }
+            $phpType = 'string';
+            if (isset($propSchema['$ref']) && is_string($propSchema['$ref'])) {
+                $parts = explode('/', $propSchema['$ref']);
+                $phpType = (string) end($parts);
+            } elseif (isset($propSchema['type']) && is_string($propSchema['type'])) {
+                $phpType = openapi_type_to_php($propSchema['type'], 'string');
+            }
+            if (!empty($propSchema['nullable'])) {
+                $phpType .= '|null';
+            }
+            $docTags[] = "@property {$phpType} \${$propName}";
         }
     }
 

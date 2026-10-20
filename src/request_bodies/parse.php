@@ -73,27 +73,27 @@ function parse(
  *
  * @param mixed $requestBody The Request Body or Reference Object to validate.
  * @return void
- * @throws \RuntimeException If validation fails.
+ * @throws \Cdd\Exceptions\CddException If validation fails.
  */
 function validateRequestBodyOrReferenceObject(mixed $requestBody): void
 {
     if (!is_array($requestBody)) {
-        throw new \RuntimeException('Request Body must be an object');
+        throw \Cdd\Exceptions\CddException::validation('Request Body must be an object');
     }
     if (isset($requestBody['$ref'])) {
         \Cdd\Openapi\validateReferenceObject($requestBody);
         return;
     }
     if (isset($requestBody['description']) && !is_string($requestBody['description'])) {
-        throw new \RuntimeException('Request Body "description" must be a string');
+        throw \Cdd\Exceptions\CddException::validation('Request Body "description" must be a string');
     }
     if (!isset($requestBody['content']) || !is_array($requestBody['content'])) {
-        throw new \RuntimeException('Request Body must contain a "content" map');
+        throw \Cdd\Exceptions\CddException::validation('Request Body must contain a "content" map');
     }
     foreach ($requestBody['content'] as $mediaTypeObj) {
         \Cdd\Encoding\validateMediaTypeOrReferenceObject($mediaTypeObj);
     }
     if (isset($requestBody['required']) && !is_bool($requestBody['required'])) {
-        throw new \RuntimeException('Request Body "required" must be a boolean');
+        throw \Cdd\Exceptions\CddException::validation('Request Body "required" must be a boolean');
     }
 }
