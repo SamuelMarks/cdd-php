@@ -148,4 +148,119 @@ class ApiClient {
         $parsedLiteral = \Cdd\Client\parse($literalUrlClient);
         $this->assertEquals('ping', $parsedLiteral['/ping']['get']['operationId']);
     }
+
+    /**
+     * Tests E2E SDK integration with the Integrated Identity Provider (`$client->auth->register`, `login`, `refresh`, `logout`) and accessing a protected endpoint.
+     *
+     * @return void
+     */
+    public function testSdkIntegratedIdpEndToEndLifecycle(): void
+    {
+        $paths = [
+            '/protected/profile' => [
+                'get' => [
+                    'operationId' => 'getProtectedProfile',
+                    'security' => [['BearerAuth' => []]],
+                ],
+            ],
+        ];
+        $clientCode = \Cdd\Client\emit_class($paths, '', [
+            'BearerAuth' => ['type' => 'http', 'scheme' => 'bearer'],
+        ]);
+        $uniqueClass = 'IdpTestApiClient_' . uniqid();
+        $evalClientCode = str_replace(
+            ['<?php', 'namespace Api;', 'class ApiClient', 'private ApiClient $client;', '__construct(ApiClient $client'],
+            ['', '', "class {$uniqueClass}", "private {$uniqueClass} \$client;", "__construct({$uniqueClass} \$client"],
+            $clientCode
+        );
+        eval($evalClientCode);
+
+        if (!class_exists(\Api\IdentityProvider::class)) {
+            $serverCliCode = \Cdd\ServerCli\emit();
+            eval(str_replace(['<?php', 'declare(strict_types=1);'], '', $serverCliCode));
+        }
+        if (!class_exists(\Api\Models\MockUserExec::class)) {
+            $schemas = ['MockUserExec' => ['type' => 'object', 'properties' => ['id' => ['type' => 'integer'], 'name' => ['type' => 'string']]]];
+            eval(str_replace(['<?php', 'declare(strict_types=1);'], '', \Cdd\Schemas\emit('MockUserExec', $schemas['MockUserExec'], 'Api\Models')));
+            eval(str_replace(['<?php', 'declare(strict_types=1);'], '', \Cdd\Database\emit($schemas, 'Api\Database')));
+            foreach (\Cdd\Daos\emit_modular($schemas) as $fn => $dCode) {
+                if ($fn === 'MockServerError.php' && class_exists(\Api\Exceptions\MockServerError::class)) {
+                    continue;
+                }
+                if ($fn === 'DaoFactory.php' && class_exists(\Api\Daos\DaoFactory::class)) {
+                    continue;
+                }
+                eval(str_replace(['<?php', 'declare(strict_types=1);'], '', $dCode));
+            }
+        }
+        \Api\Database\DatabaseConnection::connect(true);
+        \Api\Database\DatabaseConnection::migrate();
+
+        $idp = new \Api\IdentityProvider('MockUserExec', true);
+        /** @var object $client */
+        $client = new $uniqueClass('http://127.0.0.1:8080');
+        $client->setTransport(static function (string $method, string $url, array $headers, array $body) use ($idp): array {
+            $path = (string) parse_url($url, PHP_URL_PATH);
+            $headerMap = [];
+            foreach ($headers as $h) {
+                if (str_contains((string) $h, ':')) {
+                    [$hk, $hv] = explode(':', (string) $h, 2);
+                    $headerMap[trim($hk)] = trim($hv);
+                }
+            }
+            if ($path === '/auth/register') {
+                return $idp->register($body);
+            }
+            if ($path === '/auth/login') {
+                return $idp->login($body);
+            }
+            if ($path === '/auth/refresh') {
+                return $idp->refresh($body);
+            }
+            if ($path === '/auth/logout') {
+                return $idp->logout($headerMap['Authorization'] ?? '');
+            }
+            $authCheck = \Api\AuthMiddleware::authenticate(
+                $headerMap,
+                [],
+                [['BearerAuth' => []]],
+                ['BearerAuth' => ['type' => 'http', 'scheme' => 'bearer']],
+                true,
+                true,
+                $idp,
+                'MockUserExec'
+            );
+            if (!$authCheck['authenticated']) {
+                return ['status' => $authCheck['status'], 'data' => ['error' => $authCheck['error'] ?? 'Unauthorized']];
+            }
+            return ['status' => 200, 'data' => ['user' => $authCheck['user']->name ?? 'authenticated']];
+        });
+
+        // 1. Unauthenticated request returns 401
+        $unauthResp = $client->getProtectedProfile();
+        $this->assertEquals(401, $unauthResp['status']);
+
+        // 2. Register user via Auth Server
+        $regResp = $client->auth->register('carol', 'hunter2');
+        $this->assertEquals(201, $regResp['status']);
+        $this->assertNotEmpty($client->getSessionToken());
+
+        // 3. Exchange credentials via login() and verify token is automatically attached
+        $loginResp = $client->auth->login('carol', 'hunter2');
+        $this->assertEquals(200, $loginResp['status']);
+        $profileResp = $client->getProtectedProfile();
+        $this->assertEquals(200, $profileResp['status']);
+        $this->assertEquals('carol', $profileResp['data']['user']);
+
+        // 4. Refresh token and verify new token works
+        $refreshResp = $client->auth->refresh();
+        $this->assertEquals(200, $refreshResp['status']);
+        $this->assertEquals(200, $client->getProtectedProfile()['status']);
+
+        // 5. Logout revokes session token and subsequent protected request returns 401
+        $logoutResp = $client->auth->logout();
+        $this->assertEquals(200, $logoutResp['status']);
+        $this->assertNull($client->getSessionToken());
+        $this->assertEquals(401, $client->getProtectedProfile()['status']);
+    }
 }

@@ -53,21 +53,52 @@ function parse(string $code): array
             }
 
             $parameters = [];
-            /** @var Assign[] $assigns */
-            $assigns = $nodeFinder->findInstanceOf($ifNode->stmts, Assign::class);
-            foreach ($assigns as $assign) {
-                if ($assign->var instanceof ArrayDimFetch
-                    && $assign->var->var instanceof Variable
-                    && $assign->var->var->name === 'params'
-                    && $assign->var->dim instanceof String_
-                ) {
-                    $paramName = $assign->var->dim->value;
-                    $parameters[] = [
-                        'name' => $paramName,
-                        'in' => 'query',
-                        'required' => false,
-                        'schema' => ['type' => 'string'],
-                    ];
+            $responses = [];
+            foreach ($ifNode->stmts as $stmtNode) {
+                $stmtDoc = $stmtNode->getDocComment();
+                if ($stmtDoc !== null) {
+                    $parsedStmtDoc = \Cdd\Docstrings\parse($stmtDoc->getText());
+                    if (isset($parsedStmtDoc['tags']['oas-header']) && is_array($parsedStmtDoc['tags']['oas-header'])) {
+                        foreach ($parsedStmtDoc['tags']['oas-header'] as $headerTag) {
+                            $parts = explode(' ', (string) $headerTag, 3);
+                            if (count($parts) === 3) {
+                                $codeKey = $parts[0];
+                                $headerName = $parts[1];
+                                $headerObj = json_decode($parts[2], true);
+                                if (!isset($responses[$codeKey]['description'])) {
+                                    $responses[$codeKey]['description'] = 'Success';
+                                }
+                                $responses[$codeKey]['headers'][$headerName] = $headerObj;
+                            }
+                        }
+                    }
+                }
+                if ($stmtNode instanceof \PhpParser\Node\Stmt\Expression && $stmtNode->expr instanceof Assign) {
+                    $assign = $stmtNode->expr;
+                    if ($assign->var instanceof ArrayDimFetch
+                        && $assign->var->var instanceof Variable
+                        && $assign->var->var->name === 'params'
+                        && $assign->var->dim instanceof String_
+                    ) {
+                        $paramName = $assign->var->dim->value;
+                        $decodedOasParam = null;
+                        if ($stmtDoc !== null) {
+                            $parsedParamDoc = \Cdd\Docstrings\parse($stmtDoc->getText());
+                            if (isset($parsedParamDoc['tags']['oas-param'][0])) {
+                                $decodedOasParam = json_decode((string) $parsedParamDoc['tags']['oas-param'][0], true);
+                            }
+                        }
+                        if (is_array($decodedOasParam)) {
+                            $parameters[] = $decodedOasParam;
+                        } else {
+                            $parameters[] = [
+                                'name' => $paramName,
+                                'in' => 'query',
+                                'required' => false,
+                                'schema' => ['type' => 'string'],
+                            ];
+                        }
+                    }
                 }
             }
 
@@ -77,6 +108,9 @@ function parse(string $code): array
             ];
             if (!empty($parameters)) {
                 $opObj['parameters'] = $parameters;
+            }
+            if (!empty($responses)) {
+                $opObj['responses'] = $responses;
             }
 
             $paths['/cli/' . $opId] = [

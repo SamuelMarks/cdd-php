@@ -27,13 +27,58 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     $exportedPath = var_export($path, true);
     $exportedMethod = var_export($method, true);
 
-    $out = "    public function $operationId(array \$params = [], array \$body = []) {
-";
-    $out .= "        \$headers = \$this->defaultHeaders;
-";
+    $docLines = [];
+    if (isset($operation['parameters']) && is_array($operation['parameters'])) {
+        foreach ($operation['parameters'] as $paramItem) {
+            if (is_array($paramItem) && (isset($paramItem['collectionFormat']) || isset($paramItem['x-collectionFormat']) || isset($paramItem['style']) || isset($paramItem['schema']['items']['collectionFormat']))) {
+                $docLines[] = '     * @oas-param ' . json_encode($paramItem);
+            }
+        }
+    }
+    if (isset($operation['responses']) && is_array($operation['responses'])) {
+        foreach ($operation['responses'] as $respCode => $respItem) {
+            if (is_array($respItem) && isset($respItem['headers']) && is_array($respItem['headers'])) {
+                foreach ($respItem['headers'] as $hName => $hObj) {
+                    $docLines[] = "     * @oas-header {$respCode} {$hName} " . json_encode($hObj);
+                }
+            }
+        }
+    }
+
+    $out = '';
+    if (!empty($docLines)) {
+        $out .= "    /**\n" . implode("\n", $docLines) . "\n     */\n";
+    }
+    $out .= "    public function $operationId(array \$params = [], array \$body = []) {\n";
+    $out .= "        \$headers = \$this->defaultHeaders;\n";
+    $out .= "        if (!empty(\$this->sessionToken)) {\n";
+    $out .= "            \$headers[] = 'Authorization: Bearer ' . \$this->sessionToken;\n";
+    $out .= "        }\n";
 
     if (isset($operation['security'])) {
         $out .= \Cdd\Security\emit($operation['security']);
+    }
+
+    if (isset($operation['parameters']) && is_array($operation['parameters'])) {
+        $sepMap = ['csv' => ',', 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|'];
+        foreach ($operation['parameters'] as $paramItem) {
+            $pName = (string) ($paramItem['name'] ?? 'param');
+            $exportedPName = var_export($pName, true);
+            $pCf = (string) ($paramItem['x-collectionFormat'] ?? $paramItem['collectionFormat'] ?? '');
+            $itemsCf = (string) ($paramItem['schema']['items']['collectionFormat'] ?? $paramItem['items']['collectionFormat'] ?? '');
+            if (isset($sepMap[$itemsCf])) {
+                $exportedItemSep = var_export($sepMap[$itemsCf], true);
+                $out .= "        if (isset(\$params[{$exportedPName}]) && is_array(\$params[{$exportedPName}])) {\n";
+                $out .= "            \$params[{$exportedPName}] = array_map(fn(\$item) => is_array(\$item) ? implode({$exportedItemSep}, \$item) : \$item, \$params[{$exportedPName}]);\n";
+                $out .= "        }\n";
+            }
+            if (isset($sepMap[$pCf])) {
+                $exportedSep = var_export($sepMap[$pCf], true);
+                $out .= "        if (isset(\$params[{$exportedPName}]) && is_array(\$params[{$exportedPName}])) {\n";
+                $out .= "            \$params[{$exportedPName}] = implode({$exportedSep}, \$params[{$exportedPName}]);\n";
+                $out .= "        }\n";
+            }
+        }
     }
 
     $out .= "        \$ch = curl_init();
@@ -130,6 +175,12 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
 ";
     $out .= "        }
 ";
+    $out .= "        if (is_callable(\$this->customTransport)) {
+";
+    $out .= "            return (\$this->customTransport)(strtoupper({$exportedMethod}), \$url, \$headers, \$body);
+";
+    $out .= "        }
+";
 
     $out .= "        \$response = curl_exec(\$ch);
 ";
@@ -178,10 +229,15 @@ class ApiClient {
     private \$defaultHeaders = [];
     private \$apiKeys = [];
     private \$bearerTokens = [];
+    private ?string \$sessionToken = null;
+    private ?string \$refreshToken = null;
+    private \$customTransport = null;
+    public object \$auth;
 
     public function __construct(string \$baseUrl, array \$defaultHeaders = []) {
         \$this->baseUrl = \$baseUrl;
         \$this->defaultHeaders = \$defaultHeaders;
+        \$this->auth = \$this->createAuthHelper();
     }
 
     public function setApiKey(string \$name, string \$key) {
@@ -190,6 +246,89 @@ class ApiClient {
 
     public function setBearerToken(string \$name, string \$token) {
         \$this->bearerTokens[\$name] = \$token;
+    }
+
+    public function setSessionToken(?string \$token, ?string \$refreshToken = null): void {
+        \$this->sessionToken = \$token;
+        if (\$refreshToken !== null) {
+            \$this->refreshToken = \$refreshToken;
+        }
+    }
+
+    public function getSessionToken(): ?string {
+        return \$this->sessionToken;
+    }
+
+    public function getRefreshToken(): ?string {
+        return \$this->refreshToken;
+    }
+
+    public function setTransport(?callable \$transport): void {
+        \$this->customTransport = \$transport;
+    }
+
+    protected function callAuthEndpoint(string \$endpoint, array \$payload = []): array {
+        \$headers = \$this->defaultHeaders;
+        \$headers[] = 'Content-Type: application/json';
+        if (!empty(\$this->sessionToken)) {
+            \$headers[] = 'Authorization: Bearer ' . \$this->sessionToken;
+        }
+        \$url = rtrim(\$this->baseUrl, '/') . \$endpoint;
+        if (is_callable(\$this->customTransport)) {
+            return (\$this->customTransport)('POST', \$url, \$headers, \$payload);
+        }
+        \$ch = curl_init(\$url);
+        curl_setopt(\$ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt(\$ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt(\$ch, CURLOPT_POSTFIELDS, (string) json_encode(\$payload));
+        curl_setopt(\$ch, CURLOPT_HTTPHEADER, \$headers);
+        \$raw = curl_exec(\$ch);
+        \$code = (int) curl_getinfo(\$ch, CURLINFO_HTTP_CODE);
+        \$data = is_string(\$raw) ? json_decode(\$raw, true) : null;
+        return ['status' => \$code, 'data' => is_array(\$data) ? \$data : []];
+    }
+
+    protected function createAuthHelper(): object {
+        \$self = \$this;
+        \$callEndpoint = function(string \$endpoint, array \$payload = []) use (\$self): array {
+            return \$self->callAuthEndpoint(\$endpoint, \$payload);
+        };
+        return new class(\$self, \$callEndpoint) {
+            private ApiClient \$client;
+            private \$caller;
+            public function __construct(ApiClient \$client, callable \$caller) {
+                \$this->client = \$client;
+                \$this->caller = \$caller;
+            }
+            public function register(string \$username, string \$password, array \$extra = []): array {
+                \$payload = array_merge(\$extra, ['username' => \$username, 'password' => \$password]);
+                \$res = (\$this->caller)('/auth/register', \$payload);
+                if (isset(\$res['data']['access_token'])) {
+                    \$this->client->setSessionToken((string) \$res['data']['access_token'], isset(\$res['data']['refresh_token']) ? (string) \$res['data']['refresh_token'] : null);
+                }
+                return \$res;
+            }
+            public function login(string \$username, string \$password): array {
+                \$res = (\$this->caller)('/auth/login', ['username' => \$username, 'password' => \$password]);
+                if (isset(\$res['data']['access_token'])) {
+                    \$this->client->setSessionToken((string) \$res['data']['access_token'], isset(\$res['data']['refresh_token']) ? (string) \$res['data']['refresh_token'] : null);
+                }
+                return \$res;
+            }
+            public function refresh(): array {
+                \$rt = \$this->client->getRefreshToken() ?? '';
+                \$res = (\$this->caller)('/auth/refresh', ['refresh_token' => \$rt]);
+                if (isset(\$res['data']['access_token'])) {
+                    \$this->client->setSessionToken((string) \$res['data']['access_token'], isset(\$res['data']['refresh_token']) ? (string) \$res['data']['refresh_token'] : null);
+                }
+                return \$res;
+            }
+            public function logout(): array {
+                \$res = (\$this->caller)('/auth/logout', []);
+                \$this->client->setSessionToken(null);
+                return \$res;
+            }
+        };
     }
 
 ";

@@ -118,6 +118,21 @@ function parse(string $code): array
                 }
             }
 
+            if (isset($parsedDoc['tags']['oas-header'])) {
+                foreach ($parsedDoc['tags']['oas-header'] as $headerTag) {
+                    $parts = explode(' ', (string) $headerTag, 3);
+                    if (count($parts) === 3) {
+                        $codeKey = $parts[0];
+                        $headerName = $parts[1];
+                        $headerObj = json_decode($parts[2], true);
+                        if (!isset($op['responses'][$codeKey]['headers'])) {
+                            $op['responses'][$codeKey]['headers'] = [];
+                        }
+                        $op['responses'][$codeKey]['headers'][$headerName] = $headerObj;
+                    }
+                }
+            }
+
             if (isset($parsedDoc['tags']['param']) && is_array($parsedDoc['tags']['param'])) {
                 foreach ($parsedDoc['tags']['param'] as $pTag) {
                     $rest = trim((string) ($pTag['name'] ?? ''));
@@ -127,6 +142,8 @@ function parse(string $code): array
                         $descText = isset($pm[3]) ? trim($pm[3]) : null;
                         $inLoc = 'query';
                         $wireName = $vName;
+                        $collectionFormat = null;
+                        $itemsCollectionFormat = null;
                         if ($metaStr !== '') {
                             foreach (explode(';', $metaStr) as $kv) {
                                 $kvParts = explode('=', $kv, 2);
@@ -135,6 +152,10 @@ function parse(string $code): array
                                         $inLoc = $kvParts[1];
                                     } elseif ($kvParts[0] === 'name') {
                                         $wireName = $kvParts[1];
+                                    } elseif ($kvParts[0] === 'collectionFormat') {
+                                        $collectionFormat = $kvParts[1];
+                                    } elseif ($kvParts[0] === 'itemsCollectionFormat') {
+                                        $itemsCollectionFormat = $kvParts[1];
                                     }
                                 }
                             }
@@ -143,6 +164,8 @@ function parse(string $code): array
                             'in' => $inLoc,
                             'name' => $wireName,
                             'description' => ($descText !== null && $descText !== '') ? $descText : null,
+                            'collectionFormat' => $collectionFormat,
+                            'itemsCollectionFormat' => $itemsCollectionFormat,
                         ];
                     }
                 }
@@ -184,7 +207,24 @@ function parse(string $code): array
                 $inLoc = $paramMetaMap[$paramName]['in'] ?? 'query';
                 $wireName = $paramMetaMap[$paramName]['name'] ?? $paramName;
                 $pDesc = $paramMetaMap[$paramName]['description'] ?? null;
-                $op['parameters'][] = \Cdd\Parameters\parse($wireName, $typeName, $inLoc, $required, $pDesc);
+                $parsedParam = \Cdd\Parameters\parse($wireName, $typeName, $inLoc, $required, $pDesc);
+                $cf = $paramMetaMap[$paramName]['collectionFormat'] ?? null;
+                $itemsCf = $paramMetaMap[$paramName]['itemsCollectionFormat'] ?? null;
+                if (is_string($cf) && $cf !== '') {
+                    $parsedParam['collectionFormat'] = $cf;
+                    $parsedParam['type'] = $parsedParam['schema']['type'] ?? 'array';
+                    $parsedParam = \Cdd\Openapi\upgrade_swagger2_inline_schema($parsedParam, false);
+                }
+                if (is_string($itemsCf) && $itemsCf !== '') {
+                    $parsedParam['schema']['items'] = [
+                        'type' => 'array',
+                        'collectionFormat' => $itemsCf,
+                        'items' => ['type' => 'string'],
+                    ];
+                } elseif (($parsedParam['schema']['type'] ?? '') === 'array' && !isset($parsedParam['schema']['items'])) {
+                    $parsedParam['schema']['items'] = ['type' => 'string'];
+                }
+                $op['parameters'][] = $parsedParam;
             }
         }
 

@@ -311,4 +311,210 @@ class Swagger2ParseTest extends TestCase
         $this->assertEquals('string', $parsed['paths']['/test']['get']['responses']['201']['headers']['X-NoFormat']['schema']['type']);
         $this->assertTrue(!isset($parsed['paths']['/test']['get']['responses']['201']['headers']['X-NoFormat']['schema']['format']));
     }
+
+    /**
+     * Tests Swagger 2.0 `collectionFormat` on Parameter Object, Items Object, and Header Object.
+     *
+     * @return void
+     */
+    public function testParseSwagger2CollectionFormats(): void
+    {
+        $json = '{
+            "swagger": "2.0",
+            "info": {"title": "CollectionFormat Test", "version": "1.0.0"},
+            "produces": [],
+            "parameters": {
+                "SharedTags": {
+                    "name": "sharedTags",
+                    "in": "query",
+                    "type": "array",
+                    "collectionFormat": "csv",
+                    "items": {"type": "string"}
+                }
+            },
+            "responses": {
+                "SharedResp": {
+                    "description": "Shared response",
+                    "schema": {"type": "string"},
+                    "headers": {
+                        "X-Shared-Header": {
+                            "type": "array",
+                            "collectionFormat": "pipes",
+                            "items": {
+                                "type": "array",
+                                "collectionFormat": "csv",
+                                "items": {"type": "string"}
+                            }
+                        }
+                    }
+                }
+            },
+            "paths": {
+                "/items": {
+                    "parameters": [
+                        {
+                            "name": "pathLevelTags",
+                            "in": "header",
+                            "type": "array",
+                            "collectionFormat": "ssv",
+                            "items": {"type": "string"}
+                        }
+                    ],
+                    "get": {
+                        "operationId": "filterItems",
+                        "parameters": [
+                            {
+                                "name": "csvParam",
+                                "in": "query",
+                                "type": "array",
+                                "collectionFormat": "csv",
+                                "items": {
+                                    "type": "array",
+                                    "collectionFormat": "pipes",
+                                    "items": {"type": "string"}
+                                }
+                            },
+                            {
+                                "name": "ssvParam",
+                                "in": "query",
+                                "type": "array",
+                                "collectionFormat": "ssv",
+                                "items": {"type": "string"}
+                            },
+                            {
+                                "name": "tsvParam",
+                                "in": "query",
+                                "type": "array",
+                                "collectionFormat": "tsv",
+                                "items": {"type": "string"}
+                            },
+                            {
+                                "name": "pipesParam",
+                                "in": "header",
+                                "type": "array",
+                                "collectionFormat": "pipes",
+                                "items": {"type": "string"}
+                            },
+                            {
+                                "name": "multiParam",
+                                "in": "query",
+                                "type": "array",
+                                "collectionFormat": "multi",
+                                "items": {"type": "string"}
+                            },
+                            {
+                                "name": "formTags",
+                                "in": "formData",
+                                "type": "array",
+                                "collectionFormat": "csv",
+                                "items": {
+                                    "type": "array",
+                                    "collectionFormat": "ssv",
+                                    "items": {"type": "string"}
+                                }
+                            }
+                        ],
+                        "responses": {
+                            "200": {
+                                "description": "OK",
+                                "headers": {
+                                    "X-Rate-Tags": {
+                                        "type": "array",
+                                        "collectionFormat": "tsv",
+                                        "items": {
+                                            "type": "array",
+                                            "collectionFormat": "csv",
+                                            "items": {"type": "string"}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }';
+
+        $parsed = \Cdd\Openapi\parse($json);
+        $this->assertEquals('form', $parsed['components']['parameters']['SharedTags']['style']);
+        $this->assertEquals(false, $parsed['components']['parameters']['SharedTags']['explode']);
+        $this->assertEquals('csv', $parsed['components']['parameters']['SharedTags']['x-collectionFormat']);
+        $this->assertEquals('simple', $parsed['components']['responses']['SharedResp']['headers']['X-Shared-Header']['style']);
+        $this->assertEquals('pipes', $parsed['components']['responses']['SharedResp']['headers']['X-Shared-Header']['x-collectionFormat']);
+        $this->assertEquals('csv', $parsed['components']['responses']['SharedResp']['headers']['X-Shared-Header']['schema']['items']['collectionFormat']);
+
+        $opParams = $parsed['paths']['/items']['get']['parameters'];
+        $this->assertEquals('form', $opParams[0]['style']);
+        $this->assertEquals('pipes', $opParams[0]['schema']['items']['collectionFormat']);
+        $this->assertEquals('spaceDelimited', $opParams[1]['style']);
+        $this->assertEquals('pipeDelimited', $opParams[2]['style']);
+        $this->assertEquals('simple', $opParams[3]['style']);
+        $this->assertEquals('form', $opParams[4]['style']);
+        $this->assertEquals(true, $opParams[4]['explode']);
+
+        $formProps = $parsed['paths']['/items']['get']['requestBody']['content']['application/x-www-form-urlencoded']['schema']['properties']['formTags'];
+        $this->assertEquals('csv', $formProps['x-collectionFormat']);
+        $this->assertEquals('ssv', $formProps['items']['collectionFormat']);
+
+        $respHeader = $parsed['paths']['/items']['get']['responses']['200']['headers']['X-Rate-Tags'];
+        $this->assertEquals('simple', $respHeader['style']);
+        $this->assertEquals('tsv', $respHeader['x-collectionFormat']);
+        $this->assertEquals('csv', $respHeader['schema']['items']['collectionFormat']);
+
+        $jsonExamplesAndSchemes = '{
+            "swagger": "2.0",
+            "info": {"title": "Examples and Schemes", "version": "1.0.0"},
+            "host": "api.example.com",
+            "basePath": "/v2",
+            "schemes": ["https", "http"],
+            "x-root-ext": "root-val",
+            "responses": {
+                "SharedEx": {
+                    "description": "Shared example response",
+                    "schema": {"type": "object"},
+                    "examples": {
+                        "application/json": {"ok": true}
+                    }
+                }
+            },
+            "paths": {
+                "/submit": {
+                    "post": {
+                        "operationId": "submitForm",
+                        "schemes": ["https"],
+                        "parameters": [
+                            {
+                                "name": "username",
+                                "in": "formData",
+                                "type": "string",
+                                "required": true,
+                                "description": "User handle",
+                                "allowEmptyValue": false,
+                                "x-param-ext": "custom-form"
+                            }
+                        ],
+                        "responses": {
+                            "200": {
+                                "description": "Submitted",
+                                "schema": {"type": "object"},
+                                "examples": {
+                                    "application/json": {"status": "submitted"}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }';
+        $parsedEx = \Cdd\Openapi\parse($jsonExamplesAndSchemes);
+        $this->assertEquals('root-val', $parsedEx['x-root-ext']);
+        $this->assertEquals(['ok' => true], $parsedEx['components']['responses']['SharedEx']['content']['application/json']['example']);
+        $this->assertEquals('https://api.example.com/v2', $parsedEx['paths']['/submit']['post']['servers'][0]['url']);
+        $formSchema = $parsedEx['paths']['/submit']['post']['requestBody']['content']['application/x-www-form-urlencoded']['schema'];
+        $this->assertEquals(['username'], $formSchema['required']);
+        $this->assertEquals('User handle', $formSchema['properties']['username']['description']);
+        $this->assertEquals(false, $formSchema['properties']['username']['allowEmptyValue']);
+        $this->assertEquals('custom-form', $formSchema['properties']['username']['x-param-ext']);
+        $this->assertEquals(['status' => 'submitted'], $parsedEx['paths']['/submit']['post']['responses']['200']['content']['application/json']['example']);
+    }
 }

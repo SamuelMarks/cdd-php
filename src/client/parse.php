@@ -129,6 +129,35 @@ function parse(string $clientCode): array
                     ];
                 }
             }
+            $docComment = $methodNode->getDocComment();
+            if ($docComment !== null) {
+                $parsedDoc = \Cdd\Docstrings\parse($docComment->getText());
+                if (isset($parsedDoc['tags']['oas-param']) && is_array($parsedDoc['tags']['oas-param'])) {
+                    if (!isset($opData['parameters'])) {
+                        $opData['parameters'] = [];
+                    }
+                    foreach ($parsedDoc['tags']['oas-param'] as $rawParamJson) {
+                        $decodedParam = json_decode((string) $rawParamJson, true);
+                        if (is_array($decodedParam)) {
+                            $opData['parameters'][] = $decodedParam;
+                        }
+                    }
+                }
+                if (isset($parsedDoc['tags']['oas-header']) && is_array($parsedDoc['tags']['oas-header'])) {
+                    foreach ($parsedDoc['tags']['oas-header'] as $headerTag) {
+                        $parts = explode(' ', (string) $headerTag, 3);
+                        if (count($parts) === 3) {
+                            $codeKey = $parts[0];
+                            $headerName = $parts[1];
+                            $headerObj = json_decode($parts[2], true);
+                            if (!isset($opData['responses'][$codeKey]['description'])) {
+                                $opData['responses'][$codeKey]['description'] = 'Success';
+                            }
+                            $opData['responses'][$codeKey]['headers'][$headerName] = $headerObj;
+                        }
+                    }
+                }
+            }
             if (!isset($operations[$path])) {
                 $operations[$path] = [];
             }

@@ -42,6 +42,28 @@ The server entrypoint (`php src/ServerRunner.php`) supports the following orthog
 - **Command:** `php src/ServerRunner.php --ephemeral --seed`
 - **Behavior:** Boots an in-memory database and populates it with a rich, topologically sorted graph of mock data using Faker, strictly adhering to foreign key relations. Ideal for UI development and E2E client testing without manual data entry.
 
+## Advanced Mock Capabilities
+
+### Global CORS Middleware
+- Permissive CORS headers (`Access-Control-Allow-Origin: *`, standard methods and headers) are enabled by default via `CorsMiddleware`, supporting preflight `OPTIONS` requests (`204 No Content`) and cross-origin requests out of the box.
+
+### Strict Request Validation (`--strict-validation`)
+- **Command:** `php src/ServerRunner.php --strict-validation`
+- **Behavior:** Enables `ValidationMiddleware` to validate incoming request bodies against the generated OpenAPI/MCP schema constraints, returning detailed `400 Bad Request` errors (e.g., `\"Field 'email' must match format 'email'\"`, `\"Array 'items' exceeds maximum length\"`).
+
+### Hybrid Authentication (`--enforce-auth`)
+- **Command:** `php src/ServerRunner.php --enforce-auth`
+- **Mock Mode:** When running with `--ephemeral` or without `DATABASE_URL`, validates against deterministic mock credentials (e.g., `Bearer mock-token-123`, `mock-api-key-123`) and returns `401 Unauthorized` or `403 Forbidden` when credentials or scopes are missing/invalid.
+- **Production Mode:** When connected to `DATABASE_URL` without `--ephemeral`, integrates directly with Concrete DAOs to verify sessions/tokens against persisted database records.
+
+### Integrated Identity Provider (`--start-auth-server`)
+- **Command:** `php src/ServerRunner.php --start-auth-server`
+- **Endpoints:** Mounts `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, and `POST /auth/logout` backed by the shared domain DAO architecture, with native SDK support via `\$client->auth->login(\$username, \$password)`.
+
+### Administrative Webhook & Callback Trigger API
+- **Endpoint:** `POST /_mock/trigger-webhook/{webhook_name}`
+- **Behavior:** Accepts a JSON payload containing `target_url` and `payload`, and uses `WebhookDispatcher` to dispatch outgoing webhook or callback HTTP requests to the registered receiver URL with the `X-Webhook-Event` header.
+
 ## Code Generation Lifecycle & Synchronization
 
 This project was generated using `cdd-php`. To maintain contract harmony:

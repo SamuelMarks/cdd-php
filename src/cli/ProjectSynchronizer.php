@@ -54,8 +54,16 @@ class ProjectSynchronizer
                     $opId = (string) $opData['operationId'];
                     if ($cliPrefix !== null) {
                         $cliKey = $cliPrefix . $opId;
+                        $snakeKey = $cliPrefix . strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $opId));
                         if (isset($sourceOps[$cliKey]['post'])) {
                             $opData = array_replace_recursive($opData, $sourceOps[$cliKey]['post']);
+                        } elseif (isset($sourceOps[$snakeKey]['post'])) {
+                            $cliOp = $sourceOps[$snakeKey]['post'];
+                            $cliOp['operationId'] = $opId;
+                            if (isset($opData['description'])) {
+                                unset($cliOp['description']);
+                            }
+                            $opData = array_replace_recursive($opData, $cliOp);
                         }
                     } elseif (isset($sourceOps[$opId])) {
                         $opData = array_replace_recursive($opData, $sourceOps[$opId]);
@@ -178,8 +186,9 @@ class ProjectSynchronizer
             }
         }
 
-        if (file_exists("$dir/Webhooks.php")) {
-            $webhooks = \Cdd\Webhooks\parse((string) file_get_contents("$dir/Webhooks.php"));
+        $webhooksPath = file_exists("$dir/src/Webhooks.php") ? "$dir/src/Webhooks.php" : "$dir/Webhooks.php";
+        if (file_exists($webhooksPath)) {
+            $webhooks = \Cdd\Webhooks\parse((string) file_get_contents($webhooksPath));
             if (!empty($webhooks)) {
                 $openapi['webhooks'] = $webhooks;
             }

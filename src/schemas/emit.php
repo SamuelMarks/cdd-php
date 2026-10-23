@@ -90,6 +90,10 @@ use Illuminate\Database\Eloquent\Model;
     $out .= "class $className extends $parentClass {
 ";
     if ($namespace !== '') {
+        $tableName = strtolower($className) . 's';
+        $exportedTable = var_export($tableName, true);
+        $out .= "    protected \$table = {$exportedTable};
+";
         $out .= "    public \$timestamps = false;
 ";
         $out .= "    protected \$guarded = [];

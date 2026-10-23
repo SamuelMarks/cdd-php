@@ -69,11 +69,23 @@ function emit(array $paths, string $existingCode = ''): string
         $out .= "        exit(0);\n";
         $out .= "    }\n";
 
+        if (isset($operation['responses']) && is_array($operation['responses'])) {
+            foreach ($operation['responses'] as $respCode => $respItem) {
+                if (is_array($respItem) && isset($respItem['headers']) && is_array($respItem['headers'])) {
+                    foreach ($respItem['headers'] as $hName => $hObj) {
+                        $out .= "    /**\n     * @oas-header {$respCode} {$hName} " . json_encode($hObj) . "\n     */\n";
+                    }
+                }
+            }
+        }
         $out .= "    \$params = [];\n";
         $out .= "    \$body = [];\n";
         if (isset($operation['parameters'])) {
             foreach ($operation['parameters'] as $p) {
                 $name = $p['name'] ?? 'param';
+                if (count(array_diff(array_keys($p), ['name'])) > 0) {
+                    $out .= "    /**\n     * @oas-param " . json_encode($p) . "\n     */\n";
+                }
                 $out .= "    \$params['$name'] = null;\n";
             }
         }
@@ -113,7 +125,9 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "        }\n";
     $out .= "    }\n";
     $out .= "    \$capabilities = ['tools' => ['listChanged' => true], 'resources' => ['listChanged' => true, 'subscribe' => true], 'prompts' => ['listChanged' => true], 'logging' => (object)[]];\n";
-    $out .= "    while ((\$line = fgets(STDIN)) !== false) {\n";
+    $out .= "    \$mcpIn = \$GLOBALS['cdd_mcp_in_stream'] ?? STDIN;\n";
+    $out .= "    \$mcpOut = \$GLOBALS['cdd_mcp_out_stream'] ?? STDOUT;\n";
+    $out .= "    while ((\$line = fgets(\$mcpIn)) !== false) {\n";
     $out .= "        \$req = json_decode(\$line, true);\n";
     $out .= "        if (!\$req) continue;\n";
     $out .= "        \$isNotification = !array_key_exists('id', \$req);\n";
@@ -127,8 +141,22 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "                ];\n";
     $out .= "            } elseif (\$req['method'] === 'initialized') {\n";
     $out .= "                continue;\n";
+    $out .= "            } elseif (\$req['method'] === 'close' || \$req['method'] === 'shutdown' || \$req['method'] === 'notifications/disconnect') {\n";
+    $out .= "                \$res['result'] = ['closed' => true];\n";
+    $out .= "                if (!\$isNotification) {\n";
+    $out .= "                    fwrite(\$mcpOut, json_encode(\$res) . \"\\n\");\n";
+    $out .= "                }\n";
+    $out .= "                break;\n";
     $out .= "            } elseif (\$req['method'] === 'ping') {\n";
     $out .= "                \$res['result'] = [];\n";
+    $out .= "            } elseif (\$req['method'] === 'resources/subscribe' || \$req['method'] === 'resources/unsubscribe') {\n";
+    $out .= "                \$res['result'] = [];\n";
+    $out .= "            } elseif (\$req['method'] === 'sampling/createMessage') {\n";
+    $out .= "                if (function_exists('cdd_mcp_sampling_approval_hook') && !cdd_mcp_sampling_approval_hook(\$req['params'] ?? [])) {\n";
+    $out .= "                    \$res['error'] = ['code' => -1, 'message' => 'User rejected sampling request'];\n";
+    $out .= "                } else {\n";
+    $out .= "                    \$res['result'] = ['role' => 'assistant', 'content' => ['type' => 'text', 'text' => 'Sampled response'], 'model' => 'stub-llm', 'stopReason' => 'endTurn'];\n";
+    $out .= "                }\n";
     $out .= "            } elseif (\$req['method'] === 'prompts/list') {\n";
     $out .= "                \$res['result'] = ['prompts' => []];\n";
     $out .= "                if (isset(\$req['params']['cursor'])) { \$res['result']['nextCursor'] = null; }\n";
@@ -236,6 +264,15 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "                            'text' => \"API Endpoints:\\n" . implode("\\n", $docs) . "\"\n";
     $out .= "                        ]\n";
     $out .= "                    ]];\n";
+    $out .= "                } elseif (str_starts_with((string)\$uri, 'file://')) {\n";
+    $out .= "                    \$filePath = realpath(substr((string)\$uri, 7));\n";
+    $out .= "                    \$cwdPath = realpath((string)getcwd());\n";
+    $out .= "                    \$boundary = \$cwdPath !== false ? rtrim(\$cwdPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR : '';\n";
+    $out .= "                    if (\$filePath !== false && \$cwdPath !== false && (str_starts_with(\$filePath, \$boundary) || \$filePath === \$cwdPath) && is_file(\$filePath)) {\n";
+    $out .= "                        \$res['result'] = ['contents' => [['uri' => \$uri, 'mimeType' => 'text/plain', 'text' => (string)file_get_contents(\$filePath)]]];\n";
+    $out .= "                    } else {\n";
+    $out .= "                        \$res['error'] = ['code' => -32602, 'message' => 'Access denied: Path is outside root boundary or invalid'];\n";
+    $out .= "                    }\n";
     $out .= "                } else {\n";
     $out .= "                    \$res['error'] = ['code' => -32602, 'message' => 'Invalid URI'];\n";
     $out .= "                }\n";
@@ -243,6 +280,9 @@ function emit(array $paths, string $existingCode = ''): string
     $out .= "            } elseif (\$req['method'] === 'tools/call') {\n";
     $out .= "                \$name = \$req['params']['name'] ?? '';\n";
     $out .= "                \$args = \$req['params']['arguments'] ?? [];\n";
+    $out .= "                if (isset(\$req['params']['_meta']['progressToken'])) {\n";
+    $out .= "                    echo json_encode(['jsonrpc' => '2.0', 'method' => 'notifications/progress', 'params' => ['progressToken' => \$req['params']['_meta']['progressToken'], 'progress' => 100, 'total' => 100]]) . \"\\n\";\n";
+    $out .= "                }\n";
     $out .= "                if (function_exists('cdd_mcp_tool_approval_hook')) {\n";
     $out .= "                    if (!cdd_mcp_tool_approval_hook(\$name, \$args)) {\n";
     $out .= "                        \$res['result'] = ['isError' => true, 'content' => [['type' => 'text', 'text' => 'User denied execution of tool: ' . \$name]]];\n";

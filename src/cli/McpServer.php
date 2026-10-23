@@ -61,6 +61,73 @@ class McpServer
     }
 
     /**
+     * Invokes an MCP tool over an in-memory or stream transport with optional human-in-the-loop approval.
+     *
+     * @param string $name Tool name to invoke.
+     * @param array<string, mixed> $arguments Tool arguments map.
+     * @param callable|null $approvalCallback Optional callback `fn(string $name, array $args): bool` for tool execution approval.
+     * @return array<string, mixed> MCP `CallToolResult` structure.
+     */
+    public static function callTool(
+        string $name,
+        array $arguments = [],
+        ?callable $approvalCallback = null
+    ): array {
+        if ($approvalCallback !== null && !$approvalCallback($name, $arguments)) {
+            return [
+                'isError' => true,
+                'content' => [['type' => 'text', 'text' => 'User denied execution of tool: ' . $name]],
+            ];
+        }
+        $in = fopen('php://memory', 'r+');
+        $req = [
+            'jsonrpc' => '2.0',
+            'id' => 'call_' . uniqid(),
+            'method' => 'tools/call',
+            'params' => [
+                'name' => $name,
+                'arguments' => $arguments,
+            ],
+        ];
+        fwrite($in, json_encode($req) . "\n");
+        rewind($in);
+        ob_start();
+        self::run($in);
+        $rawOut = (string) ob_get_clean();
+        fclose($in);
+        $decoded = json_decode(trim($rawOut), true);
+        return (array) ($decoded['result'] ?? ['isError' => true, 'content' => []]);
+    }
+
+    /**
+     * Reads an MCP resource URI (`cdd://ast`, `cdd://schema`, or `file://`) with root boundary enforcement.
+     *
+     * @param string $uri Resource URI to read.
+     * @return array<string, mixed> MCP `ReadResourceResult` or error structure.
+     */
+    public static function readResource(string $uri): array
+    {
+        $in = fopen('php://memory', 'r+');
+        $req = [
+            'jsonrpc' => '2.0',
+            'id' => 'read_' . uniqid(),
+            'method' => 'resources/read',
+            'params' => ['uri' => $uri],
+        ];
+        fwrite($in, json_encode($req) . "\n");
+        rewind($in);
+        ob_start();
+        self::run($in);
+        $rawOut = (string) ob_get_clean();
+        fclose($in);
+        $decoded = json_decode(trim($rawOut), true);
+        if (isset($decoded['error'])) {
+            return ['error' => $decoded['error']];
+        }
+        return (array) ($decoded['result'] ?? ['contents' => []]);
+    }
+
+    /**
      * Builds a JSON AST summary of PHP classes and functions in the given directory.
      *
      * @param string $dir Directory to inspect.

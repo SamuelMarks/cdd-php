@@ -11,12 +11,14 @@ declare(strict_types=1);
 namespace Cdd\Openapi;
 
 /**
- * Extracts Swagger 2.0 inline parameter/header schema validation keywords into an OpenAPI 3.x `schema` sub-object.
+ * Extracts Swagger 2.0 inline parameter/header schema validation keywords into an OpenAPI 3.x `schema` sub-object
+ * and maps `collectionFormat` to OpenAPI 3.x `style`, `explode`, and `x-collectionFormat`.
  *
  * @param array<string, mixed> $item The Swagger 2.0 parameter or header array.
+ * @param bool $isHeader Whether the item is a Response Header Object.
  * @return array<string, mixed> The updated item with a nested `schema` array.
  */
-function upgrade_swagger2_inline_schema(array $item): array
+function upgrade_swagger2_inline_schema(array $item, bool $isHeader = false): array
 {
     $schemaKeys = [
         'format',
@@ -43,6 +45,67 @@ function upgrade_swagger2_inline_schema(array $item): array
             unset($item[$key]);
         }
     }
+    if (isset($item['collectionFormat']) && is_string($item['collectionFormat'])) {
+        $cf = $item['collectionFormat'];
+        unset($item['collectionFormat']);
+        $item['x-collectionFormat'] = $cf;
+        if ($isHeader || !isset($item['in'])) {
+            $item['style'] = 'simple';
+            $item['explode'] = false;
+        } else {
+            $in = (string) $item['in'];
+            $isPathOrHeader = ($in === 'path' || $in === 'header');
+            if ($cf === 'multi') {
+                $item['style'] = 'form';
+                $item['explode'] = true;
+            } elseif ($cf === 'ssv') {
+                $item['style'] = $isPathOrHeader ? 'simple' : 'spaceDelimited';
+                $item['explode'] = false;
+            } elseif ($cf === 'pipes' || $cf === 'tsv') {
+                $item['style'] = $isPathOrHeader ? 'simple' : 'pipeDelimited';
+                $item['explode'] = false;
+            } else {
+                $item['style'] = $isPathOrHeader ? 'simple' : 'form';
+                $item['explode'] = false;
+            }
+        }
+    }
+    return $item;
+}
+
+/**
+ * Flattens an OpenAPI 3.x parameter or header `schema` sub-object and `style`/`explode`/`x-collectionFormat`
+ * back into a Swagger 2.0 inline parameter or header array.
+ *
+ * @param array<string, mixed> $item The OpenAPI 3.x parameter or header array.
+ * @param bool $isHeader Whether the item is a Response Header Object.
+ * @return array<string, mixed> The downgraded Swagger 2.0 parameter or header array.
+ */
+function downgrade_openapi3_inline_schema(array $item, bool $isHeader = false): array
+{
+    if (isset($item['schema']) && is_array($item['schema'])) {
+        foreach ($item['schema'] as $k => $v) {
+            $item[$k] = $v;
+        }
+        unset($item['schema']);
+    }
+    if (isset($item['x-collectionFormat']) && is_string($item['x-collectionFormat'])) {
+        $item['collectionFormat'] = $item['x-collectionFormat'];
+        unset($item['x-collectionFormat'], $item['style'], $item['explode']);
+    } elseif (isset($item['style']) || isset($item['explode'])) {
+        $style = (string) ($item['style'] ?? '');
+        $explode = $item['explode'] ?? null;
+        if (!$isHeader && $explode === true && ($style === 'form' || $style === '')) {
+            $item['collectionFormat'] = 'multi';
+        } elseif ($style === 'spaceDelimited') {
+            $item['collectionFormat'] = 'ssv';
+        } elseif ($style === 'pipeDelimited') {
+            $item['collectionFormat'] = 'pipes';
+        } elseif (($item['type'] ?? '') === 'array') {
+            $item['collectionFormat'] = 'csv';
+        }
+        unset($item['style'], $item['explode']);
+    }
     return $item;
 }
 
@@ -56,17 +119,21 @@ function upgrade_swagger2_to_openapi3(array $data): array
 {
     $data['openapi'] = '3.0.0';
 
+    $rootHost = (string) ($data['host'] ?? 'localhost');
+    $rootBasePath = (string) ($data['basePath'] ?? '/');
     if (isset($data['host']) || isset($data['basePath']) || isset($data['schemes'])) {
-        $host = $data['host'] ?? 'localhost';
-        $basePath = $data['basePath'] ?? '/';
         $schemes = $data['schemes'] ?? ['http'];
         $servers = [];
         foreach ($schemes as $scheme) {
-            $servers[] = ['url' => $scheme . '://' . $host . $basePath];
+            $servers[] = ['url' => $scheme . '://' . $rootHost . $rootBasePath];
         }
         $data['servers'] = $servers;
         unset($data['host'], $data['basePath'], $data['schemes']);
     }
+
+    $globalConsumes = $data['consumes'] ?? ['application/json'];
+    $globalProduces = $data['produces'] ?? ['application/json'];
+    unset($data['consumes'], $data['produces']);
 
     if (!isset($data['components'])) {
         $data['components'] = [];
@@ -75,11 +142,42 @@ function upgrade_swagger2_to_openapi3(array $data): array
         $data['components']['schemas'] = $data['definitions'];
         unset($data['definitions']);
     }
-    if (isset($data['parameters'])) {
+    if (isset($data['parameters']) && is_array($data['parameters'])) {
+        foreach ($data['parameters'] as &$compParam) {
+            if (is_array($compParam) && !isset($compParam['schema']) && isset($compParam['type'])) {
+                $compParam = upgrade_swagger2_inline_schema($compParam, false);
+            }
+        }
         $data['components']['parameters'] = $data['parameters'];
         unset($data['parameters']);
     }
-    if (isset($data['responses'])) {
+    if (isset($data['responses']) && is_array($data['responses'])) {
+        foreach ($data['responses'] as &$compResp) {
+            if (is_array($compResp)) {
+                if (isset($compResp['schema'])) {
+                    $content = [];
+                    $producesList = !empty($globalProduces) ? $globalProduces : ['application/json'];
+                    foreach ($producesList as $mime) {
+                        $content[$mime] = ['schema' => $compResp['schema']];
+                    }
+                    $compResp['content'] = $content;
+                    unset($compResp['schema']);
+                }
+                if (isset($compResp['examples']) && is_array($compResp['examples'])) {
+                    foreach ($compResp['examples'] as $exMime => $exVal) {
+                        $compResp['content'][(string) $exMime]['example'] = $exVal;
+                    }
+                    unset($compResp['examples']);
+                }
+                if (isset($compResp['headers']) && is_array($compResp['headers'])) {
+                    foreach ($compResp['headers'] as &$compHeader) {
+                        if (is_array($compHeader) && isset($compHeader['type']) && !isset($compHeader['schema'])) {
+                            $compHeader = upgrade_swagger2_inline_schema($compHeader, true);
+                        }
+                    }
+                }
+            }
+        }
         $data['components']['responses'] = $data['responses'];
         unset($data['responses']);
     }
@@ -115,22 +213,35 @@ function upgrade_swagger2_to_openapi3(array $data): array
         unset($data['securityDefinitions']);
     }
 
-    $globalConsumes = $data['consumes'] ?? ['application/json'];
-    $globalProduces = $data['produces'] ?? ['application/json'];
-    unset($data['consumes'], $data['produces']);
-
     $validMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
 
     if (isset($data['paths']) && is_array($data['paths'])) {
         foreach ($data['paths'] as &$pathItem) {
+            if (isset($pathItem['parameters']) && is_array($pathItem['parameters'])) {
+                foreach ($pathItem['parameters'] as &$pathParam) {
+                    if (is_array($pathParam) && !isset($pathParam['schema']) && isset($pathParam['type'])) {
+                        $pathParam = upgrade_swagger2_inline_schema($pathParam, false);
+                    }
+                }
+            }
             foreach ($pathItem as $method => &$operation) {
                 if (in_array(strtolower((string) $method), $validMethods, true)) {
                     $opConsumes = $operation['consumes'] ?? $globalConsumes;
                     $opProduces = $operation['produces'] ?? $globalProduces;
                     unset($operation['consumes'], $operation['produces']);
 
+                    if (isset($operation['schemes']) && is_array($operation['schemes'])) {
+                        $opServers = [];
+                        foreach ($operation['schemes'] as $opScheme) {
+                            $opServers[] = ['url' => $opScheme . '://' . $rootHost . $rootBasePath];
+                        }
+                        $operation['servers'] = $opServers;
+                        unset($operation['schemes']);
+                    }
+
                     if (isset($operation['parameters']) && is_array($operation['parameters'])) {
                         $formData = [];
+                        $formRequired = [];
                         foreach ($operation['parameters'] as $i => &$param) {
                             if (isset($param['in']) && $param['in'] === 'body') {
                                 $schema = $param['schema'] ?? [];
@@ -147,36 +258,48 @@ function upgrade_swagger2_to_openapi3(array $data): array
                                 }
                                 unset($operation['parameters'][$i]);
                             } elseif (isset($param['in']) && $param['in'] === 'formData') {
-                                $schema = ['type' => $param['type'] ?? 'string'];
-                                if (isset($param['format'])) {
-                                    $schema['format'] = $param['format'];
+                                $upgradedForm = upgrade_swagger2_inline_schema($param, false);
+                                $schema = $upgradedForm['schema'] ?? ['type' => 'string'];
+                                if (isset($upgradedForm['description'])) {
+                                    $schema['description'] = $upgradedForm['description'];
+                                }
+                                if (isset($upgradedForm['allowEmptyValue'])) {
+                                    $schema['allowEmptyValue'] = $upgradedForm['allowEmptyValue'];
+                                }
+                                if (isset($upgradedForm['x-collectionFormat'])) {
+                                    $schema['x-collectionFormat'] = $upgradedForm['x-collectionFormat'];
+                                }
+                                foreach ($upgradedForm as $fk => $fv) {
+                                    if (str_starts_with((string) $fk, 'x-') && $fk !== 'x-collectionFormat') {
+                                        $schema[$fk] = $fv;
+                                    }
+                                }
+                                if (!empty($param['required'])) {
+                                    $formRequired[] = (string) $param['name'];
                                 }
                                 $formData[$param['name']] = $schema;
                                 unset($operation['parameters'][$i]);
                             } elseif (!isset($param['schema']) && isset($param['type'])) {
-                                $param = upgrade_swagger2_inline_schema($param);
+                                $param = upgrade_swagger2_inline_schema($param, false);
                             }
                         }
                         $operation['parameters'] = array_values($operation['parameters']);
                         if (!empty($formData)) {
+                            $formSchema = [
+                                'type' => 'object',
+                                'properties' => $formData,
+                            ];
+                            if (!empty($formRequired)) {
+                                $formSchema['required'] = $formRequired;
+                            }
                             $content = [];
                             foreach ($opConsumes as $mime) {
                                 if (in_array($mime, ['application/x-www-form-urlencoded', 'multipart/form-data'], true)) {
-                                    $content[$mime] = [
-                                        'schema' => [
-                                            'type' => 'object',
-                                            'properties' => $formData,
-                                        ],
-                                    ];
+                                    $content[$mime] = ['schema' => $formSchema];
                                 }
                             }
                             if (empty($content)) {
-                                $content['application/x-www-form-urlencoded'] = [
-                                    'schema' => [
-                                        'type' => 'object',
-                                        'properties' => $formData,
-                                    ],
-                                ];
+                                $content['application/x-www-form-urlencoded'] = ['schema' => $formSchema];
                             }
                             $operation['requestBody'] = [
                                 'content' => $content,
@@ -193,10 +316,16 @@ function upgrade_swagger2_to_openapi3(array $data): array
                                 $response['content'] = empty($content) ? ['application/json' => ['schema' => $response['schema']]] : $content;
                                 unset($response['schema']);
                             }
+                            if (isset($response['examples']) && is_array($response['examples'])) {
+                                foreach ($response['examples'] as $exMime => $exVal) {
+                                    $response['content'][(string) $exMime]['example'] = $exVal;
+                                }
+                                unset($response['examples']);
+                            }
                             if (isset($response['headers']) && is_array($response['headers'])) {
                                 foreach ($response['headers'] as &$header) {
                                     if (isset($header['type']) && !isset($header['schema'])) {
-                                        $header = upgrade_swagger2_inline_schema($header);
+                                        $header = upgrade_swagger2_inline_schema($header, true);
                                     }
                                 }
                             }
@@ -241,8 +370,15 @@ function downgradeOpenApi3ToSwagger2(array $openapi): array
         if (isset($url['path'])) {
             $swagger['basePath'] = $url['path'];
         }
-        if (isset($url['scheme'])) {
-            $swagger['schemes'] = [$url['scheme']];
+        $schemes = [];
+        foreach ($openapi['servers'] as $srv) {
+            $srvUrl = parse_url((string) ($srv['url'] ?? ''));
+            if (isset($srvUrl['scheme']) && !in_array($srvUrl['scheme'], $schemes, true)) {
+                $schemes[] = $srvUrl['scheme'];
+            }
+        }
+        if (!empty($schemes)) {
+            $swagger['schemes'] = $schemes;
         }
     }
     $swagger['consumes'] = ['application/json'];
@@ -250,20 +386,59 @@ function downgradeOpenApi3ToSwagger2(array $openapi): array
     if (isset($openapi['paths'])) {
         $swagger['paths'] = (array) $openapi['paths'];
         foreach ($swagger['paths'] as $path => &$pathItem) {
+            if (isset($pathItem['parameters']) && is_array($pathItem['parameters'])) {
+                foreach ($pathItem['parameters'] as &$pathParam) {
+                    if (is_array($pathParam) && ($pathParam['in'] ?? '') !== 'body') {
+                        $pathParam = downgrade_openapi3_inline_schema($pathParam, false);
+                    }
+                }
+            }
             foreach ($pathItem as $method => &$op) {
                 if (in_array(strtolower((string) $method), ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'], true)) {
+                    if (isset($op['servers']) && is_array($op['servers'])) {
+                        $opSchemes = [];
+                        foreach ($op['servers'] as $opSrv) {
+                            $opUrl = parse_url((string) ($opSrv['url'] ?? ''));
+                            if (isset($opUrl['scheme']) && !in_array($opUrl['scheme'], $opSchemes, true)) {
+                                $opSchemes[] = $opUrl['scheme'];
+                            }
+                        }
+                        if (!empty($opSchemes)) {
+                            $op['schemes'] = $opSchemes;
+                        }
+                        unset($op['servers']);
+                    }
+                    if (isset($op['parameters']) && is_array($op['parameters'])) {
+                        foreach ($op['parameters'] as &$existingParam) {
+                            if (is_array($existingParam) && ($existingParam['in'] ?? '') !== 'body') {
+                                $existingParam = downgrade_openapi3_inline_schema($existingParam, false);
+                            }
+                        }
+                    }
                     if (isset($op['requestBody'])) {
                         $content = $op['requestBody']['content'] ?? [];
+                        $contentMimes = array_keys($content);
+                        if (count($contentMimes) > 1 || (count($contentMimes) === 1 && $contentMimes[0] !== 'application/json')) {
+                            $op['consumes'] = $contentMimes;
+                        }
                         foreach ($content as $mime => $media) {
                             if ($mime === 'application/x-www-form-urlencoded' || $mime === 'multipart/form-data') {
                                 $props = $media['schema']['properties'] ?? [];
+                                $reqFields = is_array($media['schema']['required'] ?? null) ? $media['schema']['required'] : [];
                                 if (!isset($op['parameters'])) {
                                     $op['parameters'] = [];
                                 }
                                 foreach ($props as $name => $propSchema) {
                                     $p = $propSchema;
+                                    if (isset($p['x-collectionFormat'])) {
+                                        $p['collectionFormat'] = $p['x-collectionFormat'];
+                                        unset($p['x-collectionFormat']);
+                                    }
                                     $p['name'] = $name;
                                     $p['in'] = 'formData';
+                                    if (in_array($name, $reqFields, true)) {
+                                        $p['required'] = true;
+                                    }
                                     $op['parameters'][] = $p;
                                 }
                             } else {
@@ -286,14 +461,36 @@ function downgradeOpenApi3ToSwagger2(array $openapi): array
                         unset($op['requestBody']);
                     }
                     if (isset($op['responses'])) {
+                        $opProduces = [];
                         foreach ($op['responses'] as $code => &$resp) {
-                            if (isset($resp['content'])) {
+                            if (isset($resp['content']) && is_array($resp['content'])) {
+                                $examples = [];
                                 foreach ($resp['content'] as $mime => $media) {
-                                    $resp['schema'] = $media['schema'] ?? [];
-                                    break;
+                                    if (!in_array((string) $mime, $opProduces, true)) {
+                                        $opProduces[] = (string) $mime;
+                                    }
+                                    if (!isset($resp['schema']) && isset($media['schema'])) {
+                                        $resp['schema'] = $media['schema'];
+                                    }
+                                    if (array_key_exists('example', $media)) {
+                                        $examples[(string) $mime] = $media['example'];
+                                    }
+                                }
+                                if (!empty($examples)) {
+                                    $resp['examples'] = $examples;
                                 }
                                 unset($resp['content']);
                             }
+                            if (isset($resp['headers']) && is_array($resp['headers'])) {
+                                foreach ($resp['headers'] as &$respHeader) {
+                                    if (is_array($respHeader)) {
+                                        $respHeader = downgrade_openapi3_inline_schema($respHeader, true);
+                                    }
+                                }
+                            }
+                        }
+                        if (count($opProduces) > 1 || (count($opProduces) === 1 && $opProduces[0] !== 'application/json')) {
+                            $op['produces'] = $opProduces;
                         }
                     }
                 }
@@ -303,11 +500,42 @@ function downgradeOpenApi3ToSwagger2(array $openapi): array
     if (isset($openapi['components']['schemas'])) {
         $swagger['definitions'] = $openapi['components']['schemas'];
     }
-    if (isset($openapi['components']['parameters'])) {
+    if (isset($openapi['components']['parameters']) && is_array($openapi['components']['parameters'])) {
         $swagger['parameters'] = $openapi['components']['parameters'];
+        foreach ($swagger['parameters'] as &$compParam) {
+            if (is_array($compParam) && ($compParam['in'] ?? '') !== 'body') {
+                $compParam = downgrade_openapi3_inline_schema($compParam, false);
+            }
+        }
     }
-    if (isset($openapi['components']['responses'])) {
+    if (isset($openapi['components']['responses']) && is_array($openapi['components']['responses'])) {
         $swagger['responses'] = $openapi['components']['responses'];
+        foreach ($swagger['responses'] as &$compResp) {
+            if (is_array($compResp)) {
+                if (isset($compResp['content']) && is_array($compResp['content'])) {
+                    $examples = [];
+                    foreach ($compResp['content'] as $mime => $media) {
+                        if (!isset($compResp['schema']) && isset($media['schema'])) {
+                            $compResp['schema'] = $media['schema'];
+                        }
+                        if (array_key_exists('example', $media)) {
+                            $examples[(string) $mime] = $media['example'];
+                        }
+                    }
+                    if (!empty($examples)) {
+                        $compResp['examples'] = $examples;
+                    }
+                    unset($compResp['content']);
+                }
+                if (isset($compResp['headers']) && is_array($compResp['headers'])) {
+                    foreach ($compResp['headers'] as &$compHeader) {
+                        if (is_array($compHeader)) {
+                            $compHeader = downgrade_openapi3_inline_schema($compHeader, true);
+                        }
+                    }
+                }
+            }
+        }
     }
     if (isset($openapi['components']['securitySchemes'])) {
         $swagger['securityDefinitions'] = $openapi['components']['securitySchemes'];
@@ -350,6 +578,11 @@ function downgradeOpenApi3ToSwagger2(array $openapi): array
     }
     if (isset($openapi['externalDocs'])) {
         $swagger['externalDocs'] = $openapi['externalDocs'];
+    }
+    foreach ($openapi as $rootKey => $rootVal) {
+        if (str_starts_with((string) $rootKey, 'x-')) {
+            $swagger[$rootKey] = $rootVal;
+        }
     }
 
     return rewrite_ref_prefixes($swagger, [

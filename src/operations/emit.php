@@ -83,6 +83,14 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
             if ($rawName !== $varName) {
                 $meta .= ";name={$rawName}";
             }
+            $paramCf = $param['x-collectionFormat'] ?? $param['collectionFormat'] ?? null;
+            if (is_string($paramCf) && $paramCf !== '') {
+                $meta .= ";collectionFormat={$paramCf}";
+            }
+            $itemsCf = $param['schema']['items']['collectionFormat'] ?? $param['items']['collectionFormat'] ?? null;
+            if (is_string($itemsCf) && $itemsCf !== '') {
+                $meta .= ";itemsCollectionFormat={$itemsCf}";
+            }
             $meta .= ']';
             $pDesc = isset($param['description']) && is_string($param['description'])
                 ? ' ' . \Cdd\Docstrings\sanitize_docblock_text($param['description'])
@@ -95,8 +103,13 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
         foreach ($operation['responses'] as $code => $resp) {
             if (isset($resp['links'])) {
                 foreach ($resp['links'] as $linkName => $linkObj) {
-                    $docStr .= " * @oas-link " . $code . " " . $linkName . " " . json_encode($linkObj) . "
-";
+                    $docStr .= " * @oas-link " . $code . " " . $linkName . " " . json_encode($linkObj) . "\n";
+                    $hasDoc = true;
+                }
+            }
+            if (isset($resp['headers']) && is_array($resp['headers'])) {
+                foreach ($resp['headers'] as $headerName => $headerObj) {
+                    $docStr .= " * @oas-header " . $code . " " . $headerName . " " . json_encode($headerObj) . "\n";
                     $hasDoc = true;
                 }
             }

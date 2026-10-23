@@ -51,6 +51,9 @@ class MockRoute {
 }
 class_alias('MockRoute', 'Illuminate{$bs}Support{$bs}Facades{$bs}Route');
 
+if (file_exists(__DIR__ . '/src/ServerRunner.php')) {
+    require_once __DIR__ . '/src/ServerRunner.php';
+}
 if (file_exists(__DIR__ . '/src/ApiServers.php')) {
     require_once __DIR__ . '/src/ApiServers.php';
 }
@@ -61,6 +64,52 @@ require __DIR__ . '/src/routes.php';
 
 \$method = \$_SERVER['REQUEST_METHOD'] ?? 'GET';
 \$uri = (string) parse_url(\$_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+
+// Global CORS Middleware (permissive default for local UI development)
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin, X-Api-Key, X-Mock-Scopes');
+header('Access-Control-Max-Age: 86400');
+
+if (strtoupper(\$method) === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+// Administrative Webhook Trigger Endpoint
+if (strtoupper(\$method) === 'POST' && preg_match('#^/_mock/trigger-webhook/([^/]+)\$#', \$uri, \$whMatches)) {
+    \$webhookName = \$whMatches[1];
+    \$rawBody = json_decode((string) file_get_contents('php://input'), true);
+    \$body = is_array(\$rawBody) ? \$rawBody : [];
+    \$targetUrl = (string) (\$body['target_url'] ?? '');
+    \$payload = is_array(\$body['payload'] ?? null) ? \$body['payload'] : \$body;
+    if (class_exists('Api{$bs}WebhookDispatcher')) {
+        \$dispatcher = new {$bs}Api{$bs}WebhookDispatcher();
+        \$res = \$dispatcher->trigger(\$webhookName, \$targetUrl, \$payload);
+        http_response_code((int) (\$res['status'] ?? 200));
+        header('Content-Type: application/json');
+        echo json_encode(\$res);
+        exit;
+    }
+}
+
+// Integrated Identity Provider (IdP) Endpoints (--start-auth-server)
+if (getenv('CDD_START_AUTH_SERVER') === 'true' && str_starts_with(\$uri, '/auth/') && class_exists('Api{$bs}IdentityProvider')) {
+    \$idp = new {$bs}Api{$bs}IdentityProvider();
+    \$rawBody = json_decode((string) file_get_contents('php://input'), true);
+    \$body = is_array(\$rawBody) ? \$rawBody : [];
+    \$authRes = match (\$uri) {
+        '/auth/register' => \$idp->register(\$body),
+        '/auth/login' => \$idp->login(\$body),
+        '/auth/refresh' => \$idp->refresh(\$body),
+        '/auth/logout' => \$idp->logout((string) (\$_SERVER['HTTP_AUTHORIZATION'] ?? '')),
+        default => ['status' => 404, 'data' => ['error' => 'Not found']],
+    };
+    http_response_code((int) \$authRes['status']);
+    header('Content-Type: application/json');
+    echo json_encode(\$authRes['data']);
+    exit;
+}
 
 \$prefixes = [];
 if (class_exists('ApiServers')) {
@@ -91,6 +140,41 @@ foreach (MockRoute::\$routes as \$route) {
     if (\$route['method'] === \$method && preg_match(\$pattern, \$uri, \$matches)) {
         array_shift(\$matches);
         \$action = \$route['action'];
+
+        if (getenv('CDD_ENFORCE_AUTH') === 'true' && class_exists('Api{$bs}AuthMiddleware')) {
+            \$reqHeaders = [
+                'Authorization' => (string) (\$_SERVER['HTTP_AUTHORIZATION'] ?? ''),
+                'X-Api-Key' => (string) (\$_SERVER['HTTP_X_API_KEY'] ?? ''),
+                'X-Mock-Scopes' => (string) (\$_SERVER['HTTP_X_MOCK_SCOPES'] ?? ''),
+            ];
+            \$authRes = {$bs}Api{$bs}AuthMiddleware::authenticate(
+                \$reqHeaders,
+                \$_GET,
+                [['BearerAuth' => []]],
+                ['BearerAuth' => ['type' => 'http', 'scheme' => 'bearer']],
+                true,
+                getenv('EPHEMERAL_DB') === 'true' || !getenv('DATABASE_URL')
+            );
+            if (!\$authRes['authenticated']) {
+                http_response_code((int) \$authRes['status']);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => \$authRes['error'] ?? 'Unauthorized']);
+                exit;
+            }
+        }
+
+        if (getenv('CDD_STRICT_VALIDATION') === 'true' && in_array(strtoupper(\$method), ['POST', 'PUT', 'PATCH'], true) && class_exists('Api{$bs}ValidationMiddleware')) {
+            \$rawInput = json_decode((string) file_get_contents('php://input'), true);
+            \$payload = is_array(\$rawInput) ? \$rawInput : [];
+            \$schema = is_array(\$route['schema'] ?? null) ? \$route['schema'] : [];
+            \$valRes = {$bs}Api{$bs}ValidationMiddleware::validateRequest(\$payload, \$schema, true);
+            if (!\$valRes['valid']) {
+                http_response_code(400);
+                header('Content-Type: application/json');
+                echo json_encode(\$valRes);
+                exit;
+            }
+        }
 
         \$executed = false;
         \$output = '';

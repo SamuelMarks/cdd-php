@@ -32,5 +32,10 @@ class ParseEmitTest extends TestCase
         $this->assertStringContainsString('Sandbox Mode', $code);
         $this->assertStringContainsString('Full Mock Mode', $code);
         $this->assertStringContainsString('--ephemeral --seed', $code);
+        $this->assertStringContainsString('Global CORS Middleware', $code);
+        $this->assertStringContainsString('--strict-validation', $code);
+        $this->assertStringContainsString('--enforce-auth', $code);
+        $this->assertStringContainsString('--start-auth-server', $code);
+        $this->assertStringContainsString('POST /_mock/trigger-webhook/{webhook_name}', $code);
     }
 }

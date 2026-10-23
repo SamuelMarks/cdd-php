@@ -189,4 +189,32 @@ class CddCliMcpTest extends TestCase
         fclose($pipes[2]);
         proc_close($process);
     }
+
+    /**
+     * Tests `McpServer::callTool` (including human-in-the-loop approval) and `McpServer::readResource`.
+     *
+     * @return void
+     */
+    public function testMcpClientCallToolAndReadResource(): void
+    {
+        $denied = \Cdd\Cli\McpServer::callTool('to_openapi', ['input' => 'src', 'output' => 'out.json'], static fn () => false);
+        $this->assertTrue((bool) ($denied['isError'] ?? false));
+        $this->assertStringContainsString('User denied execution of tool', $denied['content'][0]['text']);
+
+        $tmpOut = sys_get_temp_dir() . '/cdd_mcp_call_tool_' . uniqid() . '.json';
+        $approved = \Cdd\Cli\McpServer::callTool(
+            'to_openapi',
+            ['input' => 'tests/cli/ParseEmitTest.php', 'output' => $tmpOut],
+            static fn () => true
+        );
+        $this->assertFalse((bool) ($approved['isError'] ?? false));
+        $this->assertTrue(file_exists($tmpOut));
+        unlink($tmpOut);
+
+        $astRes = \Cdd\Cli\McpServer::readResource('cdd://ast');
+        $this->assertTrue(isset($astRes['contents'][0]['text']));
+
+        $errRes = \Cdd\Cli\McpServer::readResource('file:///etc/passwd');
+        $this->assertTrue(isset($errRes['error']));
+    }
 }

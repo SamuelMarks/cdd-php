@@ -56,6 +56,7 @@ function getUser() {}
                     'description' => 'List users',
                     'parameters' => [
                         ['name' => 'limit', 'in' => 'query', 'required' => true, 'description' => 'Max items'],
+                        ['name' => 'bareParam'],
                     ],
                     'requestBody' => [
                         'content' => ['application/json' => ['schema' => ['type' => 'object']]],
@@ -81,8 +82,19 @@ function getUser() {}
         $this->assertArrayHasKey('/cli/get_users', $parsedCli);
         $this->assertEquals('get_users', $parsedCli['/cli/get_users']['post']['operationId']);
         $this->assertEquals('limit', $parsedCli['/cli/get_users']['post']['parameters'][0]['name']);
+        $this->assertEquals('bareParam', $parsedCli['/cli/get_users']['post']['parameters'][1]['name']);
+        $mergedPaths = \Cdd\Cli\ProjectSynchronizer::mergeOperationMetadata($cliPaths, $parsedCli, '/cli/');
+        $this->assertEquals('getUsers', $mergedPaths['/users']['get']['operationId']);
+        $this->assertEquals('List users', $mergedPaths['/users']['get']['description']);
         $this->assertEquals([], \Cdd\Cli\parse('<?php invalid syntax {{{'));
         $this->assertEquals([], \Cdd\Cli\parse(''));
+
+        $this->assertStringContainsString('cdd_mcp_in_stream', $cliCode);
+        $this->assertStringContainsString("notifications/disconnect", $cliCode);
+        $this->assertStringContainsString("resources/subscribe", $cliCode);
+        $this->assertStringContainsString("sampling/createMessage", $cliCode);
+        $this->assertStringContainsString("Access denied: Path is outside root boundary or invalid", $cliCode);
+        $this->assertStringContainsString("progressToken", $cliCode);
 
         // cleanup
         $files = new \RecursiveIteratorIterator(
