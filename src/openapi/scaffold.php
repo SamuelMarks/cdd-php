@@ -119,6 +119,29 @@ function generateDummySchemaValue(array $schema, array $openapi): mixed
 }
 
 /**
+ * Exports a PHP value using short array syntax (`[...]`).
+ *
+ * @param mixed $val The PHP value to export.
+ * @return string The formatted PHP literal expression.
+ */
+function exportPhpShortArray(mixed $val): string
+{
+    if (!is_array($val)) {
+        return var_export($val, true);
+    }
+    if (empty($val)) {
+        return '[]';
+    }
+    $isList = array_is_list($val);
+    $parts = [];
+    foreach ($val as $k => $v) {
+        $exportedVal = exportPhpShortArray($v);
+        $parts[] = $isList ? $exportedVal : var_export($k, true) . ' => ' . $exportedVal;
+    }
+    return '[' . implode(', ', $parts) . ']';
+}
+
+/**
  * Emits the `SdkIntegrationTest.php` test suite for generated SDK projects.
  *
  * @param array<string, mixed> $openapi The parsed OpenAPI specification.
@@ -152,7 +175,15 @@ class SdkIntegrationTest extends TestCase {
         $basePath = rtrim((string) $openapi['basePath'], '/');
     }
     $baseUrl = 'http://127.0.0.1:8080' . $basePath;
+    $sdkTestCode .= "        \$baseUrl = getenv('BASE_URL') ?: '$baseUrl';
+";
     $sdkTestCode .= "        \$this->client = new ApiClient('$baseUrl');
+";
+    $sdkTestCode .= "        if (\$baseUrl !== '$baseUrl') {
+";
+    $sdkTestCode .= "            \$this->client = new ApiClient((string) \$baseUrl);
+";
+    $sdkTestCode .= "        }
 ";
     $secSchemes = $openapi['components']['securitySchemes'] ?? ($openapi['securityDefinitions'] ?? []);
     if (is_array($secSchemes) && !empty($secSchemes)) {
@@ -189,18 +220,28 @@ class SdkIntegrationTest extends TestCase {
                 }
 
                 $methodName = strtolower((string) $method);
-                $opId = $operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', (string) $path);
+                $rawOpId = (string) ($operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', (string) $path));
+                $opId = \Cdd\Parameters\sanitize_var_name($rawOpId);
 
                 $sdkTestCode .= "    public function test_{$opId}(): void {
 ";
 
                 $dummyParams = [];
-                if (isset($operation['parameters'])) {
-                    foreach ($operation['parameters'] as $p) {
-                        if (!empty($p['required'])) {
-                            $name = $p['name'];
-                            $schema = is_array($p['schema'] ?? null) ? $p['schema'] : [];
-                            $dummyParams[$name] = generateDummySchemaValue($schema, $openapi);
+                $allParams = array_merge(
+                    is_array($methods['parameters'] ?? null) ? $methods['parameters'] : [],
+                    is_array($operation['parameters'] ?? null) ? $operation['parameters'] : []
+                );
+                foreach ($allParams as $p) {
+                    if (!empty($p['required']) || ($p['in'] ?? '') === 'path') {
+                        $name = (string) $p['name'];
+                        $schema = is_array($p['schema'] ?? null) ? $p['schema'] : $p;
+                        $dummyParams[$name] = generateDummySchemaValue($schema, $openapi);
+                    }
+                }
+                if (preg_match_all('/\{([^}]+)\}/', (string) $path, $pathMatches)) {
+                    foreach ($pathMatches[1] as $pathParamName) {
+                        if (!array_key_exists($pathParamName, $dummyParams)) {
+                            $dummyParams[$pathParamName] = str_ends_with(strtolower($pathParamName), 'id') ? 1 : 'test_string';
                         }
                     }
                 }
@@ -222,13 +263,21 @@ class SdkIntegrationTest extends TestCase {
                     }
                 }
 
-                $paramsStr = empty($dummyParams) ? '[]' : var_export($dummyParams, true);
-                $bodyStr = empty($dummyBody) ? '[]' : var_export($dummyBody, true);
+                $paramsStr = exportPhpShortArray($dummyParams);
+                $bodyStr = exportPhpShortArray($dummyBody);
                 $bodyStr = str_replace("'___CURLFILE_PLACEHOLDER___'", "new \CURLFile(sys_get_temp_dir() . '/dummy.txt', '', 'dummy.txt')", $bodyStr);
 
                 $sdkTestCode .= "        \$response = \$this->client->{$opId}($paramsStr, $bodyStr);
 ";
                 $sdkTestCode .= "        \$this->assertTrue(is_numeric(\$response['status']) && \$response['status'] > 0, 'Did not receive a valid HTTP Status Code');
+";
+                $sdkTestCode .= "        \$this->assertLessThan(400, \$response['status']);
+";
+                $sdkTestCode .= "        if (is_array(\$response['data'])) {
+";
+                $sdkTestCode .= "            \$this->assertArrayNotHasKey('sabotage', \$response['data']);
+";
+                $sdkTestCode .= "        }
 ";
                 $sdkTestCode .= "        if (\$response['status'] >= 200 && \$response['status'] < 300) {
 ";
@@ -253,11 +302,11 @@ class SdkIntegrationTest extends TestCase {
 }
 
 /**
- * Emits `composer.json` and `.github/workflows/ci.yml` scaffolding for generated projects.
+ * Emits `composer.json`, `phpunit.xml`, and `.github/workflows/ci.yml` scaffolding for generated projects.
  *
  * @param string $outDir Output project directory.
  * @param string $subcommand Target generation mode (`to_server`, `to_sdk`, etc.).
- * @param bool $noInstallablePackage Skip `composer.json` emission if true.
+ * @param bool $noInstallablePackage Skip `composer.json` and `phpunit.xml` emission if true.
  * @param bool $noGithubActions Skip GitHub Actions workflow emission if true.
  * @return void
  */
@@ -292,6 +341,17 @@ function emitProjectScaffolding(string $outDir, string $subcommand, bool $noInst
                 $composerData['require']['ext-pdo_sqlite'] = '*';
             }
             file_put_contents("$outDir/composer.json", json_encode($composerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        }
+        if (!file_exists("$outDir/phpunit.xml")) {
+            file_put_contents("$outDir/phpunit.xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<phpunit bootstrap=\"vendor/autoload.php\" colors=\"true\">
+    <testsuites>
+        <testsuite name=\"Test Suite\">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
+");
         }
     }
 

@@ -140,6 +140,8 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
 ";
     $out .= "                curl_setopt(\$ch, CURLOPT_POSTFIELDS, \$body);
 ";
+    $out .= "                \$headers[] = 'Expect:';
+";
     $out .= "                // cURL sets the Content-Type with boundary automatically
 ";
     $out .= "            } else if ({$exportedContentType} === 'application/x-www-form-urlencoded') {
@@ -161,6 +163,8 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     $out .= "            // Force Content-Type header if no body but method expects it, EXCEPT for multipart where cURL handles boundary
 ";
     $out .= "            if ({$exportedContentType} !== 'multipart/form-data') {
+";
+    $out .= "                curl_setopt(\$ch, CURLOPT_POSTFIELDS, '');
 ";
     $out .= "                \$headers[] = {$exportedContentTypeHeader};
 ";

@@ -533,7 +533,7 @@ class CddCli
         \Cdd\Openapi\emit($spec, $dir, [
             'no_github_actions' => $noGithubActions,
             'no_installable_package' => $noInstallablePackage,
-            'tests' => $tests,
+            'tests' => $tests || $subcommand === 'to_sdk',
             'mcp' => $mcp,
             'subcommand' => $subcommand,
         ]);

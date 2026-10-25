@@ -165,7 +165,7 @@ foreach (glob(__DIR__ . '/Routes/*.php') as \$file) {
             }
         }
 
-        $tests = (bool) ($options['tests'] ?? false);
+        $tests = (bool) ($options['tests'] ?? ($subcommand === 'to_sdk'));
 
         if ($tests && isset($openapi['components']['examples'])) {
             if ($subcommand === 'to_server') {

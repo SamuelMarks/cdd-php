@@ -176,7 +176,11 @@ class EmitOptionsTest extends TestCase
         $this->assertTrue(file_exists($outDir . '/tests/ComposableTests.php'));
         $this->assertTrue(file_exists($outDir . '/tests/SdkIntegrationTest.php'));
         $this->assertTrue(file_exists($outDir . '/composer.json'));
+        $this->assertTrue(file_exists($outDir . '/phpunit.xml'));
         $this->assertTrue(file_exists($outDir . '/.github/workflows/ci.yml'));
+
+        $phpunitXml = (string) file_get_contents($outDir . '/phpunit.xml');
+        $this->assertStringContainsString('<directory>tests</directory>', $phpunitXml);
 
         $composerJson = json_decode((string) file_get_contents($outDir . '/composer.json'), true);
         $this->assertTrue(isset($composerJson['require']));
@@ -188,6 +192,8 @@ class EmitOptionsTest extends TestCase
         $this->assertStringContainsString('use PHPUnit\\Framework\\TestCase;', $sdkTestContents);
         $this->assertStringContainsString('use Api\\ApiClient;', $sdkTestContents);
         $this->assertStringContainsString('new \\CURLFile(', $sdkTestContents);
+        $this->assertStringContainsString('$this->assertLessThan(400, $response[\'status\']);', $sdkTestContents);
+        $this->assertStringContainsString('$this->assertArrayNotHasKey(\'sabotage\', $response[\'data\']);', $sdkTestContents);
 
         $apiTestContents = (string) file_get_contents($outDir . '/tests/ApiTests.php');
         $this->assertStringContainsString('declare(strict_types=1);', $apiTestContents);
@@ -437,6 +443,144 @@ class EmitOptionsTest extends TestCase
         $this->assertTrue(strpos($testCode, "new ApiClient('http://127.0.0.1:8080/api/v1')") !== false);
 
         $this->removeDir($outDir);
+    }
+
+    /**
+     * Tests that generated `SdkIntegrationTest.php` and `ApiTests.php` pass `phpunit` against a mock HTTP server
+     * and fail when the server returns HTTP 500 or sabotaged JSON payloads.
+     *
+     * @return void
+     */
+    public function testSdkIntegrationTestAndApiTestsPassPhpUnitAgainstMockServer(): void
+    {
+        $outDir = sys_get_temp_dir() . '/cdd_test_sdk_phpunit_' . uniqid();
+        $openapi = [
+            'openapi' => '3.2.0',
+            'info' => ['title' => 'Petstore SDK Test', 'version' => '1.0.0'],
+            'servers' => [['url' => 'http://127.0.0.1:8080/v2']],
+            'paths' => [
+                '/store/order/{orderId}' => [
+                    'get' => [
+                        'operationId' => 'getOrderById',
+                        'responses' => ['200' => ['description' => 'OK']],
+                    ],
+                ],
+                '/pet/{petId}' => [
+                    'parameters' => [
+                        ['name' => 'petId', 'in' => 'path', 'schema' => ['type' => 'integer']],
+                    ],
+                    'get' => [
+                        'operationId' => 'getPetById',
+                        'responses' => ['200' => ['description' => 'OK']],
+                    ],
+                ],
+                '/user/{username}' => [
+                    'get' => [
+                        'operationId' => 'getUserByName',
+                        'responses' => ['200' => ['description' => 'OK']],
+                    ],
+                ],
+                '/pet' => [
+                    'post' => [
+                        'operationId' => 'addPet',
+                        'requestBody' => [
+                            'content' => [
+                                'application/json' => [
+                                    'schema' => [
+                                        'type' => 'object',
+                                        'properties' => ['name' => ['type' => 'string']],
+                                    ],
+                                ],
+                            ],
+                        ],
+                        'responses' => ['405' => ['description' => 'Invalid input']],
+                    ],
+                ],
+            ],
+        ];
+
+        \Cdd\Openapi\emit($openapi, $outDir, ['subcommand' => 'to_sdk']);
+
+        $this->assertTrue(file_exists("$outDir/phpunit.xml"));
+        $this->assertTrue(file_exists("$outDir/tests/SdkIntegrationTest.php"));
+        $this->assertTrue(file_exists("$outDir/tests/ApiTests.php"));
+
+        $sdkTestCode = (string) file_get_contents("$outDir/tests/SdkIntegrationTest.php");
+        $this->assertStringContainsString("['orderId' => 1]", $sdkTestCode);
+        $this->assertStringContainsString("['petId' => 1]", $sdkTestCode);
+        $this->assertStringContainsString("['username' => 'test_string']", $sdkTestCode);
+        $this->assertStringContainsString("\$this->assertLessThan(400, \$response['status']);", $sdkTestCode);
+        $this->assertStringContainsString("\$this->assertArrayNotHasKey('sabotage', \$response['data']);", $sdkTestCode);
+
+        $rootVendorAutoload = realpath(dirname(__DIR__, 2) . '/vendor/autoload.php');
+        $phpunitBin = realpath(dirname(__DIR__, 2) . '/vendor/bin/phpunit');
+        mkdir("$outDir/vendor", 0777, true);
+        file_put_contents(
+            "$outDir/vendor/autoload.php",
+            "<?php\nrequire_once " . var_export($rootVendorAutoload, true) . ";\nrequire_once __DIR__ . '/../src/ApiClient.php';\n"
+        );
+
+        $modeFile = "$outDir/mock_mode.txt";
+        file_put_contents($modeFile, 'happy');
+        $routerFile = "$outDir/mock_router.php";
+        file_put_contents(
+            $routerFile,
+            "<?php\n\$mode = trim((string) @file_get_contents(" . var_export($modeFile, true) . "));\n"
+            . "header('Content-Type: application/json');\n"
+            . "if (\$mode === '500') { http_response_code(500); echo json_encode(['error' => 'sabotage']); exit; }\n"
+            . "if (\$mode === 'sabotage') { http_response_code(200); echo json_encode(['id' => 'bad', 'sabotage' => true]); exit; }\n"
+            . "http_response_code(200); echo json_encode(['id' => 1, 'name' => 'doggie', 'status' => 'available']);\n"
+        );
+
+        $sock = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
+        $sockName = is_resource($sock) ? (string) stream_socket_get_name($sock, false) : '127.0.0.1:18089';
+        if (is_resource($sock)) {
+            fclose($sock);
+        }
+        $parts = explode(':', $sockName);
+        $port = (int) ($parts[1] ?? 18089);
+
+        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg([0-9.]*)$/', 'php$1', PHP_BINARY) : PHP_BINARY;
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+        $proc = proc_open([$phpBin, '-S', "127.0.0.1:$port", $routerFile], $descriptors, $pipes, $outDir);
+        $deadline = microtime(true) + 3.0;
+        while (microtime(true) < $deadline) {
+            $fp = @fsockopen('127.0.0.1', $port, $e1, $e2, 0.1);
+            if (is_resource($fp)) {
+                fclose($fp);
+                break;
+            }
+            usleep(20000);
+        }
+
+        try {
+            $baseUrl = "http://127.0.0.1:$port/v2";
+            $cmdSdk = 'BASE_URL=' . escapeshellarg($baseUrl) . ' ' . escapeshellarg($phpBin) . ' ' . escapeshellarg((string) $phpunitBin) . ' --configuration ' . escapeshellarg("$outDir/phpunit.xml") . ' 2>&1';
+            exec($cmdSdk, $outSdk, $codeSdk);
+            $this->assertEquals(0, $codeSdk);
+
+            $cmdApi = escapeshellarg($phpBin) . ' ' . escapeshellarg((string) $phpunitBin) . ' --configuration ' . escapeshellarg("$outDir/phpunit.xml") . ' ' . escapeshellarg("$outDir/tests/ApiTests.php") . ' 2>&1';
+            exec($cmdApi, $outApi, $codeApi);
+            $this->assertEquals(0, $codeApi);
+
+            file_put_contents($modeFile, '500');
+            exec($cmdSdk, $out500, $code500);
+            $this->assertTrue($code500 !== 0);
+
+            file_put_contents($modeFile, 'sabotage');
+            exec($cmdSdk, $outSabotage, $codeSabotage);
+            $this->assertTrue($codeSabotage !== 0);
+        } finally {
+            if (is_resource($proc)) {
+                proc_terminate($proc);
+                proc_close($proc);
+            }
+            $this->removeDir($outDir);
+        }
     }
 
     /**
