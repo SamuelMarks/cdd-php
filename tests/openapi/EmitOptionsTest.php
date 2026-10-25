@@ -189,6 +189,22 @@ class EmitOptionsTest extends TestCase
         $this->assertStringContainsString('use Api\\ApiClient;', $sdkTestContents);
         $this->assertStringContainsString('new \\CURLFile(', $sdkTestContents);
 
+        $apiTestContents = (string) file_get_contents($outDir . '/tests/ApiTests.php');
+        $this->assertStringContainsString('declare(strict_types=1);', $apiTestContents);
+        $this->assertStringContainsString('protected function call(string $method, string $path, array $body = []): object', $apiTestContents);
+        $adaptedApiTests = str_replace(
+            ['use PHPUnit\\Framework\\TestCase;', 'class ApiTests extends TestCase'],
+            ['use Cdd\\Tests\\Framework\\TestCase;', 'class GeneratedSdkApiTests extends TestCase'],
+            $apiTestContents
+        );
+        $adaptedPath = $outDir . '/tests/GeneratedSdkApiTests.php';
+        file_put_contents($adaptedPath, $adaptedApiTests);
+        require_once $adaptedPath;
+        /** @var object $apiTestObj */
+        $apiTestObj = new \GeneratedSdkApiTests('testGetRoute');
+        $apiTestObj->testGetRoute();
+        $apiTestObj->testtestPostJson();
+
         $this->removeDir($outDir);
     }
 

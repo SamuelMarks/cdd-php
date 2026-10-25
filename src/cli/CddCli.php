@@ -692,7 +692,7 @@ class CddCli
      */
     public static function run(array $argv): int
     {
-        $originalPwd = (string) (getenv('PWD') ?: getcwd());
+        $originalPwd = (string) getcwd();
         $resolvePath = static function (string $path) use ($originalPwd): string {
             if ($path === '' || $path[0] === '/') {
                 return $path;

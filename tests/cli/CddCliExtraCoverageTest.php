@@ -248,6 +248,36 @@ class ApiTests {
         $this->assertEquals(0, $code);
         $this->assertTrue(file_exists("$outDir/src/api_cli.php"));
 
+        $prevCwd = (string) getcwd();
+        $prevPwdEnv = getenv('PWD');
+        $relOutDir = "$tmpDir/rel_sdk_out";
+        try {
+            chdir($tmpDir);
+            putenv('PWD=/nonexistent_stale_pwd_dir');
+            ob_start();
+            $relCode = CddCli::run([
+                'cdd-php',
+                'from_openapi',
+                'to_sdk',
+                '-i',
+                'api.json',
+                '-o',
+                'rel_sdk_out',
+                '--no-github-actions',
+                '--no-installable-package',
+            ]);
+            ob_end_clean();
+            $this->assertEquals(0, $relCode);
+            $this->assertTrue(file_exists("$relOutDir/src/ApiClient.php"));
+        } finally {
+            chdir($prevCwd);
+            if ($prevPwdEnv !== false) {
+                putenv("PWD=$prevPwdEnv");
+            } else {
+                putenv('PWD');
+            }
+        }
+
         $this->removeDir($tmpDir);
         $this->removeDir($emptyDir);
         $this->removeDir($outDir);

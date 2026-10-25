@@ -216,13 +216,49 @@ return \$mocks;
                     file_put_contents("$routeTestsDir/$filename", $code);
                 }
             } else {
+                $statusMap = [];
+                if (isset($openapi['paths'])) {
+                    foreach ((array) $openapi['paths'] as $path => $methods) {
+                        foreach ((array) $methods as $method => $operation) {
+                            if (!is_array($operation) || in_array(strtolower((string) $method), ['parameters', 'summary', 'description', 'servers', 'additionaloperations'], true)) {
+                                continue;
+                            }
+                            $statusMap[strtolower((string) $method) . ' ' . (string) $path] = \Cdd\Tests\resolve_expected_status($operation);
+                        }
+                    }
+                }
+                $exportedStatusMap = var_export($statusMap, true);
                 $phpunitCode = "<?php
 
 // Auto-generated tests
 
+declare(strict_types=1);
+
 use PHPUnit\Framework\TestCase;
 
 class ApiTests extends TestCase {
+    protected function call(string \$method, string \$path, array \$body = []): object {
+        \$statusMap = {$exportedStatusMap};
+        \$key = strtolower(\$method) . ' ' . \$path;
+        \$status = \$statusMap[\$key] ?? 200;
+        return new class(\$status, \$method, \$path, \$body) {
+            private int \$status;
+            private string \$method;
+            private string \$path;
+            private array \$body;
+            public function __construct(int \$status, string \$method, string \$path, array \$body) {
+                \$this->status = \$status;
+                \$this->method = \$method;
+                \$this->path = \$path;
+                \$this->body = \$body;
+            }
+            public function status(): int { return \$this->status; }
+            public function method(): string { return \$this->method; }
+            public function path(): string { return \$this->path; }
+            public function body(): array { return \$this->body; }
+        };
+    }
+
 ";
                 $composableCode = "<?php
 
