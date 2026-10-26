@@ -30,18 +30,43 @@ function emit(): string
 declare(strict_types=1);
 
 require __DIR__ . '/vendor/autoload.php';
+if (!class_exists({$bs}Api{$bs}Database{$bs}DatabaseConnection::class)) {
+    spl_autoload_register(static function (string \$class): void {
+        if (str_starts_with(\$class, 'Api{$bs}{$bs}')) {
+            \$rel = str_replace('{$bs}{$bs}', '/', substr(\$class, 4));
+            \$file = __DIR__ . '/src/' . \$rel . '.php';
+            if (is_file(\$file)) {
+                require_once \$file;
+            }
+        }
+    });
+}
 
 \$_dbUrl = (string) getenv('DATABASE_URL');
-if (class_exists({$bs}Api{$bs}Database{$bs}DatabaseConnection::class) && (\$_dbUrl === '' || \$_dbUrl === 'sqlite::memory:')) {
+if (class_exists({$bs}Api{$bs}Database{$bs}DatabaseConnection::class)) {
+    \$_useEphemeral = \$_dbUrl === '' || \$_dbUrl === 'sqlite::memory:' || getenv('EPHEMERAL_DB') === 'true';
     try {
-        {$bs}Api{$bs}Database{$bs}DatabaseConnection::connect(true);
+        {$bs}Api{$bs}Database{$bs}DatabaseConnection::connect(\$_useEphemeral);
         {$bs}Api{$bs}Database{$bs}DatabaseConnection::migrate();
-        if (class_exists({$bs}Api{$bs}Seeder{$bs}DatabaseSeeder::class)) {
+        if (\$_useEphemeral && class_exists({$bs}Api{$bs}Seeder{$bs}DatabaseSeeder::class)) {
             (new {$bs}Api{$bs}Seeder{$bs}DatabaseSeeder())->seed();
         }
-        putenv('DATABASE_URL=sqlite::memory:');
+        if (\$_useEphemeral) {
+            putenv('DATABASE_URL=sqlite::memory:');
+        }
     } catch ({$bs}Throwable \$_dbErr) {
-        // Proceed without seeded DB if migration fails
+        if (!\$_useEphemeral) {
+            try {
+                {$bs}Api{$bs}Database{$bs}DatabaseConnection::connect(true);
+                {$bs}Api{$bs}Database{$bs}DatabaseConnection::migrate();
+                if (class_exists({$bs}Api{$bs}Seeder{$bs}DatabaseSeeder::class)) {
+                    (new {$bs}Api{$bs}Seeder{$bs}DatabaseSeeder())->seed();
+                }
+                putenv('DATABASE_URL=sqlite::memory:');
+            } catch ({$bs}Throwable \$_fallbackErr) {
+                // Proceed without seeded DB if migration fails
+            }
+        }
     }
 }
 

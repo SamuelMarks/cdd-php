@@ -126,6 +126,17 @@ class EmitOptionsTest extends TestCase
                         'operationId' => 'testPatchMultiStr',
                         'requestBody' => ['content' => ['multipart/form-data' => ['schema' => ['type' => 'string']]]],
                     ],
+                    'post_octet_bin' => [
+                        'operationId' => 'testPostOctetBin',
+                        'parameters' => [
+                            ['name' => 'optionalMeta', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string']],
+                        ],
+                        'requestBody' => ['content' => ['application/octet-stream' => ['schema' => ['type' => 'string', 'format' => 'binary']]]],
+                    ],
+                    'post_octet_obj' => [
+                        'operationId' => 'testPostOctetObj',
+                        'requestBody' => ['content' => ['application/octet-stream' => ['schema' => ['type' => 'object', 'properties' => ['bin' => ['type' => 'string']]]]]],
+                    ],
                 ],
             ],
             'components' => [

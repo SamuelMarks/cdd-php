@@ -256,7 +256,7 @@ class SdkIntegrationTest extends TestCase {
                     is_array($operation['parameters'] ?? null) ? $operation['parameters'] : []
                 );
                 foreach ($allParams as $p) {
-                    if (!empty($p['required']) || ($p['in'] ?? '') === 'path') {
+                    if (is_array($p) && isset($p['name'])) {
                         $name = (string) $p['name'];
                         $schema = is_array($p['schema'] ?? null) ? $p['schema'] : $p;
                         if ($name === 'username' && ($schema['type'] ?? 'string') === 'string') {
@@ -291,6 +291,9 @@ class SdkIntegrationTest extends TestCase {
                             $dummyBody[$prop] = '___CURLFILE_PLACEHOLDER___';
                         }
                     }
+                } elseif (isset($operation['requestBody']['content']['application/octet-stream']['schema'])) {
+                    $res = generateDummySchemaValue($operation['requestBody']['content']['application/octet-stream']['schema'], $openapi);
+                    $dummyBody = is_array($res) ? $res : ['dummy' => $res];
                 }
 
                 $paramsStr = exportPhpShortArray($dummyParams);

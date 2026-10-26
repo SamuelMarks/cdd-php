@@ -83,6 +83,13 @@ PHP;
 
         $emittedConsumes = \Cdd\Client\emit('post', '/users', ['operationId' => 'createUsers2', 'consumes' => ['application/x-www-form-urlencoded']]);
         $this->assertTrue(strpos($emittedConsumes, 'Content-Type: application/x-www-form-urlencoded') !== false);
+
+        $emittedOctet = \Cdd\Client\emit('post', '/pet/{petId}/uploadImage', [
+            'operationId' => 'uploadFile',
+            'requestBody' => ['content' => ['application/octet-stream' => ['schema' => ['type' => 'string', 'format' => 'binary']]]],
+        ]);
+        $this->assertTrue(strpos($emittedOctet, 'Content-Type: application/octet-stream') !== false);
+        $this->assertTrue(strpos($emittedOctet, '$rawOctet = isset($body[\'dummy\'])') !== false);
     }
 
     /**

@@ -128,7 +128,7 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     $exportedContentType = var_export($contentType, true);
     $exportedContentTypeHeader = var_export("Content-Type: {$contentType}", true);
 
-    $out .= "        if (empty(\$body) && {$exportedContentType} === 'multipart/form-data' && in_array(strtoupper({$exportedMethod}), ['POST', 'PUT', 'PATCH'])) {
+    $out .= "        if (empty(\$body) && in_array({$exportedContentType}, ['multipart/form-data', 'application/octet-stream']) && in_array(strtoupper({$exportedMethod}), ['POST', 'PUT', 'PATCH'])) {
 ";
     $out .= "            \$body = ['dummy' => 'dummy'];
 ";
@@ -149,6 +149,14 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     $out .= "                curl_setopt(\$ch, CURLOPT_POSTFIELDS, http_build_query(\$body));
 ";
     $out .= "                \$headers[] = 'Content-Type: application/x-www-form-urlencoded';
+";
+    $out .= "            } else if ({$exportedContentType} === 'application/octet-stream') {
+";
+    $out .= "                \$rawOctet = isset(\$body['dummy']) && is_scalar(\$body['dummy']) ? (string) \$body['dummy'] : (string) json_encode(\$body);
+";
+    $out .= "                curl_setopt(\$ch, CURLOPT_POSTFIELDS, \$rawOctet);
+";
+    $out .= "                \$headers[] = 'Content-Type: application/octet-stream';
 ";
     $out .= "            } else {
 ";

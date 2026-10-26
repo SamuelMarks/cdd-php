@@ -91,10 +91,10 @@ repos:
           if [ ! -f "$SPEC_FILE" ]; then
             SPEC_FILE="../petstore_oas3.json"
           fi
-          ./scripts/start_mock_server.sh
+          ./scripts/start_mock_server.sh 8081 /api/v3
           rm -rf temp-php-client-openapi3 &&
           php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-openapi3 >/dev/null 2>&1 &&
-          cd temp-php-client-openapi3 && composer dump-autoload -q && ../vendor/bin/phpunit --bootstrap vendor/autoload.php tests >/dev/null 2>&1;
+          cd temp-php-client-openapi3 && composer dump-autoload -q && BASE_URL="http://127.0.0.1:8081/api/v3" ../vendor/bin/phpunit --bootstrap vendor/autoload.php tests >/dev/null 2>&1;
           TEST_EXIT_CODE=$? ;
           cd .. && rm -rf temp-php-client-openapi3 ;
           exit $TEST_EXIT_CODE
@@ -118,7 +118,7 @@ repos:
           rm -rf temp-php-server-swagger2 temp-php-client-swagger2-php &&
           php bin/cdd-php from_openapi to_server -i "$SPEC_FILE" -o temp-php-server-swagger2 >/dev/null 2>&1 &&
           php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-swagger2-php >/dev/null 2>&1 &&
-          (cd temp-php-server-swagger2 && composer dump-autoload -q && echo "<?php require __DIR__ . \"/../vendor/autoload.php\"; require __DIR__ . \"/server.php\";" > wrapper.php && exec php -S 127.0.0.1:8080 wrapper.php > server.log 2>&1) &
+          (cd temp-php-server-swagger2 && composer dump-autoload -q && echo "<?php require __DIR__ . \"/../vendor/autoload.php\"; require __DIR__ . \"/server.php\";" > wrapper.php && DATABASE_URL="" exec php -S 127.0.0.1:8080 wrapper.php > server.log 2>&1) &
           SERVER_PID=$! ;
           sleep 1 &&
           cd temp-php-client-swagger2-php && composer dump-autoload -q && ../vendor/bin/phpunit --bootstrap vendor/autoload.php tests >/dev/null 2>&1;
@@ -147,7 +147,7 @@ repos:
           rm -rf temp-php-server-openapi3 temp-php-client-openapi3-php &&
           php bin/cdd-php from_openapi to_server -i "$SPEC_FILE" -o temp-php-server-openapi3 >/dev/null 2>&1 &&
           php bin/cdd-php from_openapi to_sdk --tests -i "$SPEC_FILE" -o temp-php-client-openapi3-php >/dev/null 2>&1 &&
-          (cd temp-php-server-openapi3 && composer dump-autoload -q && echo "<?php require __DIR__ . \"/../vendor/autoload.php\"; require __DIR__ . \"/server.php\";" > wrapper.php && exec php -S 127.0.0.1:8080 wrapper.php > server.log 2>&1) &
+          (cd temp-php-server-openapi3 && composer dump-autoload -q && echo "<?php require __DIR__ . \"/../vendor/autoload.php\"; require __DIR__ . \"/server.php\";" > wrapper.php && DATABASE_URL="" exec php -S 127.0.0.1:8080 wrapper.php > server.log 2>&1) &
           SERVER_PID=$! ;
           sleep 1 &&
           cd temp-php-client-openapi3-php && composer dump-autoload -q && ../vendor/bin/phpunit --bootstrap vendor/autoload.php tests >/dev/null 2>&1;
