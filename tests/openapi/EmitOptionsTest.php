@@ -479,6 +479,19 @@ class EmitOptionsTest extends TestCase
                         'operationId' => 'getUserByName',
                         'responses' => ['200' => ['description' => 'OK']],
                     ],
+                    'delete' => [
+                        'operationId' => 'deleteUser',
+                        'parameters' => [
+                            ['name' => 'username', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']],
+                        ],
+                        'responses' => ['200' => ['description' => 'OK']],
+                    ],
+                ],
+                '/tag/{slug}' => [
+                    'get' => [
+                        'operationId' => 'getTagBySlug',
+                        'responses' => ['200' => ['description' => 'OK']],
+                    ],
                 ],
                 '/pet' => [
                     'post' => [
@@ -488,7 +501,10 @@ class EmitOptionsTest extends TestCase
                                 'application/json' => [
                                     'schema' => [
                                         'type' => 'object',
-                                        'properties' => ['name' => ['type' => 'string']],
+                                        'properties' => [
+                                            'name' => ['type' => 'string'],
+                                            'username' => ['type' => 'string'],
+                                        ],
                                     ],
                                 ],
                             ],
@@ -508,7 +524,8 @@ class EmitOptionsTest extends TestCase
         $sdkTestCode = (string) file_get_contents("$outDir/tests/SdkIntegrationTest.php");
         $this->assertStringContainsString("['orderId' => 1]", $sdkTestCode);
         $this->assertStringContainsString("['petId' => 1]", $sdkTestCode);
-        $this->assertStringContainsString("['username' => 'test_string']", $sdkTestCode);
+        $this->assertStringContainsString("['username' => 'user1']", $sdkTestCode);
+        $this->assertStringContainsString("['slug' => 'test_string']", $sdkTestCode);
         $this->assertStringContainsString("\$this->assertLessThan(400, \$response['status']);", $sdkTestCode);
         $this->assertStringContainsString("\$this->assertArrayNotHasKey('sabotage', \$response['data']);", $sdkTestCode);
 
@@ -580,6 +597,225 @@ class EmitOptionsTest extends TestCase
                 proc_close($proc);
             }
             $this->removeDir($outDir);
+        }
+    }
+
+    /**
+     * Tests that a generated `to_server` standalone server (`server.php`) serves requests from a generated `to_sdk`
+     * project with 100% passing `SdkIntegrationTest` across POST, PUT, GET, and DELETE routes.
+     *
+     * @return void
+     */
+    public function testGeneratedServerAndSdkEndToEnd(): void
+    {
+        $serverDir = sys_get_temp_dir() . '/cdd_test_gen_srv_' . uniqid();
+        $sdkDir = sys_get_temp_dir() . '/cdd_test_gen_sdk_' . uniqid();
+        $openapi = [
+            'openapi' => '3.0.4',
+            'info' => ['title' => 'Petstore E2E', 'version' => '1.0.0'],
+            'servers' => [['url' => 'http://127.0.0.1:8080/api/v3']],
+            'paths' => [
+                '/pet' => [
+                    'put' => [
+                        'operationId' => 'updatePet',
+                        'security' => [['petstore_auth' => ['write:pets']]],
+                        'requestBody' => [
+                            'required' => true,
+                            'content' => [
+                                'application/json' => [
+                                    'schema' => ['$ref' => '#/components/schemas/Pet'],
+                                ],
+                            ],
+                        ],
+                        'responses' => [
+                            '200' => [
+                                'description' => 'OK',
+                                'content' => [
+                                    'application/json' => [
+                                        'schema' => ['$ref' => '#/components/schemas/Pet'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    'post' => [
+                        'operationId' => 'addPet',
+                        'security' => [['petstore_auth' => ['write:pets']]],
+                        'requestBody' => [
+                            'required' => true,
+                            'content' => [
+                                'application/json' => [
+                                    'schema' => ['$ref' => '#/components/schemas/Pet'],
+                                ],
+                            ],
+                        ],
+                        'responses' => [
+                            '200' => [
+                                'description' => 'OK',
+                                'content' => [
+                                    'application/json' => [
+                                        'schema' => ['$ref' => '#/components/schemas/Pet'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                '/pet/findByStatus' => [
+                    'get' => [
+                        'operationId' => 'findPetsByStatus',
+                        'parameters' => [
+                            ['name' => 'status', 'in' => 'query', 'required' => true, 'schema' => ['type' => 'string', 'enum' => ['available']]],
+                        ],
+                        'responses' => [
+                            '200' => [
+                                'description' => 'OK',
+                                'content' => [
+                                    'application/json' => [
+                                        'schema' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/Pet']],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                '/pet/{petId}' => [
+                    'get' => [
+                        'operationId' => 'getPetById',
+                        'parameters' => [
+                            ['name' => 'petId', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'integer']],
+                        ],
+                        'responses' => [
+                            '200' => [
+                                'description' => 'OK',
+                                'content' => [
+                                    'application/json' => [
+                                        'schema' => ['$ref' => '#/components/schemas/Pet'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    'delete' => [
+                        'operationId' => 'deletePet',
+                        'parameters' => [
+                            ['name' => 'petId', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'integer']],
+                        ],
+                        'responses' => [
+                            '200' => ['description' => 'Deleted'],
+                        ],
+                    ],
+                ],
+                '/user/{username}' => [
+                    'get' => [
+                        'operationId' => 'getUserByName',
+                        'parameters' => [
+                            ['name' => 'username', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']],
+                        ],
+                        'responses' => [
+                            'default' => [
+                                'description' => 'OK',
+                                'content' => [
+                                    'application/json' => [
+                                        'schema' => ['$ref' => '#/components/schemas/User'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'components' => [
+                'schemas' => [
+                    'Category' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'id' => ['type' => 'integer'],
+                            'name' => ['type' => 'string'],
+                        ],
+                    ],
+                    'Pet' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'id' => ['type' => 'integer'],
+                            'name' => ['type' => 'string'],
+                            'category' => ['$ref' => '#/components/schemas/Category'],
+                            'status' => ['type' => 'string'],
+                        ],
+                    ],
+                    'User' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'id' => ['type' => 'integer'],
+                            'username' => ['type' => 'string'],
+                        ],
+                    ],
+                ],
+                'securitySchemes' => [
+                    'petstore_auth' => [
+                        'type' => 'oauth2',
+                        'flows' => [
+                            'implicit' => [
+                                'authorizationUrl' => 'https://example.com/oauth',
+                                'scopes' => ['write:pets' => 'write'],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        \Cdd\Openapi\emit($openapi, $serverDir, ['subcommand' => 'to_server']);
+        \Cdd\Openapi\emit($openapi, $sdkDir, ['subcommand' => 'to_sdk']);
+
+        $rootVendorAutoload = realpath(dirname(__DIR__, 2) . '/vendor/autoload.php');
+        $phpunitBin = realpath(dirname(__DIR__, 2) . '/vendor/bin/phpunit');
+        foreach ([$serverDir, $sdkDir] as $dir) {
+            mkdir("$dir/vendor", 0777, true);
+            file_put_contents(
+                "$dir/vendor/autoload.php",
+                "<?php\n\$l = require " . var_export($rootVendorAutoload, true) . ";\n\$l->addPsr4('Api\\\\', __DIR__ . '/../src/');\nreturn \$l;\n"
+            );
+        }
+
+        $sock = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
+        $sockName = is_resource($sock) ? (string) stream_socket_get_name($sock, false) : '127.0.0.1:18090';
+        if (is_resource($sock)) {
+            fclose($sock);
+        }
+        $parts = explode(':', $sockName);
+        $port = (int) ($parts[1] ?? 18090);
+
+        $phpBin = PHP_SAPI === 'phpdbg' ? (string) preg_replace('/phpdbg([0-9.]*)$/', 'php$1', PHP_BINARY) : PHP_BINARY;
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+        $env = array_merge($_ENV, ['DATABASE_URL' => '']);
+        $proc = proc_open([$phpBin, '-S', "127.0.0.1:$port", "$serverDir/server.php"], $descriptors, $pipes, $serverDir, $env);
+        $deadline = microtime(true) + 3.0;
+        while (microtime(true) < $deadline) {
+            $fp = @fsockopen('127.0.0.1', $port, $e1, $e2, 0.1);
+            if (is_resource($fp)) {
+                fclose($fp);
+                break;
+            }
+            usleep(20000);
+        }
+
+        try {
+            $baseUrl = "http://127.0.0.1:$port/api/v3";
+            $cmdSdk = 'DATABASE_URL="" BASE_URL=' . escapeshellarg($baseUrl) . ' ' . escapeshellarg($phpBin) . ' ' . escapeshellarg((string) $phpunitBin) . ' --configuration ' . escapeshellarg("$sdkDir/phpunit.xml") . ' 2>&1';
+            exec($cmdSdk, $outSdk, $codeSdk);
+            $this->assertEquals(0, $codeSdk);
+        } finally {
+            if (is_resource($proc)) {
+                proc_terminate($proc);
+                proc_close($proc);
+            }
+            $this->removeDir($serverDir);
+            $this->removeDir($sdkDir);
         }
     }
 

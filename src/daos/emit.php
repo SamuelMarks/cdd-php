@@ -89,7 +89,7 @@ use Api\Models\{$name};
 class Concrete{$name}Dao implements {$name}DaoInterface {
     public function getAll(): array { return {$name}::all()->all(); }
     public function getById(int|string \$id): ?object { return {$name}::find(\$id); }
-    public function create(array \$data): object { return {$name}::create(\$data); }
+    public function create(array \$data): object { unset(\$data['id']); return {$name}::create(\$data); }
     public function update(int|string \$id, array \$data): ?object { \$m = {$name}::find(\$id); if(\$m){ \$m->update(\$data); return \$m; } return null; }
     public function delete(int|string \$id): bool { \$m = {$name}::find(\$id); if(\$m){ return (bool) \$m->delete(); } return false; }
 }
@@ -273,7 +273,7 @@ declare(strict_types=1);
      * @return {$name}
      */
 ";
-        $out .= "    public function create(array \$data): object { return {$name}::create(\$data); }
+        $out .= "    public function create(array \$data): object { unset(\$data['id']); return {$name}::create(\$data); }
 ";
         $out .= "    /**
      * Updates a {$name} in DB

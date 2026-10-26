@@ -95,7 +95,12 @@ function generateDummySchemaValue(array $schema, array $openapi): mixed
         $obj = [];
         if (isset($schema['properties'])) {
             foreach ($schema['properties'] as $propName => $propDef) {
-                $obj[$propName] = generateDummySchemaValue(is_array($propDef) ? $propDef : [], $openapi);
+                $propArr = is_array($propDef) ? $propDef : [];
+                if ($propName === 'username' && ($propArr['type'] ?? 'string') === 'string') {
+                    $obj[$propName] = 'user1';
+                } else {
+                    $obj[$propName] = generateDummySchemaValue($propArr, $openapi);
+                }
             }
         } else {
             $obj = ['dummy' => 'data'];
@@ -210,6 +215,9 @@ class SdkIntegrationTest extends TestCase {
 ";
 
     if (isset($openapi['paths'])) {
+        $writeOps = [];
+        $readOps = [];
+        $deleteOps = [];
         foreach ($openapi['paths'] as $path => $methods) {
             foreach ($methods as $method => $operation) {
                 if (in_array(strtolower((string) $method), ['parameters', 'summary', 'description', 'servers'], true)) {
@@ -218,7 +226,23 @@ class SdkIntegrationTest extends TestCase {
                 if ($method === 'additionalOperations' && is_array($operation)) {
                     continue;
                 }
-
+                $entry = ['path' => (string) $path, 'methods' => $methods, 'method' => (string) $method, 'operation' => $operation];
+                $mLower = strtolower((string) $method);
+                if ($mLower === 'delete') {
+                    $deleteOps[] = $entry;
+                } elseif (in_array($mLower, ['post', 'put', 'patch'], true)) {
+                    $writeOps[] = $entry;
+                } else {
+                    $readOps[] = $entry;
+                }
+            }
+        }
+        foreach (array_merge($writeOps, $readOps, $deleteOps) as $item) {
+            $path = $item['path'];
+            $methods = $item['methods'];
+            $method = $item['method'];
+            $operation = $item['operation'];
+            {
                 $methodName = strtolower((string) $method);
                 $rawOpId = (string) ($operation['operationId'] ?? "{$methodName}_" . preg_replace('/[^a-zA-Z0-9]/', '_', (string) $path));
                 $opId = \Cdd\Parameters\sanitize_var_name($rawOpId);
@@ -235,13 +259,19 @@ class SdkIntegrationTest extends TestCase {
                     if (!empty($p['required']) || ($p['in'] ?? '') === 'path') {
                         $name = (string) $p['name'];
                         $schema = is_array($p['schema'] ?? null) ? $p['schema'] : $p;
-                        $dummyParams[$name] = generateDummySchemaValue($schema, $openapi);
+                        if ($name === 'username' && ($schema['type'] ?? 'string') === 'string') {
+                            $dummyParams[$name] = 'user1';
+                        } else {
+                            $dummyParams[$name] = generateDummySchemaValue($schema, $openapi);
+                        }
                     }
                 }
                 if (preg_match_all('/\{([^}]+)\}/', (string) $path, $pathMatches)) {
                     foreach ($pathMatches[1] as $pathParamName) {
                         if (!array_key_exists($pathParamName, $dummyParams)) {
-                            $dummyParams[$pathParamName] = str_ends_with(strtolower($pathParamName), 'id') ? 1 : 'test_string';
+                            $dummyParams[$pathParamName] = $pathParamName === 'username'
+                                ? 'user1'
+                                : (str_ends_with(strtolower($pathParamName), 'id') ? 1 : 'test_string');
                         }
                     }
                 }

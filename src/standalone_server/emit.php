@@ -31,6 +31,20 @@ declare(strict_types=1);
 
 require __DIR__ . '/vendor/autoload.php';
 
+\$_dbUrl = (string) getenv('DATABASE_URL');
+if (class_exists({$bs}Api{$bs}Database{$bs}DatabaseConnection::class) && (\$_dbUrl === '' || \$_dbUrl === 'sqlite::memory:')) {
+    try {
+        {$bs}Api{$bs}Database{$bs}DatabaseConnection::connect(true);
+        {$bs}Api{$bs}Database{$bs}DatabaseConnection::migrate();
+        if (class_exists({$bs}Api{$bs}Seeder{$bs}DatabaseSeeder::class)) {
+            (new {$bs}Api{$bs}Seeder{$bs}DatabaseSeeder())->seed();
+        }
+        putenv('DATABASE_URL=sqlite::memory:');
+    } catch ({$bs}Throwable \$_dbErr) {
+        // Proceed without seeded DB if migration fails
+    }
+}
+
 /**
  * Mock Route collector for standalone server dispatching.
  */
@@ -112,8 +126,9 @@ if (getenv('CDD_START_AUTH_SERVER') === 'true' && str_starts_with(\$uri, '/auth/
 }
 
 \$prefixes = [];
-if (class_exists('ApiServers')) {
-    \$serversObj = new ApiServers();
+\$serversClass = class_exists('ApiServers', false) ? 'ApiServers' : (class_exists({$bs}Api{$bs}ApiServers::class, false) ? {$bs}Api{$bs}ApiServers::class : '');
+if (\$serversClass !== '') {
+    \$serversObj = new \$serversClass();
     foreach (get_object_vars(\$serversObj) as \$propVal) {
         if (is_string(\$propVal)) {
             \$parsedPath = parse_url(\$propVal, PHP_URL_PATH);
@@ -132,6 +147,10 @@ foreach (array_unique(\$prefixes) as \$prefix) {
         break;
     }
 }
+
+usort(MockRoute::\$routes, static function (array \$a, array \$b): int {
+    return substr_count((string) \$a['uri'], '{') <=> substr_count((string) \$b['uri'], '{');
+});
 
 foreach (MockRoute::\$routes as \$route) {
     \$pattern = preg_replace('/\{[^\}]+\}/', '([^/]+)', \$route['uri']);
@@ -176,6 +195,67 @@ foreach (MockRoute::\$routes as \$route) {
             }
         }
 
+        \$buildCallArgs = static function ({$bs}ReflectionMethod \$ref, array \$matches): array {
+            \$callArgs = [];
+            \$rawBody = json_decode((string) file_get_contents('php://input'), true);
+            \$parsedBody = is_array(\$rawBody) ? \$rawBody : [];
+            \$matchIdx = 0;
+            foreach (\$ref->getParameters() as \$param) {
+                \$pName = \$param->getName();
+                \$pType = \$param->getType();
+                \$tName = \$pType instanceof {$bs}ReflectionNamedType ? \$pType->getName() : 'mixed';
+                if (\$pName === 'body') {
+                    if (\$tName === 'array') {
+                        \$callArgs[] = \$parsedBody;
+                    } elseif (\$tName === 'object') {
+                        \$callArgs[] = (object) \$parsedBody;
+                    } else {
+                        if (!class_exists(\$tName)) {
+                            \$shortModel = substr(\$tName, (int) strrpos(\$tName, '{$bs}{$bs}') + 1);
+                            \$modelClass = 'Api{$bs}Models{$bs}{$bs}' . \$shortModel;
+                            if (class_exists(\$modelClass)) {
+                                class_alias(\$modelClass, \$tName);
+                            }
+                        }
+                        \$callArgs[] = class_exists(\$tName) ? new \$tName(\$parsedBody) : (\$param->allowsNull() ? null : (object) \$parsedBody);
+                    }
+                    continue;
+                }
+                \$rawVal = \$matches[\$matchIdx] ?? (\$_GET[\$pName] ?? null);
+                if (isset(\$matches[\$matchIdx])) {
+                    \$matchIdx++;
+                }
+                if (\$rawVal === null) {
+                    if (\$param->allowsNull()) {
+                        \$callArgs[] = null;
+                    } elseif (\$tName === 'int') {
+                        \$callArgs[] = 1;
+                    } elseif (\$tName === 'float') {
+                        \$callArgs[] = 1.0;
+                    } elseif (\$tName === 'bool') {
+                        \$callArgs[] = true;
+                    } elseif (\$tName === 'array') {
+                        \$callArgs[] = [];
+                    } else {
+                        \$callArgs[] = '';
+                    }
+                } else {
+                    if (\$tName === 'int') {
+                        \$callArgs[] = (int) \$rawVal;
+                    } elseif (\$tName === 'float') {
+                        \$callArgs[] = (float) \$rawVal;
+                    } elseif (\$tName === 'bool') {
+                        \$callArgs[] = filter_var(\$rawVal, FILTER_VALIDATE_BOOLEAN);
+                    } elseif (\$tName === 'array') {
+                        \$callArgs[] = is_array(\$rawVal) ? \$rawVal : [(string) \$rawVal];
+                    } else {
+                        \$callArgs[] = (string) \$rawVal;
+                    }
+                }
+            }
+            return \$callArgs;
+        };
+
         \$executed = false;
         \$output = '';
         \$statusCode = 200;
@@ -192,10 +272,7 @@ foreach (MockRoute::\$routes as \$route) {
                     ob_start();
                     try {
                         \$ref = new {$bs}ReflectionMethod(\$instance, \$methodName);
-                        \$callArgs = [];
-                        foreach (\$ref->getParameters() as \$idx => \$param) {
-                            \$callArgs[] = \$matches[\$idx] ?? null;
-                        }
+                        \$callArgs = \$buildCallArgs(\$ref, \$matches);
                         \$res = \$instance->\$methodName(...\$callArgs);
                         \$output = (string) ob_get_clean();
                         if (\$output === '' && \$res !== null) {
@@ -217,10 +294,7 @@ foreach (MockRoute::\$routes as \$route) {
                     ob_start();
                     try {
                         \$ref = new {$bs}ReflectionMethod(\$controller, \$actionName);
-                        \$callArgs = [];
-                        foreach (\$ref->getParameters() as \$idx => \$param) {
-                            \$callArgs[] = \$matches[\$idx] ?? null;
-                        }
+                        \$callArgs = \$buildCallArgs(\$ref, \$matches);
                         \$res = \$controller->\$actionName(...\$callArgs);
                         \$output = (string) ob_get_clean();
                         if (\$output === '' && \$res !== null) {

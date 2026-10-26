@@ -125,9 +125,12 @@ function emit_modular_single(string $method, string $path, array $operation): ar
     $className = ucfirst($opId) . 'Controller';
     $code = "<?php\n\nnamespace Api\\Controllers;\n\n";
     $methodCode = \Cdd\Operations\emit($operation, $path, $method, true);
+    $reqSec = str_contains($methodCode, '->requireSecurity(')
+        ? "    protected function requireSecurity(string \$name, array \$scopes = [], array &\$headers = [], array &\$params = []): void {}\n\n"
+        : '';
     $code .= "class $className
 {
-" . preg_replace('/^/m', '    ', $methodCode) . "}
+" . $reqSec . preg_replace('/^/m', '    ', $methodCode) . "}
 ";
     return ["{$className}.php" => $code];
 }

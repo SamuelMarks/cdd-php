@@ -179,13 +179,14 @@ class ApiController {
         $modular = \Cdd\Paths\emit_modular([
             '/users' => [
                 'summary' => 'Users path',
-                'get' => ['operationId' => 'listUsers'],
+                'get' => ['operationId' => 'listUsers', 'security' => [['api_key' => []]]],
                 'additionalOperations' => [
                     'CUSTOM' => ['operationId' => 'customUsers'],
                 ],
             ],
         ]);
         $this->assertArrayHasKey('ListUsersController.php', $modular);
+        $this->assertStringContainsString('protected function requireSecurity(', $modular['ListUsersController.php']);
         $this->assertEquals([], \Cdd\Paths\emit_modular_single('INVALID', '/users', []));
     }
 }

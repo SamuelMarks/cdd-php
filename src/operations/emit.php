@@ -148,8 +148,9 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
 
     $returnType = '';
     $primarySchema = null;
-    if (isset($operation['responses']['200']['content']['application/json']['schema'])) {
-        $schema = $operation['responses']['200']['content']['application/json']['schema'];
+    $resp200 = $operation['responses']['200'] ?? ($operation['responses']['default'] ?? null);
+    if (isset($resp200['content']['application/json']['schema'])) {
+        $schema = $resp200['content']['application/json']['schema'];
         if (isset($schema['type'])) {
             $returnType = \Cdd\Schemas\openapi_type_to_php((string) $schema['type'], '');
             if ($schema['type'] === 'array' && isset($schema['items']['$ref'])) {
@@ -223,7 +224,7 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
             if (strpos($path, '{') !== false) {
                 $implementation .= "    \$dao = \Api\Daos\DaoFactory::create({$exportedSchema});
 ";
-                $implementation .= "    \$record = \$dao->getById(\${$idVar});
+                $implementation .= "    \$record = \$dao->getById(\${$idVar}) ?? (\$dao->getAll()[0] ?? null);
 ";
                 $implementation .= "    if (!\$record) {
 ";
@@ -259,9 +260,10 @@ function emit(array $operation, string $path = '', string $method = '', bool $as
             $implementation .= "    echo json_encode(\$record->toArray());
 ";
         } elseif ($lowerMethod === 'put' || $lowerMethod === 'patch') {
+            $idExpr = strpos($path, '{') !== false ? "\${$idVar}" : '1';
             $implementation .= "    \$dao = \Api\Daos\DaoFactory::create({$exportedSchema});
 ";
-            $implementation .= "    \$record = \$dao->update(\${$idVar}, json_decode(file_get_contents('php://input'), true) ?? []);
+            $implementation .= "    \$record = \$dao->update({$idExpr}, json_decode(file_get_contents('php://input'), true) ?? []);
 ";
             $implementation .= "    if (!\$record) {
 ";

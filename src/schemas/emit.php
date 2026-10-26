@@ -127,6 +127,10 @@ use Illuminate\Database\Eloquent\Model;
                 $exportedProp = var_export((string) $propName, true);
                 $out .= "        $exportedProp => '{$typeMap[$propSchema['type']]}',
 ";
+            } elseif (isset($propSchema['$ref'])) {
+                $exportedProp = var_export((string) $propName, true);
+                $out .= "        $exportedProp => 'array',
+";
             }
         }
     }

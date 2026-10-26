@@ -20,6 +20,10 @@ function emit(array $security): string
 {
     $out = "    // Security Requirements
 ";
+    $out .= "    \$headers ??= [];
+";
+    $out .= "    \$params ??= [];
+";
     foreach ($security as $req) {
         foreach ($req as $name => $scopes) {
             $scopesStr = '[]';

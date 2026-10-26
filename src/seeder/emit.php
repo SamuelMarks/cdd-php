@@ -37,8 +37,10 @@ declare(strict_types=1);
         $out .= "use Api{$bs}Database{$bs}DatabaseConnection;
 ";
         foreach (array_keys($schemas) as $schemaName) {
-            $out .= "use Api{$bs}Models{$bs}{$schemaName};
+            if (strtolower((string) $schemaName) !== 'resource') {
+                $out .= "use Api{$bs}Models{$bs}{$schemaName};
 ";
+            }
         }
     }
     $out .= "use Faker{$bs}Factory as FakerFactory;
@@ -162,7 +164,8 @@ declare(strict_types=1);
         }
         $out .= "                ];
 ";
-        $out .= "                \$record = {$name}::create(\$data);
+        $modelRef = ($namespace !== '' && strtolower((string) $name) === 'resource') ? "{$bs}Api{$bs}Models{$bs}{$name}" : $name;
+        $out .= "                \$record = {$modelRef}::create(\$data);
 ";
         $out .= "                \$this->entityPool[{$exportedName}][] = \$record->id;
 ";
