@@ -51,6 +51,7 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     }
     $out .= "    public function $operationId(array \$params = [], array \$body = []) {\n";
     $out .= "        \$headers = \$this->defaultHeaders;\n";
+    $out .= "        \$headers[] = 'Accept: application/json';\n";
     $out .= "        if (!empty(\$this->sessionToken)) {\n";
     $out .= "            \$headers[] = 'Authorization: Bearer ' . \$this->sessionToken;\n";
     $out .= "        }\n";
@@ -117,16 +118,21 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
 ";
 
     $contentType = 'application/json';
+    $hasRequestBody = false;
     if (isset($operation['requestBody']['content'])) {
         $types = array_keys($operation['requestBody']['content']);
         if (!empty($types)) {
             $contentType = (string) $types[0];
+            $hasRequestBody = true;
         }
     } elseif (isset($operation['consumes']) && !empty($operation['consumes'])) {
         $contentType = (string) $operation['consumes'][0];
+        $hasRequestBody = true;
     }
+    $emptyBodyContentType = $hasRequestBody ? $contentType : 'application/x-www-form-urlencoded';
     $exportedContentType = var_export($contentType, true);
     $exportedContentTypeHeader = var_export("Content-Type: {$contentType}", true);
+    $exportedEmptyContentTypeHeader = var_export("Content-Type: {$emptyBodyContentType}", true);
 
     $out .= "        if (empty(\$body) && in_array({$exportedContentType}, ['multipart/form-data', 'application/octet-stream']) && in_array(strtoupper({$exportedMethod}), ['POST', 'PUT', 'PATCH'])) {
 ";
@@ -152,11 +158,21 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
 ";
     $out .= "            } else if ({$exportedContentType} === 'application/octet-stream') {
 ";
-    $out .= "                \$rawOctet = isset(\$body['dummy']) && is_scalar(\$body['dummy']) ? (string) \$body['dummy'] : (string) json_encode(\$body);
+    $out .= "                if (isset(\$body['file']) && \$body['file'] instanceof \CURLFile) {
 ";
-    $out .= "                curl_setopt(\$ch, CURLOPT_POSTFIELDS, \$rawOctet);
+    $out .= "                    curl_setopt(\$ch, CURLOPT_POSTFIELDS, \$body);
 ";
-    $out .= "                \$headers[] = 'Content-Type: application/octet-stream';
+    $out .= "                    \$headers[] = 'Expect:';
+";
+    $out .= "                } else {
+";
+    $out .= "                    \$rawOctet = isset(\$body['dummy']) && is_scalar(\$body['dummy']) ? (string) \$body['dummy'] : (string) json_encode(\$body);
+";
+    $out .= "                    curl_setopt(\$ch, CURLOPT_POSTFIELDS, \$rawOctet);
+";
+    $out .= "                    \$headers[] = 'Content-Type: application/octet-stream';
+";
+    $out .= "                }
 ";
     $out .= "            } else {
 ";
@@ -174,7 +190,7 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
 ";
     $out .= "                curl_setopt(\$ch, CURLOPT_POSTFIELDS, '');
 ";
-    $out .= "                \$headers[] = {$exportedContentTypeHeader};
+    $out .= "                \$headers[] = {$exportedEmptyContentTypeHeader};
 ";
     $out .= "            }
 ";
@@ -209,7 +225,15 @@ function emit(string $method, string $path, array $operation, string $baseUrl = 
     $out .= "        }
 ";
 
-    $out .= "        \$decoded = json_decode((string) \$response, true);
+    $out .= "        \$rawBody = trim((string) \$response);
+";
+    $out .= "        \$decoded = \$rawBody === '' ? json_decode('null', true) : json_decode(\$rawBody, true);
+";
+    $out .= "        if (\$decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+";
+    $out .= "            \$decoded = json_decode((string) json_encode(\$rawBody), true);
+";
+    $out .= "        }
 ";
     $out .= "        return ['status' => \$httpCode, 'data' => \$decoded];
 ";

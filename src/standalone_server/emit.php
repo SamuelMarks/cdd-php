@@ -44,7 +44,7 @@ if (!class_exists({$bs}Api{$bs}Database{$bs}DatabaseConnection::class)) {
 
 \$_dbUrl = (string) getenv('DATABASE_URL');
 if (class_exists({$bs}Api{$bs}Database{$bs}DatabaseConnection::class)) {
-    \$_useEphemeral = \$_dbUrl === '' || \$_dbUrl === 'sqlite::memory:' || getenv('EPHEMERAL_DB') === 'true';
+    \$_useEphemeral = getenv('EPHEMERAL_DB') !== 'false';
     try {
         {$bs}Api{$bs}Database{$bs}DatabaseConnection::connect(\$_useEphemeral);
         {$bs}Api{$bs}Database{$bs}DatabaseConnection::migrate();

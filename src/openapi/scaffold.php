@@ -162,6 +162,10 @@ declare(strict_types=1);
 use PHPUnit\Framework\TestCase;
 use Api\ApiClient;
 
+if (!class_exists(ApiClient::class) && file_exists(__DIR__ . '/../src/ApiClient.php')) {
+    require_once __DIR__ . '/../src/ApiClient.php';
+}
+
 class SdkIntegrationTest extends TestCase {
 ";
     $sdkTestCode .= "    private ApiClient \$client;
@@ -292,8 +296,13 @@ class SdkIntegrationTest extends TestCase {
                         }
                     }
                 } elseif (isset($operation['requestBody']['content']['application/octet-stream']['schema'])) {
-                    $res = generateDummySchemaValue($operation['requestBody']['content']['application/octet-stream']['schema'], $openapi);
-                    $dummyBody = is_array($res) ? $res : ['dummy' => $res];
+                    $octSchema = $operation['requestBody']['content']['application/octet-stream']['schema'];
+                    if (($octSchema['format'] ?? '') === 'binary' || ($octSchema['type'] ?? '') === 'file') {
+                        $dummyBody = ['file' => '___CURLFILE_PLACEHOLDER___'];
+                    } else {
+                        $res = generateDummySchemaValue($octSchema, $openapi);
+                        $dummyBody = is_array($res) ? $res : ['dummy' => $res];
+                    }
                 }
 
                 $paramsStr = exportPhpShortArray($dummyParams);

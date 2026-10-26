@@ -133,6 +133,10 @@ class EmitOptionsTest extends TestCase
                         ],
                         'requestBody' => ['content' => ['application/octet-stream' => ['schema' => ['type' => 'string', 'format' => 'binary']]]],
                     ],
+                    'post_octet_str' => [
+                        'operationId' => 'testPostOctetStr',
+                        'requestBody' => ['content' => ['application/octet-stream' => ['schema' => ['type' => 'string']]]],
+                    ],
                     'post_octet_obj' => [
                         'operationId' => 'testPostOctetObj',
                         'requestBody' => ['content' => ['application/octet-stream' => ['schema' => ['type' => 'object', 'properties' => ['bin' => ['type' => 'string']]]]]],
@@ -484,6 +488,39 @@ class EmitOptionsTest extends TestCase
                         'operationId' => 'getPetById',
                         'responses' => ['200' => ['description' => 'OK']],
                     ],
+                    'post' => [
+                        'operationId' => 'updatePetWithForm',
+                        'parameters' => [
+                            ['name' => 'name', 'in' => 'query', 'schema' => ['type' => 'string']],
+                        ],
+                        'responses' => ['200' => ['description' => 'OK']],
+                    ],
+                ],
+                '/pet/{petId}/uploadImage' => [
+                    'post' => [
+                        'operationId' => 'uploadFile',
+                        'parameters' => [
+                            ['name' => 'petId', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'integer']],
+                        ],
+                        'requestBody' => [
+                            'content' => [
+                                'application/octet-stream' => [
+                                    'schema' => ['type' => 'string', 'format' => 'binary'],
+                                ],
+                            ],
+                        ],
+                        'responses' => ['200' => ['description' => 'OK']],
+                    ],
+                ],
+                '/user/login' => [
+                    'get' => [
+                        'operationId' => 'loginUser',
+                        'parameters' => [
+                            ['name' => 'username', 'in' => 'query', 'schema' => ['type' => 'string']],
+                            ['name' => 'password', 'in' => 'query', 'schema' => ['type' => 'string']],
+                        ],
+                        'responses' => ['200' => ['description' => 'OK']],
+                    ],
                 ],
                 '/user/{username}' => [
                     'get' => [
@@ -554,9 +591,24 @@ class EmitOptionsTest extends TestCase
         file_put_contents(
             $routerFile,
             "<?php\n\$mode = trim((string) @file_get_contents(" . var_export($modeFile, true) . "));\n"
+            . "\$uri = (string) parse_url(\$_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);\n"
+            . "\$method = strtoupper((string) (\$_SERVER['REQUEST_METHOD'] ?? 'GET'));\n"
+            . "\$ct = (string) (\$_SERVER['CONTENT_TYPE'] ?? (\$_SERVER['HTTP_CONTENT_TYPE'] ?? ''));\n"
+            . "\$accept = (string) (\$_SERVER['HTTP_ACCEPT'] ?? '');\n"
             . "header('Content-Type: application/json');\n"
             . "if (\$mode === '500') { http_response_code(500); echo json_encode(['error' => 'sabotage']); exit; }\n"
             . "if (\$mode === 'sabotage') { http_response_code(200); echo json_encode(['id' => 'bad', 'sabotage' => true]); exit; }\n"
+            . "if (\$accept !== 'application/json') { http_response_code(406); echo '<error>XML not expected</error>'; exit; }\n"
+            . "if (\$method === 'POST' && preg_match('#/pet/[0-9]+$#', \$uri)) {\n"
+            . "    if (!str_starts_with(\$ct, 'application/x-www-form-urlencoded')) { http_response_code(415); exit; }\n"
+            . "    http_response_code(200); echo ''; exit;\n"
+            . "}\n"
+            . "if (\$method === 'POST' && str_ends_with(\$uri, '/uploadImage')) {\n"
+            . "    if (!str_starts_with(\$ct, 'multipart/form-data') || empty(\$_FILES['file'])) { http_response_code(415); exit; }\n"
+            . "    http_response_code(200); echo json_encode(['code' => 200, 'type' => 'unknown', 'message' => 'uploaded']); exit;\n"
+            . "}\n"
+            . "if (str_ends_with(\$uri, '/user/login')) { header('Content-Type: text/plain'); http_response_code(200); echo 'logged in user session:12345'; exit; }\n"
+            . "if (\$method === 'DELETE') { http_response_code(200); echo ''; exit; }\n"
             . "http_response_code(200); echo json_encode(['id' => 1, 'name' => 'doggie', 'status' => 'available']);\n"
         );
 
