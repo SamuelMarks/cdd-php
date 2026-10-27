@@ -98,6 +98,8 @@ function generateDummySchemaValue(array $schema, array $openapi): mixed
                 $propArr = is_array($propDef) ? $propDef : [];
                 if ($propName === 'username' && ($propArr['type'] ?? 'string') === 'string') {
                     $obj[$propName] = 'user1';
+                } elseif ($propName === 'status' && ($propArr['type'] ?? 'string') === 'string' && empty($propArr['enum'])) {
+                    $obj[$propName] = 'available';
                 } else {
                     $obj[$propName] = generateDummySchemaValue($propArr, $openapi);
                 }
@@ -265,6 +267,8 @@ class SdkIntegrationTest extends TestCase {
                         $schema = is_array($p['schema'] ?? null) ? $p['schema'] : $p;
                         if ($name === 'username' && ($schema['type'] ?? 'string') === 'string') {
                             $dummyParams[$name] = 'user1';
+                        } elseif ($name === 'status' && ($schema['type'] ?? 'string') === 'string' && empty($schema['enum'])) {
+                            $dummyParams[$name] = 'available';
                         } else {
                             $dummyParams[$name] = generateDummySchemaValue($schema, $openapi);
                         }

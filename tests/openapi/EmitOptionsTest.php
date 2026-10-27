@@ -492,6 +492,7 @@ class EmitOptionsTest extends TestCase
                         'operationId' => 'updatePetWithForm',
                         'parameters' => [
                             ['name' => 'name', 'in' => 'query', 'schema' => ['type' => 'string']],
+                            ['name' => 'status', 'in' => 'query', 'schema' => ['type' => 'string']],
                         ],
                         'responses' => ['200' => ['description' => 'OK']],
                     ],
@@ -572,6 +573,7 @@ class EmitOptionsTest extends TestCase
         $sdkTestCode = (string) file_get_contents("$outDir/tests/SdkIntegrationTest.php");
         $this->assertStringContainsString("['orderId' => 1]", $sdkTestCode);
         $this->assertStringContainsString("['petId' => 1]", $sdkTestCode);
+        $this->assertStringContainsString("'status' => 'available'", $sdkTestCode);
         $this->assertStringContainsString("['username' => 'user1']", $sdkTestCode);
         $this->assertStringContainsString("['slug' => 'test_string']", $sdkTestCode);
         $this->assertStringContainsString("\$this->assertLessThan(400, \$response['status']);", $sdkTestCode);
@@ -601,6 +603,7 @@ class EmitOptionsTest extends TestCase
             . "if (\$accept !== 'application/json') { http_response_code(406); echo '<error>XML not expected</error>'; exit; }\n"
             . "if (\$method === 'POST' && preg_match('#/pet/[0-9]+$#', \$uri)) {\n"
             . "    if (!str_starts_with(\$ct, 'application/x-www-form-urlencoded')) { http_response_code(415); exit; }\n"
+            . "    if ((\$statusParam = (string) (\$_GET['status'] ?? '')) !== '' && !in_array(\$statusParam, ['available', 'pending', 'sold'], true)) { http_response_code(400); exit; }\n"
             . "    http_response_code(200); echo ''; exit;\n"
             . "}\n"
             . "if (\$method === 'POST' && str_ends_with(\$uri, '/uploadImage')) {\n"
