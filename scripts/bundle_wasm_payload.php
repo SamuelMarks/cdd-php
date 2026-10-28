@@ -1,37 +1,18 @@
 <?php
 
 /**
- * Bundles a payload file into a WebAssembly module as a custom section.
+ * Bundles a payload file into a WebAssembly module as a custom section,
+ * stripping non-essential debug/metadata custom sections beforehand.
  *
  * @package Cdd\Scripts
  */
 
 declare(strict_types=1);
 
-if ($argc < 3) {
-    echo "Usage: php bundle_wasm_payload.php <wasm_file> <payload_file>\n";
-    exit(1);
-}
-
-$wasm_file = $argv[1];
-$payload_file = $argv[2];
-
-if (!file_exists($wasm_file) || !file_exists($payload_file)) {
-    echo "Files not found.\n";
-    exit(1);
-}
-
-$wasm_data = file_get_contents($wasm_file);
-$payload_data = file_get_contents($payload_file);
-
-// Name of the custom section
-$name = "cdd-php-payload";
-$name_len = strlen($name);
-
 /**
- * Encodes an integer as an unsigned LEB128 string.
+ * Encodes an integer as an unsigned LEB128 binary string.
  *
- * @param int $value The integer to encode.
+ * @param int $value The non-negative integer to encode.
  * @return string The LEB128 encoded binary string.
  */
 function encode_leb128_u(int $value): string
@@ -40,25 +21,120 @@ function encode_leb128_u(int $value): string
     do {
         $byte = $value & 0x7F;
         $value >>= 7;
-        if ($value != 0) {
+        if ($value !== 0) {
             $byte |= 0x80;
         }
         $result .= chr($byte);
-    } while ($value != 0);
+    } while ($value !== 0);
     return $result;
 }
 
-$name_len_leb = encode_leb128_u($name_len);
-$payload_size = strlen($payload_data);
+/**
+ * Decodes an unsigned LEB128 integer from a binary string at a given byte offset.
+ *
+ * @param string $data The binary string to read from.
+ * @param int $offset The current byte offset (advanced past the decoded integer).
+ * @return int The decoded non-negative integer.
+ */
+function decode_leb128_u(string $data, int &$offset): int
+{
+    $result = 0;
+    $shift = 0;
+    $len = strlen($data);
+    while ($offset < $len) {
+        $byte = ord($data[$offset++]);
+        $result |= ($byte & 0x7F) << $shift;
+        if (($byte & 0x80) === 0) {
+            break;
+        }
+        $shift += 7;
+    }
+    return $result;
+}
 
-// Section content: name_len (LEB128) + name + payload
-$section_content = $name_len_leb . $name . $payload_data;
-$section_size = strlen($section_content);
-$section_size_leb = encode_leb128_u($section_size);
+/**
+ * Strips non-essential custom sections (such as `.debug_*`, `producers`, `name`,
+ * and any previously appended `cdd-php-payload` section) from a WebAssembly binary.
+ *
+ * @param string $wasmData Raw WebAssembly binary bytes.
+ * @param array<int, string> $keepCustomSections Custom section names to preserve.
+ * @return string Stripped WebAssembly binary bytes.
+ */
+function strip_wasm_custom_sections(
+    string $wasmData,
+    array $keepCustomSections = ['target_features']
+): string {
+    if (strlen($wasmData) < 8 || substr($wasmData, 0, 4) !== "\x00asm") {
+        return $wasmData;
+    }
 
-// Section: id (0 for custom) + section_size (LEB128) + section_content
-$section = chr(0) . $section_size_leb . $section_content;
+    $out = substr($wasmData, 0, 8);
+    $offset = 8;
+    $len = strlen($wasmData);
 
-file_put_contents($wasm_file, $section, FILE_APPEND);
+    while ($offset < $len) {
+        $sectionStart = $offset;
+        $sectionId = ord($wasmData[$offset++]);
+        $sectionSize = decode_leb128_u($wasmData, $offset);
+        $sectionEnd = $offset + $sectionSize;
+        if ($sectionEnd > $len) {
+            $out .= substr($wasmData, $sectionStart);
+            break;
+        }
 
-echo "Custom section appended successfully.\n";
+        if ($sectionId !== 0) {
+            $out .= substr($wasmData, $sectionStart, $sectionEnd - $sectionStart);
+        } else {
+            $nameOffset = $offset;
+            $nameLen = decode_leb128_u($wasmData, $nameOffset);
+            $customName = substr($wasmData, $nameOffset, $nameLen);
+            if (in_array($customName, $keepCustomSections, true)) {
+                $out .= substr($wasmData, $sectionStart, $sectionEnd - $sectionStart);
+            }
+        }
+
+        $offset = $sectionEnd;
+    }
+
+    return $out;
+}
+
+/**
+ * Builds a WebAssembly custom section (ID 0) for a given section name and binary payload.
+ *
+ * @param string $name Custom section name.
+ * @param string $payload Raw payload bytes.
+ * @return string Complete WebAssembly custom section bytes.
+ */
+function build_wasm_custom_section(string $name, string $payload): string
+{
+    $nameLenLeb = encode_leb128_u(strlen($name));
+    $sectionContent = $nameLenLeb . $name . $payload;
+    $sectionSizeLeb = encode_leb128_u(strlen($sectionContent));
+    return chr(0) . $sectionSizeLeb . $sectionContent;
+}
+
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
+    if ($argc < 3) {
+        echo "Usage: php bundle_wasm_payload.php <wasm_file> <payload_file>\n";
+        exit(1);
+    }
+
+    $wasmFile = $argv[1];
+    $payloadFile = $argv[2];
+
+    if (!file_exists($wasmFile) || !file_exists($payloadFile)) {
+        echo "Files not found.\n";
+        exit(1);
+    }
+
+    $wasmData = (string) file_get_contents($wasmFile);
+    $payloadData = (string) file_get_contents($payloadFile);
+
+    $strippedWasm = strip_wasm_custom_sections($wasmData);
+    $section = build_wasm_custom_section('cdd-php-payload', $payloadData);
+
+    file_put_contents($wasmFile, $strippedWasm . $section);
+
+    echo "Custom section appended successfully.\n";
+}

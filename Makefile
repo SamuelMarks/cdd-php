@@ -67,6 +67,10 @@ build_wasm: build
 	@echo "Downloading pre-compiled PHP WebAssembly runtime..."
 	@curl -sfL "https://github.com/vmware-labs/webassembly-language-runtimes/releases/download/php/8.2.6+20230714-11be424/php-cgi-8.2.6-slim.wasm" -o build/wasm/cdd-php.wasm
 	@echo "WASM runtime downloaded."
+	@if command -v wasm-opt >/dev/null 2>&1; then \
+		echo "Optimizing WASM runtime with wasm-opt -Oz..."; \
+		wasm-opt -Oz --strip-debug --strip-producers --enable-bulk-memory --enable-sign-ext --enable-mutable-globals --enable-nontrapping-float-to-int build/wasm/cdd-php.wasm -o build/wasm/cdd-php.wasm; \
+	fi
 	@echo "Creating JSON filesystem bundle..."
 	@php scripts/build_wasm_bundle.php build/wasm_bundle.json
 	@echo "Bundling the JSON payload as a WebAssembly custom section..."
