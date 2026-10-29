@@ -65,7 +65,7 @@ build_wasm: build
 	@echo "Building WASM..."
 	@mkdir -p build/wasm
 	@echo "Downloading pre-compiled PHP WebAssembly runtime..."
-	@curl -sfL "https://github.com/vmware-labs/webassembly-language-runtimes/releases/download/php/8.2.6+20230714-11be424/php-cgi-8.2.6-slim.wasm" -o build/wasm/cdd-php.wasm
+	@curl -sfL "https://github.com/vmware-labs/webassembly-language-runtimes/releases/download/php/8.2.6+20230714-11be424/php-cgi-8.2.6.wasm" -o build/wasm/cdd-php.wasm
 	@echo "WASM runtime downloaded."
 	@if command -v wasm-opt >/dev/null 2>&1; then \
 		echo "Optimizing WASM runtime with wasm-opt -Oz..."; \
