@@ -58,7 +58,21 @@ class ToDocsJsonTest extends TestCase
                     'post' => [
                         'operationId' => 'onNewPet',
                         'requestBody' => [
-                            'content' => ['application/json' => ['schema' => ['type' => 'object']]],
+                            'content' => [
+                                'application/json' => [
+                                    'schema' => [
+                                        'type' => 'object',
+                                        'properties' => [
+                                            'name' => ['type' => 'string'],
+                                            'age' => ['type' => 'integer'],
+                                            'weight' => ['type' => 'number'],
+                                            'vaccinated' => ['type' => 'boolean'],
+                                            'tags' => ['type' => 'array'],
+                                            'status' => ['type' => 'string', 'default' => 'available'],
+                                        ],
+                                    ],
+                                ],
+                            ],
                         ],
                         'responses' => [
                             '200' => ['description' => 'ok'],
@@ -129,12 +143,13 @@ class ToDocsJsonTest extends TestCase
         $purgeOp = $operations[1];
         $this->assertEquals('PURGE', $purgeOp['method']);
         $this->assertEquals('purge_pet', $purgeOp['operationId']);
-        $this->assertStringContainsString('$client->purgePet(', (string) $purgeOp['code']['snippet']);
+        $this->assertStringContainsString('$client->purgePet([\'body\' => []]);', (string) $purgeOp['code']['snippet']);
 
         $webhookOp = $operations[2];
         $this->assertEquals('POST', $webhookOp['method']);
         $this->assertEquals('newPet', $webhookOp['path']);
         $this->assertEquals('onNewPet', $webhookOp['operationId']);
+        $this->assertStringContainsString("'body' => ['name' => 'value', 'age' => 0, 'weight' => 0.0, 'vaccinated' => true, 'tags' => [], 'status' => 'available']", (string) $webhookOp['code']['snippet']);
 
         $unnamedWebhookOp = $operations[3];
         $this->assertEquals('webhook-postunnamedWebhook', $unnamedWebhookOp['operationId']);
@@ -172,11 +187,12 @@ class ToDocsJsonTest extends TestCase
         $this->assertStringContainsString('<?php', (string) $code['imports']);
         $this->assertStringContainsString('use Api\ApiClient;', (string) $code['imports']);
         $this->assertTrue(isset($code['wrapper_start']));
-        $this->assertTrue(isset($code['wrapper_end']));
+        $this->assertFalse(isset($code['wrapper_end']));
 
         $wfCode = $json[0]['operations'][4]['code'];
         $this->assertStringContainsString('use Api\ApiWorkflows;', (string) $wfCode['imports']);
         $this->assertStringContainsString('$workflows = new ApiWorkflows($client);', (string) $wfCode['wrapper_start']);
+        $this->assertFalse(isset($wfCode['wrapper_end']));
 
         @unlink($tempSpec);
     }

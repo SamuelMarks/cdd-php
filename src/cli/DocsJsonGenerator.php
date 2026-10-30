@@ -76,7 +76,30 @@ class DocsJsonGenerator
                     }
                 }
                 if (isset($operation['requestBody'])) {
-                    $params[] = "'body' => [...]";
+                    $bodyProps = [];
+                    if (
+                        is_array($operation['requestBody'])
+                        && isset($operation['requestBody']['content']['application/json']['schema']['properties'])
+                        && is_array($operation['requestBody']['content']['application/json']['schema']['properties'])
+                    ) {
+                        foreach ($operation['requestBody']['content']['application/json']['schema']['properties'] as $propName => $propSchema) {
+                            if (is_array($propSchema) && array_key_exists('default', $propSchema)) {
+                                $sampleVal = var_export($propSchema['default'], true);
+                            } else {
+                                $propType = is_array($propSchema) ? (string) ($propSchema['type'] ?? 'string') : 'string';
+                                $sampleVal = match ($propType) {
+                                    'integer', 'int' => '0',
+                                    'number', 'float' => '0.0',
+                                    'boolean', 'bool' => 'true',
+                                    'array', 'object' => '[]',
+                                    default => "'value'",
+                                };
+                            }
+                            $bodyProps[] = "'" . (string) $propName . "' => " . $sampleVal;
+                        }
+                    }
+                    $bodyArrayStr = empty($bodyProps) ? '[]' : '[' . implode(', ', $bodyProps) . ']';
+                    $params[] = "'body' => " . $bodyArrayStr;
                 }
                 $paramStr = empty($params) ? '' : '[' . implode(', ', $params) . ']';
 
@@ -92,7 +115,6 @@ class DocsJsonGenerator
 
                 if (!$noWrapping) {
                     $codeBlock['wrapper_start'] = "\$client = new ApiClient('https://api.example.com');";
-                    $codeBlock['wrapper_end'] = '';
                 }
 
                 $operations[] = [
@@ -149,7 +171,6 @@ class DocsJsonGenerator
 
             if (!$noWrapping) {
                 $codeBlock['wrapper_start'] = "\$client = new ApiClient('https://api.example.com');\n\$workflows = new ApiWorkflows(\$client);";
-                $codeBlock['wrapper_end'] = '';
             }
 
             $operations[] = [
