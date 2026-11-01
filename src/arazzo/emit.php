@@ -108,7 +108,9 @@ function emit(array $arazzo, ?string $outDir = null, array $options = []): strin
         }
 
         if (function_exists('\Cdd\Openapi\emitProjectScaffolding')) {
-            \Cdd\Openapi\emitProjectScaffolding($outDir, $subcommand, $noInstallablePackage, $noGithubActions);
+            $githubOrg = (string) ($options['github_org'] ?? '');
+            $repoName = (string) ($options['repo_name'] ?? '');
+            \Cdd\Openapi\emitProjectScaffolding($outDir, $subcommand, $noInstallablePackage, $noGithubActions, $githubOrg, $repoName);
         }
     }
 

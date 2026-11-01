@@ -29,7 +29,7 @@ if (file_exists("$baseDir/vendor/autoload.php")) {
 }
 
 // Simple autoloader for src directory
-spl_autoload_register(function ($class) use ($baseDir) {
+spl_autoload_register(function (string $class) use ($baseDir): void {
     if (strpos($class, 'Cdd\\') === 0) {
         $relative = substr($class, 4);
         $path = explode('\\', $relative);

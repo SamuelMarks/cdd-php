@@ -15,18 +15,43 @@ namespace Cdd\Exceptions;
  */
 enum CddErrorCode: string
 {
+    /** @var string Malformed or unparseable JSON document error. */
     case JsonDecodeError = 'JSON_DECODE_ERROR';
+
+    /** @var string JSON serialization failure error. */
     case JsonEncodeError = 'JSON_ENCODE_ERROR';
+
+    /** @var string OpenAPI 3.0.x / 3.1.x / 3.2.0 specification validation error. */
     case OpenApiValidationError = 'OPENAPI_VALIDATION_ERROR';
+
+    /** @var string Swagger 2.0 to/from OpenAPI 3.x conversion error. */
     case Swagger2ConversionError = 'SWAGGER2_CONVERSION_ERROR';
+
+    /** @var string Arazzo 1.0.x / 1.1.0 workflow specification validation error. */
     case ArazzoValidationError = 'ARAZZO_VALIDATION_ERROR';
+
+    /** @var string Arazzo workflow runtime expression or execution error. */
     case ArazzoRuntimeError = 'ARAZZO_RUNTIME_ERROR';
+
+    /** @var string JSON Pointer or $ref resolution error. */
     case ReferenceResolutionError = 'REFERENCE_RESOLUTION_ERROR';
+
+    /** @var string PHP AST parsing or evaluation error. */
     case AstParseError = 'AST_PARSE_ERROR';
+
+    /** @var string PHP or JSON code emission error. */
     case CodeEmissionError = 'CODE_EMISSION_ERROR';
+
+    /** @var string CLI command-line argument validation error. */
     case CliArgumentError = 'CLI_ARGUMENT_ERROR';
+
+    /** @var string File system read/write or path resolution error. */
     case FileSystemError = 'FILE_SYSTEM_ERROR';
+
+    /** @var string Model Context Protocol (MCP) JSON-RPC protocol error. */
     case McpProtocolError = 'MCP_PROTOCOL_ERROR';
+
+    /** @var string TCP HTTP JSON-RPC transport error. */
     case JsonRpcTransportError = 'JSON_RPC_TRANSPORT_ERROR';
 }
 

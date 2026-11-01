@@ -1,6 +1,6 @@
 {
   "name": "offscale/cdd-php",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Zero-dependency OpenAPI bidirectional compiler for PHP.",
   "type": "library",
   "license": "Apache-2.0",
@@ -49,7 +49,9 @@
     "ext-pdo_sqlite": "*"
   },
   "scripts": {
-    "test": "php tests/test_runner.php"
+    "test": "php tests/test_runner.php",
+    "check-docs": "php bin/check_docs.php",
+    "check-coverage": "phpdbg -qrr bin/check_coverage.php"
   },
   "require-dev": {
     "friendsofphp/php-cs-fixer": "^3.95",

@@ -238,6 +238,10 @@ class CddCli
 ";
                 echo "  -o, --output <dir>              Destination path for generation
 ";
+                echo "  --github-org <org>              Target GitHub organization name for Composer package
+";
+                echo "  --repo-name <name>              Target repository name for Composer package
+";
                 echo "  --no-github-actions             Disable GitHub Actions generation
 ";
                 echo "  --no-installable-package        Disable Composer package generation
@@ -269,6 +273,10 @@ class CddCli
             echo "  -d, --input-dir <dir>           Path to a directory containing OpenAPI specifications
 ";
             echo "  -o, --output <dir>              Destination path for generation
+";
+            echo "  --github-org <org>              Target GitHub organization name for Composer package
+";
+            echo "  --repo-name <name>              Target repository name for Composer package
 ";
             echo "  --no-github-actions             Disable GitHub Actions generation
 ";
@@ -373,6 +381,10 @@ class CddCli
 ";
             echo "  -o, --output <dir>    Destination path for generation
 ";
+            echo "  --github-org <org>    Target GitHub organization name for Composer package
+";
+            echo "  --repo-name <name>    Target repository name for Composer package
+";
             echo "  --no-github-actions   Disable GitHub Actions generation
 ";
             echo "  --no-installable-package Disable Composer package generation
@@ -462,6 +474,8 @@ class CddCli
         $noInstallablePackage = false;
         $tests = false;
         $mcp = false;
+        $githubOrg = '';
+        $repoName = '';
 
         $newArgv = [];
         for ($k = 0; $k < $argc; $k++) {
@@ -473,6 +487,10 @@ class CddCli
                 $tests = true;
             } elseif ($argv[$k] === '--mcp') {
                 $mcp = true;
+            } elseif ($argv[$k] === '--github-org' && isset($argv[$k + 1])) {
+                $githubOrg = $argv[++$k];
+            } elseif ($argv[$k] === '--repo-name' && isset($argv[$k + 1])) {
+                $repoName = $argv[++$k];
             } else {
                 $newArgv[] = $argv[$k];
             }
@@ -536,6 +554,8 @@ class CddCli
             'tests' => $tests || $subcommand === 'to_sdk',
             'mcp' => $mcp,
             'subcommand' => $subcommand,
+            'github_org' => $githubOrg,
+            'repo_name' => $repoName,
         ]);
         if ($subcommand === 'to_sdk_cli') {
             $cliCode = \Cdd\Cli\emit($spec['paths'] ?? []);
@@ -575,6 +595,8 @@ class CddCli
         $dir = (string) getcwd();
         $noGithubActions = false;
         $noInstallablePackage = false;
+        $githubOrg = '';
+        $repoName = '';
 
         $i = 2;
         if (isset($argv[$i]) && in_array($argv[$i], ['to_sdk_cli', 'to_sdk', 'to_server', 'all'], true)) {
@@ -587,6 +609,10 @@ class CddCli
                 $noGithubActions = true;
             } elseif ($argv[$i] === '--no-installable-package') {
                 $noInstallablePackage = true;
+            } elseif ($argv[$i] === '--github-org' && isset($argv[$i + 1])) {
+                $githubOrg = $argv[++$i];
+            } elseif ($argv[$i] === '--repo-name' && isset($argv[$i + 1])) {
+                $repoName = $argv[++$i];
             } elseif (($argv[$i] === '-i' || $argv[$i] === '--input') && isset($argv[$i + 1])) {
                 $file = $resolvePath($argv[++$i]);
             } elseif (($argv[$i] === '-d' || $argv[$i] === '--input-dir') && isset($argv[$i + 1])) {
@@ -614,6 +640,8 @@ class CddCli
             'subcommand' => $subcommand,
             'no_github_actions' => $noGithubActions,
             'no_installable_package' => $noInstallablePackage,
+            'github_org' => $githubOrg,
+            'repo_name' => $repoName,
         ]);
 
         echo "Emitted Arazzo code to $dir successfully.
@@ -712,7 +740,7 @@ class CddCli
         $command = $argv[1] ?? '';
 
         if ($command === '--version' || $command === '-v') {
-            echo "0.0.4
+            echo "0.0.5
 ";
             return 0;
         }

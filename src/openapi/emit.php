@@ -29,7 +29,7 @@ function emit(array $openapi, ?string $outDir = null, array $options = []): stri
     if (!isset($openapi['info'])) {
         $openapi['info'] = [
             'title' => 'Default API',
-            'version' => '0.0.4',
+            'version' => '0.0.5',
         ];
     }
 
@@ -309,7 +309,9 @@ return [
 
         $noInstallablePackage = (bool) ($options['no_installable_package'] ?? false);
         $noGithubActions = (bool) ($options['no_github_actions'] ?? false);
-        emitProjectScaffolding($outDir, $subcommand, $noInstallablePackage, $noGithubActions);
+        $githubOrg = (string) ($options['github_org'] ?? '');
+        $repoName = (string) ($options['repo_name'] ?? '');
+        emitProjectScaffolding($outDir, $subcommand, $noInstallablePackage, $noGithubActions, $githubOrg, $repoName);
     }
 
     $targetVersion = (string) ($options['target_version'] ?? '3.2.0');

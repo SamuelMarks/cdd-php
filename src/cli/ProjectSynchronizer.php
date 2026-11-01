@@ -256,7 +256,7 @@ class ProjectSynchronizer
 
         $openapi = [
             'openapi' => '3.2.0',
-            'info' => ['title' => 'Synced API', 'version' => '0.0.4'],
+            'info' => ['title' => 'Synced API', 'version' => '0.0.5'],
             'paths' => [],
             'components' => ['schemas' => []],
         ];
@@ -328,7 +328,7 @@ class ProjectSynchronizer
             'openapi' => '3.2.0',
             'info' => [
                 'title' => 'Parsed API',
-                'version' => '0.0.4',
+                'version' => '0.0.5',
             ],
             'paths' => [],
             'components' => ['schemas' => []],

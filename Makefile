@@ -75,6 +75,7 @@ build_wasm: build
 	@php scripts/build_wasm_bundle.php build/wasm_bundle.json
 	@echo "Bundling the JSON payload as a WebAssembly custom section..."
 	@php scripts/bundle_wasm_payload.php build/wasm/cdd-php.wasm build/wasm_bundle.json
+	@cp build/wasm/cdd-php.wasm $(BIN_DIR)/cdd-php.wasm
 	@echo "Successfully bundled."
 
 build_docker:

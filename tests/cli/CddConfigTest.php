@@ -37,6 +37,8 @@ class CddConfigTest extends TestCase
         $config->noImports = true;
         $config->noWrapping = true;
         $config->truth = 'class';
+        $config->githubOrg = 'acme';
+        $config->repoName = 'acme-sdk-php';
 
         $args = $config->toArgs();
         $this->assertEquals([
@@ -52,6 +54,8 @@ class CddConfigTest extends TestCase
             '--no-imports',
             '--no-wrapping',
             '-t', 'class',
+            '--github-org', 'acme',
+            '--repo-name', 'acme-sdk-php',
         ], $args);
     }
 

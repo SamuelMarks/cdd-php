@@ -189,7 +189,7 @@ class McpServer
                             'prompts' => ['listChanged' => true],
                             'logging' => (object) [],
                         ],
-                        'serverInfo' => ['name' => 'cdd-php-mcp', 'version' => '0.0.4'],
+                        'serverInfo' => ['name' => 'cdd-php-mcp', 'version' => '0.0.5'],
                     ];
                 } elseif ($req['method'] === 'initialized') {
                     continue;

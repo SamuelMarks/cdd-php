@@ -348,23 +348,47 @@ class SdkIntegrationTest extends TestCase {
 }
 
 /**
- * Emits `composer.json`, `phpunit.xml`, and `.github/workflows/ci.yml` scaffolding for generated projects.
+ * Emits `composer.json`, `phpunit.xml`, `phpdoc.dist.xml`, and `.github/workflows/ci.yml` scaffolding for generated projects.
  *
  * @param string $outDir Output project directory.
- * @param string $subcommand Target generation mode (`to_server`, `to_sdk`, etc.).
- * @param bool $noInstallablePackage Skip `composer.json` and `phpunit.xml` emission if true.
+ * @param string $subcommand Target generation mode (`to_server`, `to_sdk`, `to_sdk_cli`, etc.).
+ * @param bool $noInstallablePackage Skip `composer.json`, `phpunit.xml`, and `phpdoc.dist.xml` emission if true.
  * @param bool $noGithubActions Skip GitHub Actions workflow emission if true.
+ * @param string $githubOrg Optional GitHub organization or user name (defaults to `offscale`).
+ * @param string $repoName Optional repository or package name (defaults to `${githubOrg}-sdk` or `generated-api`).
  * @return void
  */
-function emitProjectScaffolding(string $outDir, string $subcommand, bool $noInstallablePackage, bool $noGithubActions): void
-{
+function emitProjectScaffolding(
+    string $outDir,
+    string $subcommand,
+    bool $noInstallablePackage,
+    bool $noGithubActions,
+    string $githubOrg = '',
+    string $repoName = ''
+): void {
+    $resolvedOrg = $githubOrg !== '' ? $githubOrg : 'offscale';
+    $resolvedRepo = $repoName !== '' ? $repoName : ($githubOrg !== '' ? "{$githubOrg}-sdk" : 'generated-api');
+    $packageName = "{$resolvedOrg}/{$resolvedRepo}";
+    $homepageUrl = "https://github.com/{$resolvedOrg}/{$resolvedRepo}";
+
     if (!$noInstallablePackage) {
         if (!file_exists("$outDir/composer.json")) {
+            $binEntries = match ($subcommand) {
+                'to_sdk_cli' => ['src/api_cli.php'],
+                'to_server' => ['server.php'],
+                default => [],
+            };
             $composerData = [
-                'name' => 'offscale/generated-api',
+                'name' => $packageName,
                 'description' => 'Generated API client/server',
+                'license' => 'Apache-2.0 OR MIT',
+                'homepage' => $homepageUrl,
+                'support' => [
+                    'issues' => "{$homepageUrl}/issues",
+                    'source' => $homepageUrl,
+                ],
                 'require' => [
-                    'php' => '>=8.0',
+                    'php' => '>=8.2',
                 ],
                 'require-dev' => [
                     'phpunit/phpunit' => '^10.0',
@@ -377,6 +401,7 @@ function emitProjectScaffolding(string $outDir, string $subcommand, bool $noInst
                         'Api' . chr(92) => 'src/',
                     ],
                 ],
+                'bin' => $binEntries,
             ];
             if ($subcommand === 'to_server') {
                 $composerData['require']['illuminate/database'] = '^10.0 || ^11.0';
@@ -399,6 +424,27 @@ function emitProjectScaffolding(string $outDir, string $subcommand, bool $noInst
 </phpunit>
 ");
         }
+        if (!file_exists("$outDir/phpdoc.dist.xml")) {
+            file_put_contents("$outDir/phpdoc.dist.xml", "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>
+<phpdocumentor
+        configVersion=\"3\"
+        xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+        xmlns=\"https://www.phpdoc.org\"
+>
+    <title>{$packageName}</title>
+    <paths>
+        <output>docs/api</output>
+    </paths>
+    <version number=\"latest\">
+        <api>
+            <source dsn=\".\">
+                <path>src</path>
+            </source>
+        </api>
+    </version>
+</phpdocumentor>
+");
+        }
     }
 
     if (!$noGithubActions) {
@@ -407,7 +453,14 @@ function emitProjectScaffolding(string $outDir, string $subcommand, bool $noInst
         }
         if (!file_exists("$outDir/.github/workflows/ci.yml")) {
             file_put_contents("$outDir/.github/workflows/ci.yml", "name: CI
-on: [push]
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -416,9 +469,50 @@ jobs:
     - name: Use PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.2'
+        php-version: '8.3'
     - run: composer install
     - run: composer test
+
+  docs:
+    needs: test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Run phpDocumentor
+      uses: docker://phpdoc/phpdoc:3
+      with:
+        args: -c phpdoc.dist.xml
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: \${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/api
+
+  release:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Import GPG Key and Sign Release Archive
+      if: env.GPG_PRIVATE_KEY != ''
+      env:
+        GPG_PRIVATE_KEY: \${{ secrets.GPG_PRIVATE_KEY }}
+        GPG_PASSPHRASE: \${{ secrets.GPG_PASSPHRASE }}
+      run: |
+        echo \"\$GPG_PRIVATE_KEY\" | gpg --batch --import
+        git archive --format=tar.gz --output=release.tar.gz HEAD
+        gpg --batch --yes --pinentry-mode loopback --passphrase \"\$GPG_PASSPHRASE\" --armor --detach-sign release.tar.gz
+    - name: Trigger Packagist Webhook
+      if: env.PACKAGIST_TOKEN != ''
+      env:
+        PACKAGIST_USERNAME: \${{ secrets.PACKAGIST_USERNAME }}
+        PACKAGIST_TOKEN: \${{ secrets.PACKAGIST_TOKEN }}
+      run: |
+        curl -X POST -H 'Content-Type: application/json' \\
+          \"https://packagist.org/api/update-package?username=\${PACKAGIST_USERNAME}&apiToken=\${PACKAGIST_TOKEN}\" \\
+          -d '{\"repository\":{\"url\":\"{$homepageUrl}\"}}'
 ");
         }
     }

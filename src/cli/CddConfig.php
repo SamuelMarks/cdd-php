@@ -73,6 +73,16 @@ class CddConfig
     public string $truth = '';
 
     /**
+     * @var string Target GitHub organization or user name (`--github-org`).
+     */
+    public string $githubOrg = '';
+
+    /**
+     * @var string Target repository or package name (`--repo-name`).
+     */
+    public string $repoName = '';
+
+    /**
      * Converts the configuration into an array of command-line arguments.
      *
      * @return array<int, string> Command-line arguments list.
@@ -126,6 +136,16 @@ class CddConfig
         if ($this->truth !== '') {
             $args[] = '-t';
             $args[] = $this->truth;
+        }
+
+        if ($this->githubOrg !== '') {
+            $args[] = '--github-org';
+            $args[] = $this->githubOrg;
+        }
+
+        if ($this->repoName !== '') {
+            $args[] = '--repo-name';
+            $args[] = $this->repoName;
         }
 
         return $args;

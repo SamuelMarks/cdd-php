@@ -903,12 +903,15 @@ PHP;
             $cfg->input = $specFile;
             $cfg->output = "$tmpDir/out_server";
             $cfg->target = 'to_server';
+            $cfg->githubOrg = 'acme';
+            $cfg->repoName = 'acme-arazzo-server';
             ob_start();
             $code2 = \Cdd\Cli\CddCli::generate_from_arazzo($cfg);
             ob_end_clean();
             $this->assertEquals(0, $code2);
             $this->assertTrue(file_exists("$tmpDir/out_server/src/WorkflowEngine.php"));
             $this->assertTrue(file_exists("$tmpDir/out_server/tests/Workflows/ArazzoWorkflowTest.php"));
+            $this->assertTrue(file_exists("$tmpDir/out_server/phpdoc.dist.xml"));
 
             // Input dir mode & missing file error
             ob_start();

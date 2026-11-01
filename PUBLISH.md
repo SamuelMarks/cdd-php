@@ -5,13 +5,13 @@
 The `cdd-php` compiler is distributed as the Composer package `offscale/cdd-php`.
 To publish a new release:
 
-1. Update the `version` field in `composer.json` and the `--version` string in `src/cli/CddCli.php` (currently `0.0.4`).
+1. Update the `version` field in `composer.json` and the `--version` string in `src/cli/CddCli.php` (currently `0.0.5`).
 2. Run the test, coverage, and documentation checks:
    ```bash
    phpdbg -qrr bin/check_coverage.php
    php bin/check_docs.php
    ```
-3. Commit the changes and create a version tag (e.g., `v0.0.4`) on GitHub.
+3. Commit the changes and create a version tag (e.g., `v0.0.5`) on GitHub.
 
 Packagist synchronizes releases from GitHub tags, allowing users to install `cdd-php` via:
 

@@ -77,7 +77,7 @@ class MegaCoverageTest extends TestCase
         $this->assertEquals(0, CddCli::run(['cdd-php', '--version']));
         $this->assertEquals(0, CddCli::run(['cdd-php', '-v']));
         $verOut = (string) ob_get_clean();
-        $this->assertStringContainsString('0.0.4', $verOut);
+        $this->assertStringContainsString('0.0.5', $verOut);
 
         ob_start();
         $this->assertEquals(1, CddCli::run(['cdd-php', 'unknown_command']));
@@ -120,12 +120,21 @@ class MegaCoverageTest extends TestCase
             $this->assertStringContainsString('public function listPets(', $sdkContent);
             $this->assertStringContainsString('public function connect_mcp(', $sdkContent);
 
-            $this->assertEquals(0, CddCli::run(['cdd-php', 'from_openapi', 'to_server', '-i', $spec, '-o', "$tmpBase/server"]));
+            $this->assertEquals(0, CddCli::run(['cdd-php', 'from_openapi', 'to_server', '-i', $spec, '-o', "$tmpBase/server", '--github-org', 'acme', '--repo-name', 'acme-petstore-server']));
             $this->assertTrue(file_exists("$tmpBase/server/src/routes.php"));
             $this->assertTrue(file_exists("$tmpBase/server/src/Routes/PetsRoutes.php"));
             $routeFileContent = (string) file_get_contents("$tmpBase/server/src/Routes/PetsRoutes.php");
             $this->assertStringContainsString("Route::get('/pets'", $routeFileContent);
             $this->assertTrue(file_exists("$tmpBase/server/src/Models/Pet.php"));
+            $this->assertTrue(file_exists("$tmpBase/server/phpdoc.dist.xml"));
+            $composerServer = json_decode((string) file_get_contents("$tmpBase/server/composer.json"), true);
+            $this->assertEquals('acme/acme-petstore-server', $composerServer['name'] ?? '');
+            $this->assertEquals('https://github.com/acme/acme-petstore-server', $composerServer['homepage'] ?? '');
+            $this->assertEquals(['server.php'], $composerServer['bin'] ?? []);
+            $ciYml = (string) file_get_contents("$tmpBase/server/.github/workflows/ci.yml");
+            $this->assertStringContainsString('phpdoc.dist.xml', $ciYml);
+            $this->assertStringContainsString('--detach-sign release.tar.gz', $ciYml);
+            $this->assertStringContainsString('packagist.org/api/update-package', $ciYml);
 
             $this->assertEquals(0, CddCli::run(['cdd-php', 'serve_json_rpc', '--port', '0', '--listen', '127.0.0.1', '--timeout', '0.01']));
             ob_end_clean();

@@ -104,6 +104,24 @@ function audit_php_source_docs(string $code, string $relPath): array
 
     $stmts = $parser->parse($code) ?? [];
 
+    // 1b. Check declare(strict_types=1)
+    $totalItems++;
+    $hasStrictTypes = false;
+    foreach ($stmts as $stmt) {
+        if ($stmt instanceof Node\Stmt\Declare_) {
+            foreach ($stmt->declares as $dec) {
+                if ($dec->key->toString() === 'strict_types' && $dec->value instanceof Node\Scalar\Int_ && $dec->value->value === 1) {
+                    $hasStrictTypes = true;
+                }
+            }
+        }
+    }
+    if ($hasStrictTypes) {
+        $documentedItems++;
+    } else {
+        $undocumentedDetails[] = "$relPath -> Missing declare(strict_types=1)";
+    }
+
     // 2. Check classes, interfaces, traits, enums
     $classLikes = $nodeFinder->findInstanceOf($stmts, Node\Stmt\ClassLike::class);
     foreach ($classLikes as $classLike) {
@@ -118,16 +136,16 @@ function audit_php_source_docs(string $code, string $relPath): array
             $undocumentedDetails[] = "$relPath -> Class/Interface $className missing docblock";
         }
 
-        // 3. Check all properties in multi-property declarations and verify @var
+        // 3. Check all properties in multi-property declarations and verify @var and strong typing
         foreach ($classLike->getProperties() as $prop) {
             $propDoc = $prop->getDocComment();
             foreach ($prop->props as $p) {
                 $propName = $p->name->toString();
                 $totalItems++;
-                if ($propDoc !== null && str_contains($propDoc->getText(), '@var')) {
+                if ($propDoc !== null && str_contains($propDoc->getText(), '@var') && $prop->type !== null) {
                     $documentedItems++;
                 } else {
-                    $undocumentedDetails[] = "$relPath -> Property {$className}::\${$propName} missing docblock with @var";
+                    $undocumentedDetails[] = "$relPath -> Property {$className}::\${$propName} missing docblock with @var or native type hint";
                 }
             }
         }
@@ -142,6 +160,21 @@ function audit_php_source_docs(string $code, string $relPath): array
                     $documentedItems++;
                 } else {
                     $undocumentedDetails[] = "$relPath -> Constant {$className}::{$constName} missing docblock with @var";
+                }
+            }
+        }
+
+        // 4b. Check enum cases for docblocks
+        if ($classLike instanceof Node\Stmt\Enum_) {
+            foreach ($classLike->stmts as $enumStmt) {
+                if ($enumStmt instanceof Node\Stmt\EnumCase) {
+                    $caseName = $enumStmt->name->toString();
+                    $totalItems++;
+                    if ($enumStmt->getDocComment() !== null) {
+                        $documentedItems++;
+                    } else {
+                        $undocumentedDetails[] = "$relPath -> Enum case {$className}::{$caseName} missing docblock";
+                    }
                 }
             }
         }
@@ -166,7 +199,7 @@ function audit_php_source_docs(string $code, string $relPath): array
         $docText = $docComment->getText();
         $funcValid = true;
 
-        // Verify @param tags for all parameters
+        // Verify @param tags and native type hints for all parameters
         foreach ($func->getParams() as $param) {
             if ($param->var instanceof Node\Expr\Variable && is_string($param->var->name)) {
                 $paramName = $param->var->name;
@@ -174,14 +207,22 @@ function audit_php_source_docs(string $code, string $relPath): array
                     $funcValid = false;
                     $undocumentedDetails[] = "$relPath -> {$funcName}() missing @param for \${$paramName}";
                 }
+                if ($param->type === null) {
+                    $funcValid = false;
+                    $undocumentedDetails[] = "$relPath -> {$funcName}() missing native type hint for \${$paramName}";
+                }
             }
         }
 
-        // Verify @return tag (except __construct)
-        if ($funcName !== '__construct') {
+        // Verify @return tag and native return type hint (except __construct and __destruct)
+        if ($funcName !== '__construct' && $funcName !== '__destruct') {
             if (!preg_match('/@return\s+[^\s]+/', $docText)) {
                 $funcValid = false;
                 $undocumentedDetails[] = "$relPath -> {$funcName}() missing @return tag";
+            }
+            if ($func->getReturnType() === null) {
+                $funcValid = false;
+                $undocumentedDetails[] = "$relPath -> {$funcName}() missing native return type hint";
             }
         }
 
